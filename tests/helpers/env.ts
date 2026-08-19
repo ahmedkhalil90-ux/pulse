@@ -16,7 +16,7 @@ export function readRules(): string {
 /** Firestore handle as handed out by rules-unit-testing. */
 export type Db = ReturnType<RulesTestContext['firestore']>;
 
-export type Actor = { uid: string; email?: string };
+export type Actor = { uid: string; email?: string } | 'unauthenticated';
 
 export type Case = {
   /** Human-readable, used as the `it()` name and in the mutation report. */
@@ -66,7 +66,10 @@ export async function outcome(env: RulesTestEnvironment, c: Case): Promise<'allo
   await env.clearFirestore();
   if (c.seed) await env.withSecurityRulesDisabled(c.seed);
 
-  const ctx = env.authenticatedContext(c.as.uid, c.as.email ? { email: c.as.email } : {});
+  const ctx =
+    c.as === 'unauthenticated'
+      ? env.unauthenticatedContext()
+      : env.authenticatedContext(c.as.uid, c.as.email ? { email: c.as.email } : {});
   const op = c.run(ctx.firestore());
 
   let allowed = false;

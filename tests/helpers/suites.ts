@@ -1,7 +1,10 @@
 import type { Case } from './env';
+import { gamesCases } from '../cases/games.cases';
+import { groupsCases } from '../cases/groups.cases';
 import { migrationCases } from '../cases/migration.cases';
 import { questionsCases } from '../cases/questions.cases';
 import { resultsCases } from '../cases/results.cases';
+import { resultsReadCases } from '../cases/resultsRead.cases';
 import { userAnswersCases } from '../cases/userAnswers.cases';
 
 /**
@@ -11,9 +14,12 @@ import { userAnswersCases } from '../cases/userAnswers.cases';
  */
 export const SUITES: Array<[string, Case[]]> = [
   ['results/{questionId}', resultsCases],
+  ['results/{questionId} reads', resultsReadCases],
   ['questions/{questionId}', questionsCases],
   ['isMigrating() via users/{oldUid}', migrationCases],
   ['user_answers/{answerId}', userAnswersCases],
+  ['games/{gameId} reads', gamesCases],
+  ['groups/{groupId} updates', groupsCases],
 ];
 
 export const ALL_CASES: Case[] = SUITES.flatMap(([, cases]) => cases);

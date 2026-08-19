@@ -190,6 +190,97 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
+    id: 'M15',
+    label: 'games: any authenticated user may read any game',
+    edits: [
+      {
+        find:
+          '      allow read: if isAuthenticated() && (\n' +
+          '                    request.auth.uid in resource.data.players ||\n' +
+          "                    resource.data.status == 'lobby'\n" +
+          '                  );',
+        replace: '      allow read: if isAuthenticated();',
+      },
+    ],
+  },
+  {
+    id: 'M16',
+    label: 'games: the read auth gate is removed',
+    edits: [
+      {
+        find:
+          '      allow read: if isAuthenticated() && (\n' +
+          '                    request.auth.uid in resource.data.players ||\n' +
+          "                    resource.data.status == 'lobby'\n" +
+          '                  );',
+        replace: '      allow read: if true;',
+      },
+    ],
+  },
+  {
+    id: 'M17',
+    label: 'groups: the self-only join/leave shape checks are removed',
+    edits: [
+      {
+        find:
+          '                        && (\n' +
+          '                          // Join: add yourself and no one else.\n' +
+          '                          (request.resource.data.members.hasAll(resource.data.members)\n' +
+          '                           && request.resource.data.members.size() == resource.data.members.size() + 1\n' +
+          '                           && !(request.auth.uid in resource.data.members)\n' +
+          '                           && request.auth.uid in request.resource.data.members)\n' +
+          '                          ||\n' +
+          '                          // Leave: remove yourself and no one else.\n' +
+          '                          (resource.data.members.hasAll(request.resource.data.members)\n' +
+          '                           && request.resource.data.members.size() == resource.data.members.size() - 1\n' +
+          '                           && request.auth.uid in resource.data.members\n' +
+          '                           && !(request.auth.uid in request.resource.data.members))\n' +
+          '                        ));',
+        replace: '                        && true);',
+      },
+    ],
+  },
+  {
+    id: 'M18',
+    label: 'groups: update reverts to any authenticated user (the pre-fix rule)',
+    edits: [
+      {
+        find:
+          '      allow update: if isAdmin()\n' +
+          '                    || (isAuthenticated()\n' +
+          "                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])\n" +
+          '                        && (\n' +
+          '                          // Join: add yourself and no one else.\n' +
+          '                          (request.resource.data.members.hasAll(resource.data.members)\n' +
+          '                           && request.resource.data.members.size() == resource.data.members.size() + 1\n' +
+          '                           && !(request.auth.uid in resource.data.members)\n' +
+          '                           && request.auth.uid in request.resource.data.members)\n' +
+          '                          ||\n' +
+          '                          // Leave: remove yourself and no one else.\n' +
+          '                          (resource.data.members.hasAll(request.resource.data.members)\n' +
+          '                           && request.resource.data.members.size() == resource.data.members.size() - 1\n' +
+          '                           && request.auth.uid in resource.data.members\n' +
+          '                           && !(request.auth.uid in request.resource.data.members))\n' +
+          '                        ));',
+        replace: '      allow update: if isAuthenticated();',
+      },
+    ],
+  },
+  {
+    id: 'M19',
+    label: 'results: the read auth gate is removed',
+    edits: [
+      {
+        find:
+          '      // it is. See AUTOMATION_SETUP.md finding 2.\n' +
+          '      allow read: if isAuthenticated();',
+        replace:
+          '      // it is. See AUTOMATION_SETUP.md finding 2.\n' +
+          '      allow read: if true;',
+      },
+    ],
+  },
+  {
     id: 'M14',
     label: 'user_answers: questionId is no longer immutable',
     edits: [

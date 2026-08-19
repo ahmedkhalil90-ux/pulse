@@ -254,7 +254,12 @@ service cloud.firestore {
 
     // Results
     match /results/{questionId} {
-      allow read: if true;
+      // Authentication only. This stops anonymous scraping of the demographic
+      // map; it does NOT enforce the minimum-10 threshold or the 3-credit
+      // unlock, both of which remain client-side. Rules cannot apply a
+      // threshold to a map read -- the whole document is returned or none of
+      // it is. See AUTOMATION_SETUP.md finding 2.
+      allow read: if isAuthenticated();
 
       // Aggregate counts only. Written as a single +1 by a caller who holds an
       // answer record proving they voted, and only on the option and the
@@ -296,10 +301,33 @@ service cloud.firestore {
     // Groups
     match /groups/{groupId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && 
+      allow create: if isAuthenticated() &&
                     request.resource.data.adminUid == request.auth.uid &&
                     request.resource.data.members == [request.auth.uid];
-      allow update: if isAuthenticated();
+
+      // The client has exactly two update paths: join (arrayUnion self) and
+      // leave (arrayRemove self), both touching `members` only. Renaming,
+      // reassigning the admin, rotating the invite code, and adding or
+      // removing anyone else have no call site and are refused.
+      //
+      // Self-join by a non-member stays open on purpose: joining is by invite
+      // code, and rules cannot see the query filter that matched it.
+      allow update: if isAdmin()
+                    || (isAuthenticated()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+                        && (
+                          // Join: add yourself and no one else.
+                          (request.resource.data.members.hasAll(resource.data.members)
+                           && request.resource.data.members.size() == resource.data.members.size() + 1
+                           && !(request.auth.uid in resource.data.members)
+                           && request.auth.uid in request.resource.data.members)
+                          ||
+                          // Leave: remove yourself and no one else.
+                          (resource.data.members.hasAll(request.resource.data.members)
+                           && request.resource.data.members.size() == resource.data.members.size() - 1
+                           && request.auth.uid in resource.data.members
+                           && !(request.auth.uid in request.resource.data.members))
+                        ));
       allow delete: if isAuthenticated() && (request.auth.uid == resource.data.adminUid || isAdmin());
     }
 
@@ -328,8 +356,18 @@ service cloud.firestore {
 
     // Games
     match /games/{gameId} {
-      // Read allowed if player is in the game or if it's a lobby being joined
-      allow read: if isAuthenticated();
+      // Game documents carry `answers` and `predictions` keyed by player UID.
+      // Only players may read a game that has started.
+      //
+      // Joining by code (GameHome joinGame) queries games by inviteCode before
+      // the caller is a player, so that read has to keep working. Rules cannot
+      // inspect a query's where-clauses, so "knows the code" is not checkable;
+      // what is checkable is that the game has not started. A lobby game holds
+      // no answers or predictions yet, so exposing it reveals no one's choices.
+      allow read: if isAuthenticated() && (
+                    request.auth.uid in resource.data.players ||
+                    resource.data.status == 'lobby'
+                  );
       
       // Create allowed for any authenticated user
       allow create: if isAuthenticated() && 
