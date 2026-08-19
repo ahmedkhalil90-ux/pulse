@@ -58,6 +58,12 @@ import {
   arrayRemove,
   writeBatch
 } from 'firebase/firestore';
+import {
+  InsufficientCreditsError,
+  awardAnswerCredit,
+  boostQuestion,
+  unlockDemographics,
+} from './lib/credits';
 import { Question, QuestionResult, UserProfile, Group, UserAnswer } from './types';
 import { moderateQuestion } from './services/geminiService';
 import { Toaster, toast } from 'sonner';
@@ -1047,9 +1053,7 @@ function QuestionCard({
         }
 
         // 3. Award credit
-        await updateDoc(doc(db, 'users', user.uid), {
-          credits: increment(1)
-        });
+        await awardAnswerCredit(db, user.uid);
 
         toast.success('Vote recorded anonymously! +1 Credit');
       } else {
@@ -1074,50 +1078,37 @@ function QuestionCard({
 
   const handleBoost = async () => {
     if (!user) return;
-    if (user.credits < 10) {
-      toast.error('Not enough credits (10 required)');
-      return;
-    }
 
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        credits: increment(-10)
-      });
-      await updateDoc(doc(db, 'questions', question.id), {
-        boostCount: increment(100)
-      });
+      // Balance check and both writes happen inside one transaction, so a
+      // stale credits value on this client cannot overdraw the account and a
+      // failed impressions write cannot leave the user charged for nothing.
+      await boostQuestion(db, user.uid, question.id);
       toast.success('Question boosted! +100 impressions');
       setShowBoostConfirm(false);
     } catch (error) {
+      if (error instanceof InsufficientCreditsError) {
+        toast.error(error.message);
+        return;
+      }
       handleFirestoreError(error, OperationType.UPDATE, `questions/${question.id}`);
     }
   };
 
   const handleUnlockDemographics = async () => {
     if (!user) return;
-    if (user.credits < 3) {
-      toast.error('Not enough credits (3 required)');
-      return;
-    }
 
     setIsUnlocking(true);
     try {
-      const batch = writeBatch(db);
-      
-      // Deduct credits
-      batch.update(doc(db, 'users', user.uid), {
-        credits: increment(-3)
-      });
-
-      // Record unlock
-      const unlockRef = doc(db, 'users', user.uid, 'unlockedDemographics', question.id);
-      batch.set(unlockRef, {
-        unlockedAt: new Date().toISOString()
-      });
-
-      await batch.commit();
-      toast.success('Demographics unlocked! -3 Credits');
+      // Idempotent: a question already unlocked is never charged again, even
+      // if this fires twice from two devices.
+      const charged = await unlockDemographics(db, user.uid, question.id);
+      toast.success(charged ? 'Demographics unlocked! -3 Credits' : 'Demographics unlocked');
     } catch (error) {
+      if (error instanceof InsufficientCreditsError) {
+        toast.error(error.message);
+        return;
+      }
       handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/unlockedDemographics/${question.id}`);
     } finally {
       setIsUnlocking(false);

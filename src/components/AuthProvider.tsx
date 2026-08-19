@@ -23,6 +23,7 @@ import {
 import { toast } from 'sonner';
 import { UserProfile } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firebase';
+import { awardDailyBonus, awardReferral } from '../lib/credits';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -73,23 +74,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.error('Profile snapshot error:', error);
             });
 
-            // Daily Bonus Logic
-            const today = new Date().toISOString().split('T')[0];
-            const lastLoginDate = profile.lastLogin?.split('T')[0];
-
-            if (lastLoginDate !== today) {
-              try {
-                await updateDoc(doc(db, 'users', firebaseUser.uid), {
-                  credits: increment(3),
-                  lastLogin: today
-                });
-                
+            // Daily Bonus Logic. The lastLogin check runs inside the
+            // transaction rather than against this snapshot, so two tabs
+            // opening at once cannot both see a stale value and both award it.
+            try {
+              const awarded = await awardDailyBonus(db, firebaseUser.uid);
+              if (awarded) {
                 setTimeout(() => {
                   toast.success("🎉 Daily bonus! +3 credits");
                 }, 2000);
-              } catch (err) {
-                console.error('Daily bonus award failed:', err);
               }
+            } catch (err) {
+              console.error('Daily bonus award failed:', err);
             }
 
             // Backfill referralCode for existing users
@@ -323,20 +319,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const referrerDoc = snapshot.docs[0];
       const referrerUid = referrerDoc.id;
 
-      const batch = writeBatch(db);
-      
-      // Award credits to current user
-      batch.update(doc(db, 'users', user.uid), {
-        credits: increment(15),
-        referredBy: referrerUid
-      });
-
-      // Award credits to referrer
-      batch.update(doc(db, 'users', referrerUid), {
-        credits: increment(15)
-      });
-
-      await batch.commit();
+      await awardReferral(db, user.uid, referrerUid);
       toast.success('Referral code redeemed! +15 Credits awarded to both of you.');
     } catch (error: any) {
       toast.error(error.message || 'Failed to redeem referral code.');
