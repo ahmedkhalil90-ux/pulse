@@ -38,7 +38,6 @@ import {
 } from 'lucide-react';
 import { useAuth, AuthProvider } from './components/AuthProvider';
 import { db, auth, handleFirestoreError, OperationType } from './lib/firebase';
-import { seedDatabase } from './lib/seed';
 import { 
   collection, 
   query, 
@@ -193,9 +192,6 @@ function PulseApp() {
       setShowSignup(true);
     } else {
       setShowSignup(false);
-      if (user) {
-        seedDatabase();
-      }
     }
   }, [user, loading]);
 
