@@ -1,10 +1,23 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+// NOTE: VITE_-prefixed variables are readable in the shipped client bundle.
+// This key is exposed to every user. Moving moderation to a Cloud Function is
+// the real fix and is still required before public launch.
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+let client: GoogleGenAI | null = null;
+
+// Constructed lazily so a missing key surfaces inside moderateQuestion's catch
+// rather than throwing at module load and taking the whole bundle down.
+function getClient(): GoogleGenAI {
+  if (!apiKey) throw new Error('VITE_GEMINI_API_KEY is not set');
+  if (!client) client = new GoogleGenAI({ apiKey });
+  return client;
+}
 
 export async function moderateQuestion(text: string, options: [string, string]): Promise<{ status: 'live' | 'rejected', reason?: string }> {
   try {
-    const response = await ai.models.generateContent({
+    const response = await getClient().models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Moderate this binary choice question for an anonymous polling app. 
       Question: "${text}"

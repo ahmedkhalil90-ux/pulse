@@ -105,6 +105,86 @@ service cloud.firestore {
              data.credits is int;
     }
 
+    // ---------------------------------------------------------------
+    // Vote integrity helpers (results/{questionId})
+    // ---------------------------------------------------------------
+    //
+    // Answer IDs are deterministic: `${uid}_${questionId}`. The client writes
+    // the answer record before touching results, so rules can verify a vote
+    // against the caller's own recorded answer.
+
+    function answerPath(questionId) {
+      return /databases/$(database)/documents/user_answers/$(request.auth.uid + '_' + questionId);
+    }
+    function hasAnswered(questionId) {
+      return exists(answerPath(questionId));
+    }
+    // Returns '0' or '1' — the option the caller actually chose.
+    function callerAnswerIndex(questionId) {
+      return string(get(answerPath(questionId)).data.answerIndex);
+    }
+    function callerDemographics() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('demographics', {});
+    }
+    function voteTotal(d) {
+      return d.counts.get('0', 0) + d.counts.get('1', 0);
+    }
+
+    // One demographic category on first vote. The client writes both '0' and
+    // '1' keys explicitly (one of them zero), so this checks the bucket sums
+    // to exactly one vote, on the caller's own index.
+    function demoCatCreateOk(newD, cat, bucket, idx) {
+      return bucket == null
+        ? newD.get(cat, {}).keys().size() == 0
+        : newD.get(cat, {}).keys().hasOnly([bucket])
+          && newD.get(cat, {}).get(bucket, {}).keys().hasOnly(['0', '1'])
+          && newD.get(cat, {}).get(bucket, {}).get('0', 0) + newD.get(cat, {}).get(bucket, {}).get('1', 0) == 1
+          && newD.get(cat, {}).get(bucket, {}).get(idx, 0) == 1;
+    }
+    function demoCreateOk(newD, idx) {
+      return newD.keys().hasOnly(['ageRange', 'gender', 'country'])
+        && demoCatCreateOk(newD, 'ageRange', callerDemographics().get('ageRange', null), idx)
+        && demoCatCreateOk(newD, 'gender',   callerDemographics().get('gender', null), idx)
+        && demoCatCreateOk(newD, 'country',  callerDemographics().get('country', null), idx);
+    }
+
+    // One demographic category on a subsequent vote: only the caller's own
+    // bucket may change, and only by +1 on the caller's own index.
+    function demoCatUpdateOk(newD, oldD, cat, bucket, idx) {
+      return bucket == null
+        // Caller has no value for this category — it must be left untouched.
+        ? newD.get(cat, {}).diff(oldD.get(cat, {})).affectedKeys().size() == 0
+        : newD.get(cat, {}).diff(oldD.get(cat, {})).affectedKeys().hasOnly([bucket])
+          && newD.get(cat, {}).get(bucket, {}).diff(oldD.get(cat, {}).get(bucket, {})).affectedKeys().hasOnly([idx])
+          && newD.get(cat, {}).get(bucket, {}).get(idx, 0)
+               == oldD.get(cat, {}).get(bucket, {}).get(idx, 0) + 1;
+    }
+    function demoUpdateOk(newD, oldD, idx) {
+      return newD.diff(oldD).affectedKeys().hasOnly(['ageRange', 'gender', 'country'])
+        && demoCatUpdateOk(newD, oldD, 'ageRange', callerDemographics().get('ageRange', null), idx)
+        && demoCatUpdateOk(newD, oldD, 'gender',   callerDemographics().get('gender', null), idx)
+        && demoCatUpdateOk(newD, oldD, 'country',  callerDemographics().get('country', null), idx);
+    }
+
+    // ---------------------------------------------------------------
+    // Question moderation helpers (questions/{questionId})
+    // ---------------------------------------------------------------
+
+    // A flag adds exactly one to the total and to exactly one reason counter.
+    // `status` may only ever be set to 'flagged', and only once the auto-hide
+    // threshold is genuinely reached.
+    function isFlagWrite() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['flags', 'flags_unclear', 'flags_inappropriate', 'status'])
+        && request.resource.data.flags == resource.data.get('flags', 0) + 1
+        && request.resource.data.get('flags_unclear', 0) >= resource.data.get('flags_unclear', 0)
+        && request.resource.data.get('flags_inappropriate', 0) >= resource.data.get('flags_inappropriate', 0)
+        && request.resource.data.get('flags_unclear', 0) + request.resource.data.get('flags_inappropriate', 0)
+             == resource.data.get('flags_unclear', 0) + resource.data.get('flags_inappropriate', 0) + 1
+        && (!changed.hasAny(['status'])
+            || (request.resource.data.status == 'flagged' && request.resource.data.flags >= 5));
+    }
+
     // User profiles
     match /users/{userId} {
       allow read: if isAuthenticated();
