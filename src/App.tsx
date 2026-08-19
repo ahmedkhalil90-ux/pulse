@@ -1506,7 +1506,9 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
 
     setLoading(true);
     try {
-      // AI Moderation
+      // AI Moderation. Only an explicit 'live' verdict publishes; a failed or
+      // unavailable moderator returns 'pending', which is stored but never
+      // shown in the feed.
       const mod = await moderateQuestion(text, [opt1, opt2]);
       if (mod.status === 'rejected') {
         toast.error(`Rejected: ${mod.reason}`);
@@ -1524,16 +1526,26 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
           isPublic: !groupId,
           groupId: groupId || null,
           createdAt: new Date().toISOString(),
-          status: 'live',
+          status: mod.status,
           flags: 0,
           random: Math.random(),
           boostCount: 0
         });
       } catch (error) {
+        // Do not fall through to a success toast — the question was not saved.
         handleFirestoreError(error, OperationType.CREATE, 'questions');
+        toast.error('Could not save your question. Please try again.');
+        setLoading(false);
+        return;
       }
 
-      toast.success(groupId ? 'Group question live!' : 'Public question live!');
+      if (mod.status === 'pending') {
+        toast.warning(mod.reason ?? 'Your question is held for review and is not visible yet.', {
+          duration: 8000
+        });
+      } else {
+        toast.success(groupId ? 'Group question live!' : 'Public question live!');
+      }
       onClose();
     } catch (e) {
       toast.error('Failed to publish');
@@ -1764,7 +1776,14 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
     );
     
     const unsubQuestions = onSnapshot(q, (s) => {
-      setQuestions(s.docs.map(d => ({ id: d.id, ...d.data() } as Question)));
+      // Unlike the public feed, this query cannot filter on status without a
+      // composite index, so hold non-live questions back here. A question that
+      // moderation could not clear must not be visible to the group either.
+      setQuestions(
+        s.docs
+          .map(d => ({ id: d.id, ...d.data() } as Question))
+          .filter(q => q.status === 'live')
+      );
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'group_questions');
@@ -2354,7 +2373,22 @@ function MyQuestionsView() {
               <p>You haven't asked any questions yet.</p>
             </div>
           ) : (
-            askedQuestions.map(q => <QuestionCard key={q.id} question={q} showBoost={true} revisitMode={true} />)
+            askedQuestions.map(q => (
+              <div key={q.id} className="space-y-2">
+                {q.status !== 'live' && (
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl">
+                    <AlertCircle className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-yellow-500">
+                      {q.status === 'pending'
+                        ? 'Held for review — not visible yet'
+                        : 'Rejected — not visible'}
+                    </span>
+                  </div>
+                )}
+                {/* Boost is pointless on a question nobody can see. */}
+                <QuestionCard question={q} showBoost={q.status === 'live'} revisitMode={true} />
+              </div>
+            ))
           )}
         </div>
       ) : activeTab === 'answered' ? (
