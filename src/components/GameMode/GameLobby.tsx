@@ -19,6 +19,7 @@ import {
   limit,
   deleteDoc
 } from 'firebase/firestore';
+import { startGame as startGameTransition } from '../../lib/gameState';
 import { Game, UserProfile } from '../../types';
 import { toast } from 'sonner';
 
@@ -98,12 +99,7 @@ export function GameLobby({ game }: { game: Game }) {
         ? new Date(Date.now() + deadlineHours * 60 * 60 * 1000).toISOString()
         : null;
 
-      await updateDoc(doc(db, 'games', game.id), {
-        status: 'active',
-        deadline,
-        questionsPerPlayer,
-        lastUpdated: new Date().toISOString()
-      });
+      await startGameTransition(db, game.id, user!.uid, { deadline, questionsPerPlayer });
       toast.success('Game started! Time to submit questions.');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'games');

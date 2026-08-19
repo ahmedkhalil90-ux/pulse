@@ -20,6 +20,7 @@ import {
   arrayUnion,
   increment
 } from 'firebase/firestore';
+import { advanceQuestion } from '../../lib/gameState';
 import { Game, GameQuestion, UserProfile } from '../../types';
 import { toast } from 'sonner';
 
@@ -95,39 +96,11 @@ export function GameResults({ game, questionId }: { game: Game, questionId: stri
     setMovingNext(true);
     try {
       const isLast = game.currentQuestionIndex === game.questions.length - 1;
-      
-      // Calculate scores for this question and update game state
-      const answers = game.answers || {};
-      const predictions = game.predictions || {};
-      const counts = [0, 0];
-      
-      game.players.forEach(pUid => {
-        const ans = answers[pUid]?.[questionId];
-        if (ans === 0 || ans === 1) counts[ans]++;
-      });
 
-      const total = counts[0] + counts[1];
-      let majority: number | null = null;
-      if (counts[0] > counts[1]) majority = 0;
-      else if (counts[1] > counts[0]) majority = 1;
+      // Scoring and the status change happen in one transaction, keyed on the
+      // question id, so a retry or a double click cannot score it twice.
+      await advanceQuestion(db, game.id, questionId, user!.uid);
 
-      const newScores = { ...game.scores };
-      if (majority !== null) {
-        game.players.forEach(pUid => {
-          const pred = predictions[pUid]?.[questionId];
-          if (pred === majority) {
-            newScores[pUid] = (newScores[pUid] || 0) + 1;
-          }
-        });
-      }
-
-      await updateDoc(doc(db, 'games', game.id), {
-        status: isLast ? 'finished' : 'active',
-        currentQuestionIndex: isLast ? game.currentQuestionIndex : game.currentQuestionIndex + 1,
-        scores: newScores,
-        lastUpdated: new Date().toISOString()
-      });
-      
       toast.success(isLast ? 'Game finished!' : 'Next question!');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'games');
