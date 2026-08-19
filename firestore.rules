@@ -85,17 +85,22 @@ service cloud.firestore {
     function isSystem(data) {
       return data.authorUid == 'pulse_originals_system';
     }
+    // Authorises re-parenting an older UID's data onto the caller, used when a
+    // username has an orphaned profile under a previous UID (AuthProvider
+    // signUp step 4, and the sign-in migration sweep).
+    //
+    // Proof of ownership is the caller's auth token, NOT a username field they
+    // can write. Every account authenticates as `${username}@pulse.app`
+    // (AuthProvider signUp/signIn), and Firebase Auth guarantees that address
+    // is unique, so an attacker cannot claim someone else's username by
+    // editing a Firestore document.
     function isMigrating(oldUid) {
-      return isAuthenticated() && 
+      return isAuthenticated() &&
+             request.auth.token.email != null &&
              exists(/databases/$(database)/documents/users/$(oldUid)) &&
-             (
-               (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == 
-                get(/databases/$(database)/documents/users/$(oldUid)).data.username)
-               ||
-               (getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == 
-                get(/databases/$(database)/documents/users/$(oldUid)).data.username)
-             );
+             get(/databases/$(database)/documents/users/$(oldUid)).data.username is string &&
+             request.auth.token.email.lower() ==
+               get(/databases/$(database)/documents/users/$(oldUid)).data.username.lower() + '@pulse.app';
     }
 
     // Domain Validators
@@ -224,11 +229,24 @@ service cloud.firestore {
                       isAdmin()
                     );
       
-      allow update: if isAuthenticated() && (
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['flags', 'boostCount']) || 
-                      isAdmin() ||
-                      (request.resource.data.authorUid == request.auth.uid && isMigrating(resource.data.authorUid))
-                    );
+      allow update: if isAdmin()
+
+                    // Flagging: any authenticated user other than the author.
+                    || (isAuthenticated()
+                        && resource.data.authorUid != request.auth.uid
+                        && isFlagWrite())
+
+                    // Boost: the author only, exactly +100 impressions.
+                    || (isAuthenticated()
+                        && resource.data.authorUid == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['boostCount'])
+                        && request.resource.data.boostCount == resource.data.get('boostCount', 0) + 100)
+
+                    // UID migration: authorUid and nothing else.
+                    || (isAuthenticated()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authorUid'])
+                        && request.resource.data.authorUid == request.auth.uid
+                        && isMigrating(resource.data.authorUid));
       
       allow delete: if isAdmin() || (isAuthenticated() && resource.data.groupId != null && 
                                      request.auth.uid == get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.adminUid);
@@ -237,7 +255,41 @@ service cloud.firestore {
     // Results
     match /results/{questionId} {
       allow read: if true;
-      allow create, update: if isAuthenticated();
+
+      // Aggregate counts only. Written as a single +1 by a caller who holds an
+      // answer record proving they voted, and only on the option and the
+      // demographic bucket that record and their own profile attest to.
+      //
+      // Counts may never decrease. That is deliberate: an attacker able to zero
+      // a results doc and then watch the next vote land would learn that
+      // voter's choice and demographic bucket, defeating the min-10 threshold.
+
+      // First vote on a question: the doc is created holding exactly one vote,
+      // matching the answer record the client wrote immediately before this.
+      allow create: if isAuthenticated()
+        && hasAnswered(questionId)
+        && request.resource.data.keys().hasOnly(['counts', 'demographics'])
+        && request.resource.data.counts.keys().hasOnly(['0', '1'])
+        && request.resource.data.counts.get('0', 0) is int
+        && request.resource.data.counts.get('1', 0) is int
+        && voteTotal(request.resource.data) == 1
+        && request.resource.data.counts.get(callerAnswerIndex(questionId), 0) == 1
+        && demoCreateOk(request.resource.data.get('demographics', {}), callerAnswerIndex(questionId));
+
+      // Every subsequent vote: exactly +1, never a decrement, never a new field.
+      allow update: if isAuthenticated()
+        && hasAnswered(questionId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['counts', 'demographics'])
+        && request.resource.data.counts.keys().hasOnly(['0', '1'])
+        && voteTotal(request.resource.data) == voteTotal(resource.data) + 1
+        && request.resource.data.counts.get('0', 0) >= resource.data.counts.get('0', 0)
+        && request.resource.data.counts.get('1', 0) >= resource.data.counts.get('1', 0)
+        && request.resource.data.counts.get(callerAnswerIndex(questionId), 0)
+             == resource.data.counts.get(callerAnswerIndex(questionId), 0) + 1
+        && demoUpdateOk(request.resource.data.get('demographics', {}),
+                        resource.data.get('demographics', {}),
+                        callerAnswerIndex(questionId));
+
       allow delete: if isAdmin();
     }
 
@@ -255,7 +307,14 @@ service cloud.firestore {
     match /user_answers/{answerId} {
       allow read: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAdmin();
+      // Revisit rewrites the caller's own answer record. userId is pinned on
+      // both sides so a record can never be reassigned to another user, and
+      // questionId is immutable.
+      allow update: if isAdmin()
+                    || (isAuthenticated()
+                        && resource.data.userId == request.auth.uid
+                        && request.resource.data.userId == request.auth.uid
+                        && request.resource.data.questionId == resource.data.questionId);
       allow delete: if isAdmin() || isOwner(resource.data.userId);
     }
 
