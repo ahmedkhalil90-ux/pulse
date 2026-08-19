@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "skipped_questions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "skippedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "user_answers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "answeredAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

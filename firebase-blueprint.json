@@ -1,0 +1,130 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and credit balance.",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "credits": { "type": "integer" },
+        "demographics": {
+          "type": "object",
+          "properties": {
+            "ageRange": { "type": "string" },
+            "gender": { "type": "string" },
+            "country": { "type": "string" }
+          }
+        },
+        "lastLogin": { "type": "string", "format": "date-time" }
+      },
+      "required": ["username", "isVerified", "credits"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "A binary choice question.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "category": { "type": "string" },
+        "authorUid": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "groupId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "live", "rejected"] },
+        "rejectionReason": { "type": "string" },
+        "flags": { "type": "integer" },
+        "random": { "type": "number" }
+      },
+      "required": ["text", "options", "category", "authorUid", "isPublic", "createdAt", "status"]
+    },
+    "Result": {
+      "title": "Result",
+      "description": "Aggregated results for a question.",
+      "type": "object",
+      "properties": {
+        "counts": {
+          "type": "object",
+          "properties": {
+            "0": { "type": "integer" },
+            "1": { "type": "integer" }
+          }
+        },
+        "demographics": { "type": "object" }
+      }
+    },
+    "Group": {
+      "title": "Group",
+      "description": "A private group for questions.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "inviteCode": { "type": "string" },
+        "adminUid": { "type": "string" },
+        "members": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name", "inviteCode", "adminUid", "members"]
+    },
+    "UserAnswer": {
+      "title": "UserAnswer",
+      "description": "Tracks that a user has answered a question (without storing the choice).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "questionId": { "type": "string" },
+        "answeredAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "questionId", "answeredAt"]
+    },
+    "Game": {
+      "title": "Game",
+      "description": "A private game session.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["live", "async"] },
+        "status": { "type": "string", "enum": ["lobby", "active", "finished"] },
+        "hostUid": { "type": "string" },
+        "players": { "type": "array", "items": { "type": "string" } },
+        "questions": { "type": "array", "items": { "type": "string" } },
+        "currentQuestionIndex": { "type": "integer" },
+        "deadline": { "type": "string", "format": "date-time" },
+        "scores": { "type": "object" },
+        "predictions": { "type": "object" },
+        "answers": { "type": "object" },
+        "inviteCode": { "type": "string" },
+        "questionsPerPlayer": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "status", "hostUid", "players", "inviteCode", "questionsPerPlayer", "createdAt"]
+    },
+    "GameQuestion": {
+      "title": "GameQuestion",
+      "description": "A question specific to a game session.",
+      "type": "object",
+      "properties": {
+        "gameId": { "type": "string" },
+        "authorUid": { "type": "string" },
+        "authorUsername": { "type": "string" },
+        "text": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["gameId", "authorUid", "authorUsername", "text", "options", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User profiles" },
+    "/questions/{questionId}": { "schema": "Question", "description": "Questions feed" },
+    "/results/{questionId}": { "schema": "Result", "description": "Aggregated question results" },
+    "/groups/{groupId}": { "schema": "Group", "description": "Private groups" },
+    "/user_answers/{answerId}": { "schema": "UserAnswer", "description": "Tracking who answered what (anonymously)" },
+    "/games/{gameId}": { "schema": "Game", "description": "Game sessions" },
+    "/game_questions/{questionId}": { "schema": "GameQuestion", "description": "Questions for game sessions" }
+  }
+}
