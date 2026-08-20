@@ -329,8 +329,8 @@ export const MUTATIONS: Mutation[] = [
     edits: [
       {
         find:
-          '                    && (isAdmin()\n' +
-          "                        || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));",
+          "                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])\n" +
+          '                        || isAdmin());',
         replace: '                    && true;',
       },
     ],
@@ -422,6 +422,26 @@ export const MUTATIONS: Mutation[] = [
         find:
           "         request.resource.data.get('questions', []).hasAll(resource.data.get('questions', []))) ||",
         replace: '         true) ||',
+      },
+    ],
+  },
+  {
+    id: 'M34',
+    label: 'users: profile creation may carry a role field',
+    edits: [
+      {
+        find: "                    && (!request.resource.data.keys().hasAny(['role']) || isAdmin());",
+        replace: '                    && true;',
+      },
+    ],
+  },
+  {
+    id: 'M35',
+    label: 'users: a profile may be created for any UID',
+    edits: [
+      {
+        find: '      allow create: if isOwner(userId)\n',
+        replace: '      allow create: if isAuthenticated()\n',
       },
     ],
   },

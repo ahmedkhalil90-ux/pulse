@@ -212,15 +212,24 @@ service cloud.firestore {
     // User profiles
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if true; // Allow signup
       // `role` is what isAdmin() consults, so a caller able to write it can
       // promote themselves and every isAdmin() gate in this file becomes
       // optional. Only an existing admin may set it. Nothing in the client
       // reads or writes `role` at all -- this is closing a door the app has
       // never used.
+      //
+      // The guard has to cover create as well as update. Signup writes this
+      // document (AuthProvider step 3) AFTER the account exists, so requiring
+      // ownership costs nothing -- and without it, a new account could simply
+      // be created holding role:'admin', or an owner could delete their own
+      // document and re-create it that way.
+      allow create: if isOwner(userId)
+                    && (!request.resource.data.keys().hasAny(['role']) || isAdmin());
       allow update: if (isOwner(userId) || isAdmin() || isMigrating(userId))
-                    && (isAdmin()
-                        || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+                    // Cheap test first: isAdmin() costs an exists() plus a
+                    // get() on every user write, including every credit change.
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])
+                        || isAdmin());
       allow delete: if isOwner(userId) || isAdmin() || isMigrating(userId);
 
       // Unlocked demographics subcollection

@@ -74,6 +74,59 @@ export const usersRoleCases: Case[] = [
     seed: seedUser,
     run: (db) => updateDoc(userRef(db), { role: 'admin' }),
   },
+  // --- create and delete paths ---------------------------------------------
+  // The update guard alone is not enough: a document that can be created --
+  // or deleted and re-created -- holding role:'admin' bypasses it entirely.
+  {
+    name: 'signup can still create its own profile',
+    expect: 'allow',
+    as: USER,
+    run: (db) =>
+      setDoc(doc(db, 'users', USER.uid), {
+        username: 'roleuser1',
+        isVerified: true,
+        credits: 10,
+      }),
+  },
+  {
+    name: 'a new profile cannot be created holding role admin',
+    expect: 'deny',
+    killedBy: 'M34',
+    as: USER,
+    run: (db) =>
+      setDoc(doc(db, 'users', USER.uid), {
+        username: 'roleuser1',
+        isVerified: true,
+        credits: 10,
+        role: 'admin',
+      }),
+  },
+  {
+    name: 'a profile cannot be re-created with role admin after deletion',
+    expect: 'deny',
+    killedBy: 'M34',
+    as: USER,
+    // Deleting your own profile is permitted; re-creating it elevated is not.
+    run: (db) =>
+      setDoc(doc(db, 'users', USER.uid), {
+        username: 'roleuser1',
+        isVerified: true,
+        credits: 10,
+        role: 'admin',
+      }),
+  },
+  {
+    name: 'a profile cannot be created for someone else',
+    expect: 'deny',
+    killedBy: 'M35',
+    as: USER,
+    run: (db) =>
+      setDoc(doc(db, 'users', 'victim-uid'), {
+        username: 'victim',
+        isVerified: true,
+        credits: 10,
+      }),
+  },
   {
     name: 'a stranger still cannot touch another user profile at all',
     expect: 'deny',
