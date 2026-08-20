@@ -6,6 +6,7 @@ import { questionsCases } from '../cases/questions.cases';
 import { resultsCases } from '../cases/results.cases';
 import { resultsReadCases } from '../cases/resultsRead.cases';
 import { userAnswersCases } from '../cases/userAnswers.cases';
+import { usersRoleCases } from '../cases/usersRole.cases';
 
 /**
  * The single source of truth for every rules case. Both the real suite and the
@@ -20,6 +21,7 @@ export const SUITES: Array<[string, Case[]]> = [
   ['user_answers/{answerId}', userAnswersCases],
   ['games/{gameId} reads', gamesCases],
   ['groups/{groupId} updates', groupsCases],
+  ['users/{userId} role escalation', usersRoleCases],
 ];
 
 export const ALL_CASES: Case[] = SUITES.flatMap(([, cases]) => cases);

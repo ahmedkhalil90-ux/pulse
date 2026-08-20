@@ -224,11 +224,12 @@ export const MUTATIONS: Mutation[] = [
       {
         find:
           '                        && (\n' +
-          '                          // Join: add yourself and no one else.\n' +
+          '                          // Join: add yourself and no one else, having proved the code.\n' +
           '                          (request.resource.data.members.hasAll(resource.data.members)\n' +
           '                           && request.resource.data.members.size() == resource.data.members.size() + 1\n' +
           '                           && !(request.auth.uid in resource.data.members)\n' +
-          '                           && request.auth.uid in request.resource.data.members)\n' +
+          '                           && request.auth.uid in request.resource.data.members\n' +
+          '                           && hasJoinProof(groupId, resource.data.inviteCode))\n' +
           '                          ||\n' +
           '                          // Leave: remove yourself and no one else.\n' +
           '                          (resource.data.members.hasAll(request.resource.data.members)\n' +
@@ -250,11 +251,12 @@ export const MUTATIONS: Mutation[] = [
           '                    || (isAuthenticated()\n' +
           "                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])\n" +
           '                        && (\n' +
-          '                          // Join: add yourself and no one else.\n' +
+          '                          // Join: add yourself and no one else, having proved the code.\n' +
           '                          (request.resource.data.members.hasAll(resource.data.members)\n' +
           '                           && request.resource.data.members.size() == resource.data.members.size() + 1\n' +
           '                           && !(request.auth.uid in resource.data.members)\n' +
-          '                           && request.auth.uid in request.resource.data.members)\n' +
+          '                           && request.auth.uid in request.resource.data.members\n' +
+          '                           && hasJoinProof(groupId, resource.data.inviteCode))\n' +
           '                          ||\n' +
           '                          // Leave: remove yourself and no one else.\n' +
           '                          (resource.data.members.hasAll(request.resource.data.members)\n' +
@@ -263,6 +265,93 @@ export const MUTATIONS: Mutation[] = [
           '                           && !(request.auth.uid in request.resource.data.members))\n' +
           '                        ));',
         replace: '      allow update: if isAuthenticated();',
+      },
+    ],
+  },
+  {
+    id: 'M20',
+    label: 'groups: joining no longer requires proof of the invite code',
+    edits: [
+      {
+        find:
+          '      return exists(/databases/$(database)/documents/groups/$(groupId)/joinRequests/$(request.auth.uid))\n' +
+          '             && get(/databases/$(database)/documents/groups/$(groupId)/joinRequests/$(request.auth.uid)).data.code == inviteCode;',
+        replace: '      return true;',
+      },
+    ],
+  },
+  {
+    id: 'M24',
+    label: 'groups: a proof is accepted on existence alone, without matching the current code',
+    edits: [
+      {
+        find:
+          '\n             && get(/databases/$(database)/documents/groups/$(groupId)/joinRequests/$(request.auth.uid)).data.code == inviteCode;',
+        replace: ';',
+      },
+    ],
+  },
+  {
+    id: 'M21',
+    label: 'groups: the submitted code is no longer compared to the group',
+    edits: [
+      {
+        find:
+          '                      && request.resource.data.code ==\n' +
+          '                           get(/databases/$(database)/documents/groups/$(groupId)).data.inviteCode;',
+        replace: '                      && true;',
+      },
+    ],
+  },
+  {
+    id: 'M22',
+    label: 'groups: a proof may be created for any UID, not just the caller',
+    edits: [
+      {
+        find: '                      && request.auth.uid == requesterUid\n',
+        replace: '                      && true\n',
+      },
+    ],
+  },
+  {
+    id: 'M23',
+    label: 'groups: the proof field allowlist is removed',
+    edits: [
+      {
+        find: "                      && request.resource.data.keys().hasOnly(['code'])\n",
+        replace: '                      && true\n',
+      },
+    ],
+  },
+  {
+    id: 'M25',
+    label: 'users: the role guard is removed, allowing self-promotion to admin',
+    edits: [
+      {
+        find:
+          '                    && (isAdmin()\n' +
+          "                        || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));",
+        replace: '                    && true;',
+      },
+    ],
+  },
+  {
+    id: 'M26',
+    label: 'games: joining no longer requires the game to be in the lobby',
+    edits: [
+      {
+        find: "        (resource.data.status == 'lobby' &&\n",
+        replace: '        (true &&\n',
+      },
+    ],
+  },
+  {
+    id: 'M27',
+    label: 'games: the added player need not be the caller',
+    edits: [
+      {
+        find: '         !(request.auth.uid in resource.data.players) &&\n',
+        replace: '         true &&\n',
       },
     ],
   },

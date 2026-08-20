@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { arrayUnion, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import type { Case } from '../helpers/env';
 import type { RulesTestContext } from '@firebase/rules-unit-testing';
 
@@ -86,5 +86,45 @@ export const gamesCases: Case[] = [
     as: PLAYER,
     seed: seedGame('finished'),
     run: readGame,
+  },
+
+  // --- joining --------------------------------------------------------------
+  {
+    name: 'a non-player may join a lobby game, adding themselves and a score',
+    expect: 'allow',
+    as: OUTSIDER,
+    seed: seedGame('lobby', { answers: {}, predictions: {} }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), {
+        players: arrayUnion(OUTSIDER.uid),
+        [`scores.${OUTSIDER.uid}`]: 0,
+      }),
+  },
+  {
+    name: 'a non-player cannot join a game that has already started',
+    expect: 'deny',
+    killedBy: 'M26',
+    as: OUTSIDER,
+    seed: seedGame('active'),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), { players: arrayUnion(OUTSIDER.uid) }),
+  },
+  {
+    name: 'a non-player cannot join a finished game',
+    expect: 'deny',
+    killedBy: 'M26',
+    as: OUTSIDER,
+    seed: seedGame('finished'),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), { players: arrayUnion(OUTSIDER.uid) }),
+  },
+  {
+    name: 'a player cannot drag another user into a lobby game',
+    expect: 'deny',
+    killedBy: 'M27',
+    as: PLAYER,
+    seed: seedGame('lobby', { answers: {}, predictions: {} }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), { players: arrayUnion('dragged-in-uid') }),
   },
 ];

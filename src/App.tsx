@@ -2147,6 +2147,13 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
         return;
       }
 
+      // Stage proof that we knew the invite code. The rule on this
+      // subcollection compares it against the group document server-side; the
+      // members write below is refused unless this landed first.
+      await setDoc(doc(db, 'groups', groupDoc.id, 'joinRequests', user.uid), {
+        code: code.toUpperCase()
+      });
+
       await updateDoc(groupDoc.ref, {
         members: arrayUnion(user.uid)
       });
@@ -2155,7 +2162,15 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
       onJoined({ id: groupDoc.id, ...groupData, members: [...groupData.members, user.uid] });
       onClose();
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'groups');
+      // The join is two writes now, so a failure between them must say
+      // something. handleFirestoreError logs and rethrows; letting that escape
+      // an async onClick leaves the modal open with no message at all.
+      toast.error('Could not join that group. Check the code and try again.');
+      try {
+        handleFirestoreError(error, OperationType.UPDATE, 'groups');
+      } catch {
+        // Already surfaced above; keep the modal usable.
+      }
     } finally {
       setLoading(false);
     }

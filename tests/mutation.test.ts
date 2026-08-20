@@ -48,6 +48,28 @@ describe('mutation verification: each deny-case is load-bearing', () => {
           `killedBy, or the mutation is dead weight.`,
       ).toBeGreaterThan(0);
 
+      // A case that is ALREADY allowed under the real rules would report
+      // "killed" no matter what the mutation did. Establish the baseline first
+      // so a vacuous kill cannot be mistaken for a real one.
+      const baseEnv = await makeEnv(`pulse-base-${m.id.toLowerCase()}`);
+      const baseline: Array<[Case, 'allowed' | 'denied']> = [];
+      try {
+        for (const c of targets) baseline.push([c, await outcome(baseEnv, c)]);
+      } finally {
+        await baseEnv.cleanup();
+      }
+
+      for (const [c, base] of baseline) {
+        if (base !== 'denied') {
+          rows.push({ mutation: m.id, caseName: c.name, result: 'BASE NOT DENIED' });
+        }
+        expect(
+          base,
+          `"${c.name}" is already permitted under the real rules, so ${m.id} ` +
+            `cannot prove anything about it. Fix the rule, or the case.`,
+        ).toBe('denied');
+      }
+
       for (const [c, result] of await runUnderMutation(m.id, targets)) {
         rows.push({
           mutation: m.id,
