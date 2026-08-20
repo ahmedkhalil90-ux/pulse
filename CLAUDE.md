@@ -148,7 +148,7 @@ Do not introduce new UI libraries or a light theme without asking.
 
 Never write a test that passes whether or not the behaviour it tests exists. Every new rules test needs a matching mutation, and that mutation must be shown to kill it. Report the result of that verification — "all green" without it is not a report.
 
-**CI:** `.github/workflows/ci.yml` runs `npm ci`, `tsc --noEmit`, `npm run build`, then `npm test` on every push and pull request to `main`. Green as of the last run. Red CI is a blocker, not a nuisance.
+**CI:** `.github/workflows/ci.yml` runs `npm ci`, `tsc --noEmit`, `npm run build`, then `npm test` on every push and pull request to `main`. Check its status at https://github.com/ahmedkhalil90-ux/pulse/actions — never assume it is green and never report it as green without having looked. Red CI is a blocker, not a nuisance.
 
 **Never:**
 - Commit secrets. `.env` is gitignored — keep it that way.
