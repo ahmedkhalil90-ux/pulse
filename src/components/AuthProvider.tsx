@@ -95,6 +95,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 await updateDoc(doc(db, 'users', firebaseUser.uid), {
                   referralCode: newCode
                 });
+                // The mapping is what redeemReferral looks up, so a backfilled
+                // code is useless without it.
+                await setDoc(doc(db, 'referralCodes', newCode), {
+                  uid: firebaseUser.uid,
+                });
               } catch (err) {
                 console.error('Failed to backfill referralCode:', err);
               }
@@ -102,16 +107,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Migration check: See if there are any orphaned profiles with this username
             try {
-              const q = query(collection(db, 'users'), where('username', '==', profile.username));
-              const snapshot = await getDocs(q);
-              
-              if (snapshot.docs.length > 1) {
+              // By document ID: `users` is no longer listable. This finds the
+              // one profile the username currently maps to, which is the
+              // orphan if it is not already us.
+              const usernameKey = profile.username.toLowerCase();
+              const mappingSnap = await getDoc(doc(db, 'usernames', usernameKey));
+              const mappedUid = mappingSnap.exists()
+                ? (mappingSnap.data().uid as string)
+                : null;
+
+              if (mappedUid && mappedUid !== firebaseUser.uid) {
                 const batch = writeBatch(db);
                 let migrated = false;
-                
-                for (const oldDoc of snapshot.docs) {
-                  const oldUid = oldDoc.id;
-                  if (oldUid !== firebaseUser.uid) {
+
+                {
+                  const oldUid = mappedUid;
+                  {
                     console.log('Found orphaned profile to migrate:', oldUid);
                     migrated = true;
                     
@@ -141,6 +152,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
                 
                 if (migrated) {
+                  // Re-point the mapping at us, or the next sign-in would try
+                  // to migrate the profile we just deleted.
+                  batch.set(doc(db, 'usernames', usernameKey), {
+                    uid: firebaseUser.uid,
+                  });
                   await batch.commit();
                   console.log('Migration complete for existing user');
                 }
@@ -191,20 +207,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw authError;
       }
 
-      // 2. Check if a profile with this username already exists (e.g. from your previous anonymous session)
-      const q = query(collection(db, 'users'), where('username', '==', username));
-      const snapshot = await getDocs(q);
-      
+      // 2. Check if a profile with this username already exists (e.g. from your
+      // previous anonymous session).
+      //
+      // Looked up by document ID rather than by scanning `users`, which is no
+      // longer listable. Uniqueness is not enforced here and never was --
+      // createUserWithEmailAndPassword above already rejected a duplicate.
+      const usernameKey = username.toLowerCase();
+      const mappingSnap = await getDoc(doc(db, 'usernames', usernameKey));
+
       let oldUid: string | null = null;
       let existingData: any = {};
-      
-      if (!snapshot.empty) {
-        const oldDoc = snapshot.docs[0];
-        oldUid = oldDoc.id;
-        if (oldUid !== firebaseUser.uid) {
-          existingData = oldDoc.data();
-        } else {
-          oldUid = null; // Already the same user
+
+      if (mappingSnap.exists()) {
+        const mappedUid = mappingSnap.data().uid as string;
+        if (mappedUid && mappedUid !== firebaseUser.uid) {
+          const oldProfile = await getDoc(doc(db, 'users', mappedUid));
+          if (oldProfile.exists()) {
+            oldUid = mappedUid;
+            existingData = oldProfile.data();
+          }
         }
       }
 
@@ -229,6 +251,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       
       await setDoc(doc(db, 'users', firebaseUser.uid), profile);
+
+      // Claim the lookup mappings. The username mapping is authorised by this
+      // account's own auth token, and the referral mapping is checked against
+      // the profile just written, so both have to follow the profile write.
+      await setDoc(doc(db, 'usernames', usernameKey), { uid: firebaseUser.uid });
+      await setDoc(doc(db, 'referralCodes', profile.referralCode), {
+        uid: firebaseUser.uid,
+      });
 
       // 4. If we have an old account to migrate from
       if (oldUid) {
@@ -311,13 +341,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user.referralCode === code.toUpperCase()) throw new Error('You cannot use your own referral code.');
 
     try {
-      const q = query(collection(db, 'users'), where('referralCode', '==', code.toUpperCase()));
-      const snapshot = await getDocs(q);
-      
-      if (snapshot.empty) throw new Error('Invalid referral code.');
-      
-      const referrerDoc = snapshot.docs[0];
-      const referrerUid = referrerDoc.id;
+      // By document ID: `users` is no longer listable.
+      const codeSnap = await getDoc(doc(db, 'referralCodes', code.toUpperCase()));
+
+      if (!codeSnap.exists()) throw new Error('Invalid referral code.');
+
+      const referrerUid = codeSnap.data().uid as string;
+      if (!referrerUid) throw new Error('Invalid referral code.');
 
       await awardReferral(db, user.uid, referrerUid);
       toast.success('Referral code redeemed! +15 Credits awarded to both of you.');

@@ -190,6 +190,90 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
+    id: 'M15',
+    label: 'users: the collection is listable again',
+    edits: [{ find: '      allow list: if isAdmin();\n      allow create: if true;', replace: '      allow list: if isAuthenticated();\n      allow create: if true;' }],
+  },
+  {
+    id: 'M16',
+    label: 'usernames: the token-email proof is removed',
+    edits: [
+      {
+        find:
+          '                            && request.auth.token.email != null\n' +
+          "                            && request.auth.token.email.lower() == usernameLower + '@pulse.app';",
+        replace: '                            && true;',
+      },
+    ],
+  },
+  {
+    id: 'M17',
+    label: 'usernames: the mapping may point at any uid',
+    edits: [
+      {
+        find:
+          '                            && request.resource.data.uid == request.auth.uid\n' +
+          '                            && request.auth.token.email != null',
+        replace: '                            && true\n                            && request.auth.token.email != null',
+      },
+    ],
+  },
+  {
+    id: 'M18',
+    label: 'usernames: the field allowlist is removed',
+    edits: [
+      {
+        find: "                            && request.resource.data.keys().hasOnly(['uid'])\n",
+        replace: '                            && true\n',
+      },
+    ],
+  },
+  {
+    id: 'M19',
+    label: 'usernames: the collection becomes listable',
+    edits: [
+      {
+        find: '      allow list: if isAdmin();\n      allow create, update: if isAuthenticated()',
+        replace: '      allow list: if isAuthenticated();\n      allow create, update: if isAuthenticated()',
+      },
+    ],
+  },
+  {
+    id: 'M20',
+    label: 'referralCodes: the code is no longer checked against the caller profile',
+    edits: [
+      {
+        find:
+          '                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code;',
+        replace: '                    && true;',
+      },
+    ],
+  },
+  {
+    id: 'M21',
+    label: 'referralCodes: the mapping may point at any uid',
+    edits: [
+      {
+        find:
+          '                    && request.resource.data.uid == request.auth.uid\n' +
+          '                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code;',
+        replace:
+          '                    && true\n' +
+          '                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code;',
+      },
+    ],
+  },
+  {
+    id: 'M22',
+    label: 'referralCodes: the collection becomes listable',
+    edits: [
+      {
+        find: '      allow list: if isAdmin();\n      allow create: if isAuthenticated()',
+        replace: '      allow list: if isAuthenticated();\n      allow create: if isAuthenticated()',
+      },
+    ],
+  },
+  {
     id: 'M14',
     label: 'user_answers: questionId is no longer immutable',
     edits: [

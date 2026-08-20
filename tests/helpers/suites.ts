@@ -3,6 +3,7 @@ import { migrationCases } from '../cases/migration.cases';
 import { questionsCases } from '../cases/questions.cases';
 import { resultsCases } from '../cases/results.cases';
 import { userAnswersCases } from '../cases/userAnswers.cases';
+import { usersLookupCases } from '../cases/usersLookup.cases';
 
 /**
  * The single source of truth for every rules case. Both the real suite and the
@@ -14,6 +15,7 @@ export const SUITES: Array<[string, Case[]]> = [
   ['questions/{questionId}', questionsCases],
   ['isMigrating() via users/{oldUid}', migrationCases],
   ['user_answers/{answerId}', userAnswersCases],
+  ['users listability and lookups', usersLookupCases],
 ];
 
 export const ALL_CASES: Case[] = SUITES.flatMap(([, cases]) => cases);
