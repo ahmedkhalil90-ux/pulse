@@ -47,8 +47,10 @@ the interface chooses to render.
 | Vector | Before | Now |
 |---|---|---|
 | Non-player reads a game in progress | Open to any authenticated user | Closed — reads limited to players and lobby games |
-| Non-player joins an active game, then reads | Open | Closed — join requires `status == 'lobby'` |
+| Non-player joins an active game, then reads | Open | Closed — join requires `status == 'lobby'`, and status cannot move backwards |
 | A player adds an outsider, who then reads | Open | Closed — `players` is immutable outside join/leave |
+| Host reverts status to `lobby`, re-opening the document | Open | Closed — `gameStatusOk()` allows only lobby → active → finished |
+| Anyone registers the username `ak` and is treated as admin | Open | **Still open — see the overnight log, N8. Highest priority.** |
 | One player writes another's answer | Open | Closed — `ownKeyOnly` pins map writes to the caller |
 | **A legitimate player reads every other player's answers** | **Open** | **Still open — this proposal** |
 

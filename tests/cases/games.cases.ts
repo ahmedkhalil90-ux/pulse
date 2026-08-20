@@ -187,6 +187,57 @@ export const gamesCases: Case[] = [
       }),
   },
   {
+    name: 'the host may start a lobby game',
+    expect: 'allow',
+    as: PLAYER,
+    seed: seedGame('lobby', { answers: {}, predictions: {} }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), { status: 'active', deadline: null }),
+  },
+  {
+    name: 'the host cannot revert a started game to the lobby',
+    expect: 'deny',
+    killedBy: 'M36',
+    // Reverting re-opens the document to every authenticated reader and lets
+    // an outsider join, which is the whole point of the status gate.
+    as: PLAYER,
+    seed: seedGame('active'),
+    run: (db) => updateDoc(doc(db, 'games', GID), { status: 'lobby' }),
+  },
+  {
+    name: 'the host cannot reopen a finished game',
+    expect: 'deny',
+    killedBy: 'M36',
+    as: PLAYER,
+    seed: seedGame('finished'),
+    run: (db) => updateDoc(doc(db, 'games', GID), { status: 'active' }),
+  },
+  {
+    name: 'the host cannot skip a lobby game straight to finished',
+    expect: 'deny',
+    killedBy: 'M36',
+    as: PLAYER,
+    seed: seedGame('lobby', { answers: {}, predictions: {} }),
+    run: (db) => updateDoc(doc(db, 'games', GID), { status: 'finished' }),
+  },
+  {
+    name: 'a joiner cannot rewrite the whole scores map',
+    expect: 'deny',
+    killedBy: 'M37',
+    as: OUTSIDER,
+    seed: seedGame('lobby', {
+      players: [PLAYER.uid, SECOND.uid],
+      scores: { [PLAYER.uid]: 3, [SECOND.uid]: 2 },
+      answers: {},
+      predictions: {},
+    }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), {
+        players: arrayUnion(OUTSIDER.uid),
+        scores: { [PLAYER.uid]: 0, [SECOND.uid]: 0, [OUTSIDER.uid]: 99 },
+      }),
+  },
+  {
     name: 'a non-host player cannot change the game status',
     expect: 'deny',
     killedBy: 'M31',

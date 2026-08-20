@@ -122,6 +122,18 @@ service cloud.firestore {
                .affectedKeys().hasOnly([request.auth.uid]);
     }
 
+    // Game status only ever moves forward: lobby -> active -> finished.
+    //
+    // Reverting a started game to 'lobby' would re-open the whole document to
+    // any authenticated reader and let an outsider walk in through the join
+    // branch, so the state machine is enforced here rather than only in the UI.
+    // A write that leaves status alone passes.
+    function gameStatusOk() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status'])
+             || (resource.data.status == 'lobby' && request.resource.data.status == 'active')
+             || (resource.data.status == 'active' && request.resource.data.status == 'finished');
+    }
+
     // Domain Validators
     function isValidUser(data) {
       return data.username is string && data.username.size() > 0 &&
@@ -447,6 +459,7 @@ service cloud.firestore {
         // writes `players` and `scores.<uid>` in the same update.
         (resource.data.status == 'lobby' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'scores']) &&
+         ownKeyOnly(resource.data, request.resource.data, 'scores') &&
          request.resource.data.players.hasAll(resource.data.players) &&
          request.resource.data.players.size() == resource.data.players.size() + 1 &&
          !(request.auth.uid in resource.data.players) &&
@@ -462,6 +475,7 @@ service cloud.firestore {
         // Host: game progression only. Notably NOT `players` -- the host has
         // no path to add or remove anyone.
         (request.auth.uid == resource.data.hostUid &&
+         gameStatusOk() &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
            ['status', 'currentQuestionIndex', 'scores', 'scoredQuestions',
             'deadline', 'questionsPerPlayer', 'lastUpdated'])) ||

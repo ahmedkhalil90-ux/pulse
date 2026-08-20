@@ -382,11 +382,10 @@ export const MUTATIONS: Mutation[] = [
     edits: [
       {
         find:
-          '        (request.auth.uid == resource.data.hostUid &&\n' +
           '         request.resource.data.diff(resource.data).affectedKeys().hasOnly(\n' +
           "           ['status', 'currentQuestionIndex', 'scores', 'scoredQuestions',\n" +
           "            'deadline', 'questionsPerPlayer', 'lastUpdated'])) ||",
-        replace: '        (request.auth.uid == resource.data.hostUid) ||',
+        replace: '         true) ||',
       },
     ],
   },
@@ -442,6 +441,29 @@ export const MUTATIONS: Mutation[] = [
       {
         find: '      allow create: if isOwner(userId)\n',
         replace: '      allow create: if isAuthenticated()\n',
+      },
+    ],
+  },
+  {
+    id: 'M36',
+    label: 'games: status may move in any direction, including back to lobby',
+    edits: [
+      {
+        find:
+          "      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status'])\n" +
+          "             || (resource.data.status == 'lobby' && request.resource.data.status == 'active')\n" +
+          "             || (resource.data.status == 'active' && request.resource.data.status == 'finished');",
+        replace: '      return true;',
+      },
+    ],
+  },
+  {
+    id: 'M37',
+    label: 'games: a joiner may rewrite scores beyond their own entry',
+    edits: [
+      {
+        find: "         ownKeyOnly(resource.data, request.resource.data, 'scores') &&\n",
+        replace: '         true &&\n',
       },
     ],
   },

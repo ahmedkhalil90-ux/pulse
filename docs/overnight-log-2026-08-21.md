@@ -109,6 +109,91 @@ results screen, and any player may read `game_questions` from submission
 onward. CLAUDE.md says the author is revealed only on the final results screen.
 Already tracked as an open issue; re-confirmed independently.
 
+### N8. 🔴 CRITICAL — the admin allow-list is a username anyone can register
+
+**This is the most urgent item in this file. It is a product decision, so I
+logged it rather than changing it.**
+
+`isAdmin()` trusts `request.auth.token.email` against a fixed list that includes
+`ak@pulse.app` and `ahmedkhalil90@pulse.app`. But `AuthProvider.signUp` builds
+every credential as `` `${username.toLowerCase()}@pulse.app` ``. The token is
+genuine; its contents are chosen by the person signing up.
+
+So: **sign up with the username `ak`, and you are an admin.** No Firestore write
+is needed to achieve it, and the `role` guard added this session is irrelevant
+because the email branch short-circuits first.
+
+Verified on the emulator with both usernames. As `ak@pulse.app` I set another
+user's credits to 100000, added myself to a game in progress, and read that
+game's `answers` and `predictions`.
+
+Violates the first hard rule in CLAUDE.md, and every `isAdmin()` gate in the
+file — including `allow delete` on `results/`, which the rules file itself
+argues must never be possible because zeroing a results document and watching
+the next vote land de-anonymises that voter.
+
+Nothing in `src/` reserves these usernames. If `ak` and `ahmedkhalil90` are not
+already registered to Ahmed, this is available to the first person who tries.
+
+I did not fix it because every fix is a decision about who counts as an admin:
+dropping the `@pulse.app` entries could lock Ahmed out of his own admin access,
+and I cannot tell from the codebase which address he actually uses. The durable
+fix is to stop deriving admin status from a self-chosen namespace — a custom
+auth claim, or the hardcoded UID alone.
+
+### N9. Lobby games are enumerable, and games have no invite-code proof
+
+`allow read` on `games` releases any document with `status == 'lobby'`, so
+`where('status','==','lobby')` returns them all, invite codes included. An
+attacker joins uninvited, and once the host starts, they are inside the
+document for the whole session.
+
+Note the divergence this creates: **groups now require proof of the invite code
+(`hasJoinProof`), games require nothing.** The same mechanism would work for
+games — a `joinRequests` subcollection under the game, compared server-side.
+That is the natural follow-up and would close this properly.
+
+### N10. Any user can create a game enrolling a stranger
+
+`games` create requires only `players.hasAll([self])`, so
+`players: ['evil','victim']` is accepted. Victim UIDs are obtainable because
+`users` is listable. `GameView` selects the victim's active game with
+`array-contains` + `orderBy createdAt desc limit 1`, so the attacker's freshly
+created game becomes the one the victim lands in, and they submit questions and
+answers into a document the attacker hosts and reads.
+
+Cannot be fixed by narrowing create to `players == [self]`: `GameSummary`'s
+"play again" legitimately re-creates a game with the previous roster, and any
+player can trigger it. The fix has to be invitation-shaped.
+
+### N11. The host can rewrite `scores` arbitrarily, and `scores` leaks predictions
+
+Two problems on one field.
+
+*Tampering*: the host branch permits any `scores` value, so a host can zero
+every rival. Rewinding `scoredQuestions` and `currentQuestionIndex` is also
+permitted, which defeats the idempotency guard in `gameState.advanceQuestion`
+and allows a question to be scored twice. Enforcing correct scoring in rules is
+not feasible — this is an argument for scoring server-side (see the privacy
+proposal's Option A).
+
+*Leak*: `scores` sits in a document every player can read, and advances one
+question at a time. A player's score rises by exactly 1 iff their prediction
+matched the majority, and the majority is shown on the results screen. So
+diffing `scores` across an advance discloses every other player's prediction,
+question by question. **This is not covered by
+`docs/game-answers-privacy-proposal.md`, which addresses only the `answers` and
+`predictions` maps.** If that schema change lands, `scores` has to move with it
+or the leak survives.
+
+### N12. `questions` is append-only but not order- or content-safe
+
+`hasAll` is containment, so reordering, duplication and padding are all
+permitted. Reordering moves a chosen question to index 0. Appending an ID
+belonging to a different game deadlocks the session, because `game_questions`
+reads resolve `players` from that other game and every player gets
+permission-denied with no way forward.
+
 ### N7. `isValidUser` is defined and never referenced
 
 Dead validator in `firestore.rules`. The rules compiler warns about it on every
