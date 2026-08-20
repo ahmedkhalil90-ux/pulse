@@ -356,6 +356,76 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
+    id: 'M28',
+    label: 'games: the join field allowlist is removed',
+    edits: [
+      {
+        find:
+          "         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'scores']) &&\n",
+        replace: '         true &&\n',
+      },
+    ],
+  },
+  {
+    id: 'M29',
+    label: 'games: leaving may remove someone other than the caller',
+    edits: [
+      {
+        find: '         !(request.auth.uid in request.resource.data.players)) ||\n',
+        replace: '         true) ||\n',
+      },
+    ],
+  },
+  {
+    id: 'M30',
+    label: 'games: the host field allowlist is removed',
+    edits: [
+      {
+        find:
+          '        (request.auth.uid == resource.data.hostUid &&\n' +
+          '         request.resource.data.diff(resource.data).affectedKeys().hasOnly(\n' +
+          "           ['status', 'currentQuestionIndex', 'scores', 'scoredQuestions',\n" +
+          "            'deadline', 'questionsPerPlayer', 'lastUpdated'])) ||",
+        replace: '        (request.auth.uid == resource.data.hostUid) ||',
+      },
+    ],
+  },
+  {
+    id: 'M31',
+    label: 'games: the player field allowlist is removed',
+    edits: [
+      {
+        find:
+          '         request.resource.data.diff(resource.data).affectedKeys().hasOnly(\n' +
+          "           ['answers', 'predictions', 'playerQuestions', 'questions', 'lastUpdated']) &&\n",
+        replace: '         true &&\n',
+      },
+    ],
+  },
+  {
+    id: 'M32',
+    label: "games: a player may write another player's map entries",
+    edits: [
+      {
+        find:
+          '      return newData.get(field, {}).diff(oldData.get(field, {}))\n' +
+          '               .affectedKeys().hasOnly([request.auth.uid]);',
+        replace: '      return true;',
+      },
+    ],
+  },
+  {
+    id: 'M33',
+    label: 'games: the question list need not be append-only',
+    edits: [
+      {
+        find:
+          "         request.resource.data.get('questions', []).hasAll(resource.data.get('questions', []))) ||",
+        replace: '         true) ||',
+      },
+    ],
+  },
+  {
     id: 'M19',
     label: 'results: the read auth gate is removed',
     edits: [

@@ -114,6 +114,14 @@ service cloud.firestore {
              && get(/databases/$(database)/documents/groups/$(groupId)/joinRequests/$(request.auth.uid)).data.code == inviteCode;
     }
 
+    // A game map keyed by player UID (answers, predictions, playerQuestions):
+    // only the caller's own key may change. An empty diff satisfies hasOnly,
+    // so a write that leaves the map alone passes.
+    function ownKeyOnly(oldData, newData, field) {
+      return newData.get(field, {}).diff(oldData.get(field, {}))
+               .affectedKeys().hasOnly([request.auth.uid]);
+    }
+
     // Domain Validators
     function isValidUser(data) {
       return data.username is string && data.username.size() > 0 &&
@@ -429,14 +437,36 @@ service cloud.firestore {
         // No affectedKeys restriction here on purpose: GameHome.joinGame
         // writes `players` and `scores.<uid>` in the same update.
         (resource.data.status == 'lobby' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'scores']) &&
          request.resource.data.players.hasAll(resource.data.players) &&
          request.resource.data.players.size() == resource.data.players.size() + 1 &&
          !(request.auth.uid in resource.data.players) &&
          request.auth.uid in request.resource.data.players) ||
-        // Host actions (start, next question, finish)
-        (request.auth.uid == resource.data.hostUid) ||
-        // Players submitting answers, or predictions
-        (request.auth.uid in resource.data.players) ||
+
+        // Leaving: remove yourself and no one else (GameLobby leaveGame).
+        (request.auth.uid in resource.data.players &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players']) &&
+         resource.data.players.hasAll(request.resource.data.players) &&
+         request.resource.data.players.size() == resource.data.players.size() - 1 &&
+         !(request.auth.uid in request.resource.data.players)) ||
+
+        // Host: game progression only. Notably NOT `players` -- the host has
+        // no path to add or remove anyone.
+        (request.auth.uid == resource.data.hostUid &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+           ['status', 'currentQuestionIndex', 'scores', 'scoredQuestions',
+            'deadline', 'questionsPerPlayer', 'lastUpdated'])) ||
+
+        // Players: their own answer, their own prediction, their own question
+        // submission. Never another player's, and never `players` itself.
+        (request.auth.uid in resource.data.players &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+           ['answers', 'predictions', 'playerQuestions', 'questions', 'lastUpdated']) &&
+         ownKeyOnly(resource.data, request.resource.data, 'answers') &&
+         ownKeyOnly(resource.data, request.resource.data, 'predictions') &&
+         ownKeyOnly(resource.data, request.resource.data, 'playerQuestions') &&
+         request.resource.data.get('questions', []).hasAll(resource.data.get('questions', []))) ||
+
         isAdmin()
       );
       

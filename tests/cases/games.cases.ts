@@ -18,6 +18,8 @@ import type { RulesTestContext } from '@firebase/rules-unit-testing';
  */
 const PLAYER = { uid: 'gplayer1', email: 'gplayer1@pulse.app' };
 const OUTSIDER = { uid: 'goutsider1', email: 'goutsider1@pulse.app' };
+/** A second, non-host player. */
+const SECOND = { uid: 'gplayer2', email: 'gplayer2@pulse.app' };
 const GID = 'gsec1';
 
 const BASE = {
@@ -126,5 +128,141 @@ export const gamesCases: Case[] = [
     seed: seedGame('lobby', { answers: {}, predictions: {} }),
     run: (db) =>
       updateDoc(doc(db, 'games', GID), { players: arrayUnion('dragged-in-uid') }),
+  },
+  {
+    name: 'joining cannot smuggle another field alongside players',
+    expect: 'deny',
+    killedBy: 'M28',
+    as: OUTSIDER,
+    seed: seedGame('lobby', { answers: {}, predictions: {} }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), {
+        players: arrayUnion(OUTSIDER.uid),
+        status: 'finished',
+      }),
+  },
+
+  // --- leaving --------------------------------------------------------------
+  {
+    name: 'a player may remove themselves from a game',
+    expect: 'allow',
+    as: SECOND,
+    seed: seedGame('lobby', { players: [PLAYER.uid, SECOND.uid], answers: {}, predictions: {} }),
+    run: (db) => updateDoc(doc(db, 'games', GID), { players: [PLAYER.uid] }),
+  },
+  {
+    name: 'a player cannot remove another player',
+    expect: 'deny',
+    killedBy: 'M29',
+    as: SECOND,
+    seed: seedGame('lobby', { players: [PLAYER.uid, SECOND.uid], answers: {}, predictions: {} }),
+    run: (db) => updateDoc(doc(db, 'games', GID), { players: [SECOND.uid] }),
+  },
+
+  // --- host progression -----------------------------------------------------
+  {
+    name: 'the host may advance the game',
+    expect: 'allow',
+    as: PLAYER, // PLAYER is hostUid in the fixture
+    seed: seedGame('active'),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), {
+        status: 'finished',
+        currentQuestionIndex: 0,
+        scores: { [PLAYER.uid]: 1 },
+        scoredQuestions: ['gq1'],
+        lastUpdated: '2026-08-20T00:00:00.000Z',
+      }),
+  },
+  {
+    name: 'the host cannot add a player while advancing',
+    expect: 'deny',
+    killedBy: 'M30',
+    as: PLAYER,
+    seed: seedGame('active'),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), {
+        status: 'finished',
+        players: arrayUnion('smuggled-uid'),
+      }),
+  },
+  {
+    name: 'a non-host player cannot change the game status',
+    expect: 'deny',
+    killedBy: 'M31',
+    as: SECOND,
+    seed: seedGame('active', { players: [PLAYER.uid, SECOND.uid] }),
+    run: (db) => updateDoc(doc(db, 'games', GID), { status: 'finished' }),
+  },
+
+  // --- player writes --------------------------------------------------------
+  {
+    name: 'a player may record their own answer and prediction',
+    expect: 'allow',
+    as: SECOND,
+    seed: seedGame('active', { players: [PLAYER.uid, SECOND.uid] }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), {
+        [`answers.${SECOND.uid}.gq1`]: 1,
+        [`predictions.${SECOND.uid}.gq1`]: 0,
+        lastUpdated: '2026-08-20T00:00:00.000Z',
+      }),
+  },
+  {
+    name: 'a player may submit their own questions',
+    expect: 'allow',
+    as: SECOND,
+    seed: seedGame('active', { players: [PLAYER.uid, SECOND.uid] }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), {
+        questions: arrayUnion('gq2'),
+        [`playerQuestions.${SECOND.uid}`]: ['gq2'],
+        lastUpdated: '2026-08-20T00:00:00.000Z',
+      }),
+  },
+  {
+    name: "a player cannot write another player's answer",
+    expect: 'deny',
+    killedBy: 'M32',
+    as: SECOND,
+    seed: seedGame('active', { players: [PLAYER.uid, SECOND.uid] }),
+    run: (db) => updateDoc(doc(db, 'games', GID), { [`answers.${PLAYER.uid}.gq1`]: 0 }),
+  },
+  {
+    name: "a player cannot write another player's prediction",
+    expect: 'deny',
+    killedBy: 'M32',
+    as: SECOND,
+    seed: seedGame('active', { players: [PLAYER.uid, SECOND.uid] }),
+    run: (db) => updateDoc(doc(db, 'games', GID), { [`predictions.${PLAYER.uid}.gq1`]: 1 }),
+  },
+  {
+    name: "a player cannot rewrite another player's question submission",
+    expect: 'deny',
+    killedBy: 'M32',
+    as: SECOND,
+    seed: seedGame('active', { players: [PLAYER.uid, SECOND.uid] }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), { [`playerQuestions.${PLAYER.uid}`]: ['hijack'] }),
+  },
+  {
+    name: 'a player cannot delete existing questions while submitting',
+    expect: 'deny',
+    killedBy: 'M33',
+    as: SECOND,
+    seed: seedGame('active', { players: [PLAYER.uid, SECOND.uid] }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), {
+        questions: ['gq-replaced'],
+        [`playerQuestions.${SECOND.uid}`]: ['gq-replaced'],
+      }),
+  },
+  {
+    name: 'a player cannot rewrite the scores map',
+    expect: 'deny',
+    killedBy: 'M31',
+    as: SECOND,
+    seed: seedGame('active', { players: [PLAYER.uid, SECOND.uid] }),
+    run: (db) => updateDoc(doc(db, 'games', GID), { scores: { [SECOND.uid]: 999 } }),
   },
 ];
