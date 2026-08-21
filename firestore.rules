@@ -404,13 +404,18 @@ service cloud.firestore {
         // code. Without that exception the creator is never a member of their
         // own group: memberCount says 1, the roster is empty, the group
         // vanishes from their list, and they cannot post to it.
-        allow create: if isOwner(memberUid)
-                      && request.resource.data.keys().hasOnly(['uid', 'joinedAt'])
-                      && request.resource.data.uid == request.auth.uid
-                      && (request.auth.uid ==
-                            get(/databases/$(database)/documents/groups/$(groupId)).data.adminUid
-                          || hasJoinProof(groupId,
-                               get(/databases/$(database)/documents/groups/$(groupId)).data.inviteCode));
+        // An admin may write any membership document. The migration script has
+        // to create these for groups that predate the subcollection, and it
+        // cannot hold anyone else's auth token -- exactly the reason the
+        // lookup collections carry the same exception.
+        allow create: if isAdmin()
+                      || (isOwner(memberUid)
+                          && request.resource.data.keys().hasOnly(['uid', 'joinedAt'])
+                          && request.resource.data.uid == request.auth.uid
+                          && (request.auth.uid ==
+                                get(/databases/$(database)/documents/groups/$(groupId)).data.adminUid
+                              || hasJoinProof(groupId,
+                                   get(/databases/$(database)/documents/groups/$(groupId)).data.inviteCode)));
         allow update: if false;
         // Leaving: yourself only. The group admin may also remove a member.
         allow delete: if isOwner(memberUid)

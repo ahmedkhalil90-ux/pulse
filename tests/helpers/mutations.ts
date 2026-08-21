@@ -271,8 +271,8 @@ export const MUTATIONS: Mutation[] = [
     label: 'groups: a membership may be created for any UID',
     edits: [
       {
-        find: '        allow create: if isOwner(memberUid)\n',
-        replace: '        allow create: if isAuthenticated()\n',
+        find: '                      || (isOwner(memberUid)\n',
+        replace: '                      || (isAuthenticated()\n',
       },
     ],
   },
@@ -556,11 +556,11 @@ export const MUTATIONS: Mutation[] = [
     edits: [
       {
         find:
-          '                      && (request.auth.uid ==\n' +
-          '                            get(/databases/$(database)/documents/groups/$(groupId)).data.adminUid\n' +
-          '                          || hasJoinProof(groupId,\n' +
-          '                               get(/databases/$(database)/documents/groups/$(groupId)).data.inviteCode));',
-        replace: '                      && true;',
+          '                          && (request.auth.uid ==\n' +
+          '                                get(/databases/$(database)/documents/groups/$(groupId)).data.adminUid\n' +
+          '                              || hasJoinProof(groupId,\n' +
+          '                                   get(/databases/$(database)/documents/groups/$(groupId)).data.inviteCode)));',
+        replace: '                          && true);',
       },
     ],
   },
