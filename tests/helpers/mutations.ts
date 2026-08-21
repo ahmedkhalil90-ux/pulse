@@ -190,7 +190,7 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M15',
+    id: 'M60',
     label: 'users: the collection is listable again',
     edits: [
       {
@@ -200,7 +200,7 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M16',
+    id: 'M61',
     label: 'usernames: the token-email proof is removed',
     edits: [
       {
@@ -212,7 +212,7 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M17',
+    id: 'M62',
     label: 'usernames: the mapping may point at any uid',
     edits: [
       {
@@ -222,7 +222,7 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M18',
+    id: 'M63',
     label: 'usernames: the field allowlist is removed',
     edits: [
       {
@@ -232,7 +232,7 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M19',
+    id: 'M64',
     label: 'usernames: the collection becomes listable',
     edits: [
       {
@@ -246,7 +246,7 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M20',
+    id: 'M65',
     label: 'referralCodes: the code is no longer checked against the caller profile',
     edits: [
       {
@@ -257,7 +257,7 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M21',
+    id: 'M66',
     label: 'referralCodes: the mapping may point at any uid',
     edits: [
       {
@@ -271,7 +271,7 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M22',
+    id: 'M67',
     label: 'referralCodes: the collection becomes listable',
     edits: [
       {

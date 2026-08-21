@@ -55,7 +55,7 @@ export const usersLookupCases: Case[] = [
   {
     name: 'an authenticated user cannot list the users collection',
     expect: 'deny',
-    killedBy: 'M15',
+    killedBy: 'M60',
     as: OTHER,
     seed: seedUsers,
     run: (db) => getDocs(collection(db, 'users')),
@@ -80,7 +80,7 @@ export const usersLookupCases: Case[] = [
   {
     name: 'a caller cannot claim a username mapping belonging to someone else',
     expect: 'deny',
-    killedBy: 'M16',
+    killedBy: 'M61',
     // bob@pulse.app trying to seize the 'alice' mapping.
     as: OTHER,
     seed: seedUsers,
@@ -89,7 +89,7 @@ export const usersLookupCases: Case[] = [
   {
     name: 'a username mapping cannot point at a different uid',
     expect: 'deny',
-    killedBy: 'M17',
+    killedBy: 'M62',
     as: OWNER,
     seed: seedUsers,
     run: (db) => setDoc(doc(db, 'usernames', 'alice'), { uid: OTHER.uid }),
@@ -97,7 +97,7 @@ export const usersLookupCases: Case[] = [
   {
     name: 'a username mapping cannot carry extra fields',
     expect: 'deny',
-    killedBy: 'M18',
+    killedBy: 'M63',
     as: OWNER,
     seed: seedUsers,
     run: (db) =>
@@ -116,7 +116,7 @@ export const usersLookupCases: Case[] = [
   {
     name: 'the usernames collection cannot be listed',
     expect: 'deny',
-    killedBy: 'M19',
+    killedBy: 'M64',
     // Otherwise the mapping just becomes a second way to enumerate everyone.
     as: OTHER,
     seed: async (ctx) => {
@@ -147,7 +147,7 @@ export const usersLookupCases: Case[] = [
   {
     name: 'a user cannot register a code their profile does not hold',
     expect: 'deny',
-    killedBy: 'M20',
+    killedBy: 'M65',
     // Squatting a code someone else will later generate would hijack their
     // referrals, so the code is checked against the caller's own profile.
     as: OTHER,
@@ -157,7 +157,7 @@ export const usersLookupCases: Case[] = [
   {
     name: 'a referral mapping cannot point at a different uid',
     expect: 'deny',
-    killedBy: 'M21',
+    killedBy: 'M66',
     as: OWNER,
     seed: seedUsers,
     run: (db) => setDoc(doc(db, 'referralCodes', 'ALICE1'), { uid: OTHER.uid }),
@@ -175,7 +175,7 @@ export const usersLookupCases: Case[] = [
   {
     name: 'the referralCodes collection cannot be listed',
     expect: 'deny',
-    killedBy: 'M22',
+    killedBy: 'M67',
     as: OTHER,
     seed: async (ctx) => {
       await seedUsers(ctx);
