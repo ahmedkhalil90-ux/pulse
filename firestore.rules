@@ -243,7 +243,15 @@ service cloud.firestore {
 
     // User profiles
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      // `get` stays open to signed-in callers: games and groups display
+      // usernames, which is a lookup by document ID.
+      //
+      // `list` is withdrawn. A collection scan returned every username with
+      // demographics and credit balance, and one signed-in account was enough
+      // to dump the whole user base. The three lookups that relied on it now
+      // go through the usernames and referralCodes mappings below.
+      allow get: if isAuthenticated();
+      allow list: if isAdmin();
       // `role` is what isAdmin() consults, so a caller able to write it can
       // promote themselves and every isAdmin() gate in this file becomes
       // optional. Only an existing admin may set it. Nothing in the client
@@ -270,8 +278,48 @@ service cloud.firestore {
       }
     }
     
-    match /users {
-      allow list: if true; // Allow checking if username is taken during signup
+    // Username -> uid. Replaces the collection scan that signup and the
+    // sign-in migration sweep used to run.
+    //
+    // Safe to write because the document ID IS the username and every account
+    // authenticates as `${username}@pulse.app`: only the caller Firebase Auth
+    // has issued that token to can claim or move the mapping. This is the same
+    // proof isMigrating() relies on.
+    //
+    // Note this is a lookup, not a uniqueness gate -- Auth already guarantees
+    // uniqueness by rejecting a duplicate address at signup.
+    match /usernames/{usernameLower} {
+      allow get: if isAuthenticated();
+      // Never listable: otherwise this becomes a second way to enumerate
+      // everyone, which is the problem it was introduced to solve.
+      allow list: if isAdmin();
+      // An admin may write any mapping: the backfill script has to create
+      // these for accounts that predate the change, and it cannot hold anyone
+      // else's auth token.
+      allow create, update: if isAdmin()
+                            || (isAuthenticated()
+                                && request.resource.data.keys().hasOnly(['uid'])
+                                && request.resource.data.uid == request.auth.uid
+                                && request.auth.token.email != null
+                                && request.auth.token.email.lower() == usernameLower + '@pulse.app');
+      allow delete: if isAdmin();
+    }
+
+    // Referral code -> uid. Replaces the scan in redeemReferral.
+    //
+    // The code is checked against the caller's own profile, so a squatter
+    // cannot pre-register a code someone else will later generate and
+    // intercept their referrals.
+    match /referralCodes/{code} {
+      allow get: if isAuthenticated();
+      allow list: if isAdmin();
+      allow create: if isAdmin()
+                    || (isAuthenticated()
+                        && request.resource.data.keys().hasOnly(['uid'])
+                        && request.resource.data.uid == request.auth.uid
+                        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code);
+      // A code, once claimed, is never reassigned by its holder.
+      allow update, delete: if isAdmin();
     }
 
     // Questions

@@ -541,6 +541,107 @@ export const MUTATIONS: Mutation[] = [
       },
     ],
   },
+  {
+    id: 'M60',
+    label: 'users: the collection is listable again',
+    edits: [
+      {
+        // Anchored on the users-block comment, not the adjacent create rule:
+        // security/admin-uid-only replaces `allow create: if true;` with a
+        // role-guarded version, which silently unmatched this target once the
+        // two branches were merged.
+        find:
+          '      // go through the usernames and referralCodes mappings below.\n' +
+          '      allow get: if isAuthenticated();\n' +
+          '      allow list: if isAdmin();',
+        replace:
+          '      // go through the usernames and referralCodes mappings below.\n' +
+          '      allow get: if isAuthenticated();\n' +
+          '      allow list: if isAuthenticated();',
+      },
+    ],
+  },
+  {
+    id: 'M61',
+    label: 'usernames: the token-email proof is removed',
+    edits: [
+      {
+        find:
+          '                                && request.auth.token.email != null\n' +
+          "                                && request.auth.token.email.lower() == usernameLower + '@pulse.app');",
+        replace: '                                && true);',
+      },
+    ],
+  },
+  {
+    id: 'M62',
+    label: 'usernames: the mapping may point at any uid',
+    edits: [
+      {
+        find: '                                && request.resource.data.uid == request.auth.uid\n',
+        replace: '                                && true\n',
+      },
+    ],
+  },
+  {
+    id: 'M63',
+    label: 'usernames: the field allowlist is removed',
+    edits: [
+      {
+        find: "                                && request.resource.data.keys().hasOnly(['uid'])\n",
+        replace: '                                && true\n',
+      },
+    ],
+  },
+  {
+    id: 'M64',
+    label: 'usernames: the collection becomes listable',
+    edits: [
+      {
+        find:
+          '      // everyone, which is the problem it was introduced to solve.\n' +
+          '      allow list: if isAdmin();',
+        replace:
+          '      // everyone, which is the problem it was introduced to solve.\n' +
+          '      allow list: if isAuthenticated();',
+      },
+    ],
+  },
+  {
+    id: 'M65',
+    label: 'referralCodes: the code is no longer checked against the caller profile',
+    edits: [
+      {
+        find:
+          '                        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code);',
+        replace: '                        && true);',
+      },
+    ],
+  },
+  {
+    id: 'M66',
+    label: 'referralCodes: the mapping may point at any uid',
+    edits: [
+      {
+        find:
+          '                        && request.resource.data.uid == request.auth.uid\n' +
+          '                        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code);',
+        replace:
+          '                        && true\n' +
+          '                        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code);',
+      },
+    ],
+  },
+  {
+    id: 'M67',
+    label: 'referralCodes: the collection becomes listable',
+    edits: [
+      {
+        find: '      allow list: if isAdmin();\n      allow create: if isAdmin()',
+        replace: '      allow list: if isAuthenticated();\n      allow create: if isAdmin()',
+      },
+    ],
+  },
 ];
 
 /**
