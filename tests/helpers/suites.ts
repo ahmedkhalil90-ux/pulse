@@ -1,4 +1,5 @@
 import type { Case } from './env';
+import { gameAuthorCases } from '../cases/gameAuthor.cases';
 import { gamesCases } from '../cases/games.cases';
 import { groupMembersCases } from '../cases/groupMembers.cases';
 import { groupsCases } from '../cases/groups.cases';
@@ -21,6 +22,7 @@ export const SUITES: Array<[string, Case[]]> = [
   ['isMigrating() via users/{oldUid}', migrationCases],
   ['user_answers/{answerId}', userAnswersCases],
   ['games/{gameId} reads', gamesCases],
+  ['game question authorship', gameAuthorCases],
   ['groups/{groupId} updates', groupsCases],
   ['groups member privacy', groupMembersCases],
   ['users/{userId} role escalation', usersRoleCases],

@@ -118,11 +118,16 @@ export function QuestionSubmission({ game }: { game: Game }) {
         questionIds.push(qRef.id);
         batch.set(qRef, {
           gameId: game.id,
-          authorUid: user.uid,
-          authorUsername: user.username,
           text: q.text,
           options: q.options,
           createdAt: new Date().toISOString()
+        });
+        // Attribution lives apart and is unreadable until the game finishes,
+        // so players cannot see who wrote a question while answering it.
+        batch.set(doc(db, 'game_question_authors', qRef.id), {
+          gameId: game.id,
+          authorUid: user.uid,
+          authorUsername: user.username
         });
       }
 

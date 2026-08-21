@@ -144,9 +144,8 @@ export function GameResults({ game, questionId }: { game: Game, questionId: stri
     <div className="space-y-8 pb-10">
       <div className="text-center space-y-4">
         <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center justify-center gap-2 text-zinc-500 uppercase tracking-widest text-[10px] font-bold">
-            <User className="w-3 h-3" /> Submitted by {question.authorUsername}
-          </div>
+          {/* Authorship is deliberately absent here. CLAUDE.md: the author is
+              revealed only on the final results screen. */}
           {game.type === 'async' && game.deadline && (
             <div className="flex items-center gap-1 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
               <Clock className="w-3 h-3" /> {Math.max(0, Math.floor((new Date(game.deadline).getTime() - Date.now()) / (1000 * 60 * 60)))}h remaining

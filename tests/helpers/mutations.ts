@@ -566,6 +566,68 @@ export const MUTATIONS: Mutation[] = [
       },
     ],
   },
+  {
+    id: 'M48',
+    label: 'game_questions: the create field allowlist is removed',
+    edits: [
+      {
+        find:
+          "                    request.resource.data.keys().hasOnly(['gameId', 'text', 'options', 'createdAt']) &&\n",
+        replace: '                    true &&\n',
+      },
+    ],
+  },
+  {
+    id: 'M49',
+    label: 'game_question_authors: attribution is readable before the game finishes',
+    edits: [
+      {
+        find:
+          "                    get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.status == 'finished';",
+        replace: '                    true;',
+      },
+    ],
+  },
+  {
+    id: 'M50a',
+    label: 'game_question_authors: attribution is readable by non-players',
+    edits: [
+      {
+        find:
+          '      allow read: if isAuthenticated() &&\n' +
+          '                    request.auth.uid in get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.players &&\n' +
+          "                    get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.status == 'finished';",
+        replace:
+          '      allow read: if isAuthenticated() &&\n' +
+          '                    true &&\n' +
+          "                    get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.status == 'finished';",
+      },
+    ],
+  },
+  {
+    id: 'M51a',
+    label: 'game_question_authors: attribution may name someone other than the caller',
+    edits: [
+      {
+        find: '                    request.resource.data.authorUid == request.auth.uid &&\n',
+        replace: '                    true &&\n',
+      },
+    ],
+  },
+  {
+    id: 'M52a',
+    label: 'game_question_authors: attribution becomes rewritable',
+    edits: [
+      {
+        find:
+          '      // Immutable: attribution is written once, at submission.\n' +
+          '      allow update, delete: if isAdmin();',
+        replace:
+          '      // Immutable: attribution is written once, at submission.\n' +
+          '      allow update, delete: if isAuthenticated();',
+      },
+    ],
+  },
 ];
 
 /**

@@ -545,17 +545,40 @@ service cloud.firestore {
     }
 
     // Game Questions
+    // Game questions carry NO authorship. They used to hold authorUid and
+    // authorUsername, readable by every player from the moment of submission,
+    // while CLAUDE.md says the author is revealed only on the final results
+    // screen. Authorship now lives in game_question_authors below, gated on the
+    // game being finished.
     match /game_questions/{questionId} {
-      // Read allowed if player is in the game the question belongs to
-      allow read: if isAuthenticated() && 
+      allow read: if isAuthenticated() &&
                     request.auth.uid in get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.players;
-      
-      // Create allowed for players in the game
-      allow create: if isAuthenticated() && 
+
+      allow create: if isAuthenticated() &&
+                    request.resource.data.keys().hasOnly(['gameId', 'text', 'options', 'createdAt']) &&
+                    request.auth.uid in get(/databases/$(database)/documents/games/$(request.resource.data.gameId)).data.players;
+
+      // No client path updates or deletes a game question.
+      allow update, delete: if isAdmin();
+    }
+
+    // Who submitted which game question.
+    //
+    // Readable only once the game is finished, which is when the summary screen
+    // is allowed to attribute questions. Before that a player can read the
+    // question but not who wrote it.
+    match /game_question_authors/{questionId} {
+      allow read: if isAuthenticated() &&
+                    request.auth.uid in get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.players &&
+                    get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.status == 'finished';
+
+      allow create: if isAuthenticated() &&
+                    request.resource.data.keys().hasOnly(['gameId', 'authorUid', 'authorUsername']) &&
                     request.resource.data.authorUid == request.auth.uid &&
                     request.auth.uid in get(/databases/$(database)/documents/games/$(request.resource.data.gameId)).data.players;
-      
-      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.authorUid == request.auth.uid);
+
+      // Immutable: attribution is written once, at submission.
+      allow update, delete: if isAdmin();
     }
   }
 }

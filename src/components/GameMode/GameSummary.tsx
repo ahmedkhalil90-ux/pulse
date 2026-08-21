@@ -60,6 +60,8 @@ export function GameSummary({ game }: { game: Game }) {
   const { user } = useAuth();
   const [questions, setQuestions] = useState<GameQuestion[]>([]);
   const [players, setPlayers] = useState<Record<string, string>>({});
+  // questionId -> author username. Only readable now the game is finished.
+  const [authors, setAuthors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [restarting, setRestarting] = useState(false);
 
@@ -79,6 +81,18 @@ export function GameSummary({ game }: { game: Game }) {
           if (d.exists()) playerMap[d.id] = (d.data() as UserProfile).username;
         });
         setPlayers(playerMap);
+
+        // Attribution is a separate collection, readable only once the game is
+        // finished -- which is exactly this screen.
+        const authorDocs = await Promise.all(
+          game.questions.map(id => getDoc(doc(db, 'game_question_authors', id)))
+        );
+        const authorMap: Record<string, string> = {};
+        authorDocs.forEach(d => {
+          if (d.exists()) authorMap[d.id] = d.data().authorUsername as string;
+        });
+        setAuthors(authorMap);
+
         setLoading(false);
       } catch (error) {
         handleFirestoreError(error, OperationType.LIST, 'game_questions');
@@ -227,7 +241,7 @@ export function GameSummary({ game }: { game: Game }) {
             return (
               <div key={q.id} className="bg-zinc-900/30 border border-white/5 p-6 rounded-3xl space-y-4">
                 <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-600">
-                  <span>By {q.authorUsername}</span>
+                  <span>By {authors[q.id] ?? 'a player'}</span>
                   <span>{total} Votes</span>
                 </div>
                 <h4 className="font-bold text-lg leading-tight">{q.text}</h4>
