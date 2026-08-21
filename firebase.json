@@ -12,6 +12,9 @@
     "ui": {
       "enabled": false
     },
-    "singleProjectMode": false
+    "singleProjectMode": false,
+    "auth": {
+      "port": 9099
+    }
   }
 }

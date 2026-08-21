@@ -1,12 +1,23 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { toast } from 'sonner';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+
+// Local smoke testing against the emulator suite.
+//
+// Gated on an explicit VITE_USE_EMULATOR=1 and on DEV, so a production build
+// can never reach it: `import.meta.env.DEV` is false in `vite build`, and the
+// whole block drops out at bundle time.
+if (import.meta.env.DEV && import.meta.env.VITE_USE_EMULATOR === '1') {
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  console.info('[pulse] Using Firebase emulators on 8080 / 9099');
+}
 
 export enum OperationType {
   CREATE = 'create',
