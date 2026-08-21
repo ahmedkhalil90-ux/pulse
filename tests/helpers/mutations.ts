@@ -473,12 +473,47 @@ export const MUTATIONS: Mutation[] = [
   },
   {
     id: 'M33',
-    label: 'games: the question list need not be append-only',
+    label: 'games: the question-submission shape is unchecked entirely',
     edits: [
       {
         find:
-          "         request.resource.data.get('questions', []).hasAll(resource.data.get('questions', []))) ||",
-        replace: '         true) ||',
+          "      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['questions'])\n" +
+          "             || (request.resource.data.questions.hasAll(resource.data.get('questions', []))\n" +
+          '                 && request.resource.data.questions.size()\n' +
+          "                      == resource.data.get('questions', []).size() + resource.data.questionsPerPlayer\n" +
+          "                 && !(request.auth.uid in resource.data.get('playerQuestions', {}).keys())\n" +
+          "                 && request.resource.data.get('playerQuestions', {}).get(request.auth.uid, []).size()\n" +
+          '                      == resource.data.questionsPerPlayer);',
+        replace: '      return true;',
+      },
+    ],
+  },
+  {
+    id: 'M53a',
+    label: 'games: the per-player quota is no longer enforced on either side',
+    edits: [
+      {
+        find:
+          '                 && request.resource.data.questions.size()\n' +
+          "                      == resource.data.get('questions', []).size() + resource.data.questionsPerPlayer\n",
+        replace: '                 && true\n',
+      },
+      {
+        find:
+          "                 && request.resource.data.get('playerQuestions', {}).get(request.auth.uid, []).size()\n" +
+          '                      == resource.data.questionsPerPlayer);',
+        replace: '                 && true);',
+      },
+    ],
+  },
+  {
+    id: 'M54a',
+    label: 'games: a player may submit questions more than once',
+    edits: [
+      {
+        find:
+          "                 && !(request.auth.uid in resource.data.get('playerQuestions', {}).keys())\n",
+        replace: '                 && true\n',
       },
     ],
   },

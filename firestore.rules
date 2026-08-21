@@ -144,6 +144,27 @@ service cloud.firestore {
                   .removedKeys().size() == 0;
     }
 
+    // Submitting questions: the list only ever grows, by exactly this game's
+    // per-player quota, and only once per player.
+    //
+    // Plain containment was not enough. `hasAll` is a subset test, so it
+    // permitted reordering -- which moves a chosen question to index 0, where
+    // currentQuestionIndex starts -- as well as duplication and unbounded
+    // padding. Requiring an exact size increase rejects a pure reorder, since
+    // that leaves the size unchanged.
+    //
+    // A write that does not touch `questions` passes untouched, so answering
+    // and predicting are unaffected.
+    function questionSubmissionOk() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['questions'])
+             || (request.resource.data.questions.hasAll(resource.data.get('questions', []))
+                 && request.resource.data.questions.size()
+                      == resource.data.get('questions', []).size() + resource.data.questionsPerPlayer
+                 && !(request.auth.uid in resource.data.get('playerQuestions', {}).keys())
+                 && request.resource.data.get('playerQuestions', {}).get(request.auth.uid, []).size()
+                      == resource.data.questionsPerPlayer);
+    }
+
     // Game status only ever moves forward: lobby -> active -> finished.
     //
     // Reverting a started game to 'lobby' would re-open the whole document to
@@ -536,7 +557,7 @@ service cloud.firestore {
          ownEntriesAppendOnly(resource.data, request.resource.data, 'predictions') &&
          ownKeyOnly(resource.data, request.resource.data, 'predictions') &&
          ownKeyOnly(resource.data, request.resource.data, 'playerQuestions') &&
-         request.resource.data.get('questions', []).hasAll(resource.data.get('questions', []))) ||
+         questionSubmissionOk()) ||
 
         isAdmin()
       );

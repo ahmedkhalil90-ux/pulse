@@ -359,6 +359,47 @@ export const gamesCases: Case[] = [
       }),
   },
   {
+    name: 'a player cannot reorder the question list without submitting',
+    expect: 'deny',
+    killedBy: 'M53a',
+    // Reordering moves a chosen question to index 0, where the game starts.
+    // A pure reorder leaves the size unchanged, which the size check rejects.
+    as: SECOND,
+    seed: seedGame('active', {
+      players: [PLAYER.uid, SECOND.uid],
+      questions: ['gq1', 'gq2', 'gq3'],
+    }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), { questions: ['gq3', 'gq2', 'gq1'] }),
+  },
+  {
+    name: 'a player cannot pad the question list beyond their quota',
+    expect: 'deny',
+    killedBy: 'M53a',
+    as: SECOND,
+    seed: seedGame('active', { players: [PLAYER.uid, SECOND.uid] }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), {
+        questions: ['gq1', 'pad1', 'pad2', 'pad3'],
+        [`playerQuestions.${SECOND.uid}`]: ['pad1', 'pad2', 'pad3'],
+      }),
+  },
+  {
+    name: 'a player cannot submit a second time',
+    expect: 'deny',
+    killedBy: 'M54a',
+    as: SECOND,
+    seed: seedGame('active', {
+      players: [PLAYER.uid, SECOND.uid],
+      playerQuestions: { [SECOND.uid]: ['gq1'] },
+    }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), {
+        questions: ['gq1', 'gq9'],
+        [`playerQuestions.${SECOND.uid}`]: ['gq9'],
+      }),
+  },
+  {
     name: 'a player cannot rewrite the scores map',
     expect: 'deny',
     killedBy: 'M31',
