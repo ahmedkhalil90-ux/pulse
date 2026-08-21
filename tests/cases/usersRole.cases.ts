@@ -15,7 +15,7 @@ import type { Case } from '../helpers/env';
 const USER = { uid: 'roleuser1', email: 'roleuser1@pulse.app' };
 const OTHER = { uid: 'roleuser2', email: 'roleuser2@pulse.app' };
 /** Admin by the email allowlist, not by a self-written field. */
-const REAL_ADMIN = { uid: 'realadmin', email: 'ahmedkhalil90@gmail.com' };
+const REAL_ADMIN = { uid: '7zNbw98m9jZYy8uTan7dqwolBud2', email: 'ahmedkhalil90@gmail.com' };
 
 const seedUser = (ctx: RulesTestContext) =>
   setDoc(doc(ctx.firestore(), 'users', USER.uid), {
