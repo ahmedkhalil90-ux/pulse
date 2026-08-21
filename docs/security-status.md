@@ -24,6 +24,83 @@ reverted the invite-code proof. Branches 1 and 3 are independent of `main`.
 
 ---
 
+## Merge playbook — from a trial merge of all four
+
+I merged all four locally to find out what breaks. **Two problems were found
+and fixed at the source**, so the branches as they now stand are better than
+they were; what follows is what still needs a human at merge time.
+
+### Fixed already, no action needed
+
+**Mutation IDs collided.** Three branches independently allocated M15–M22 to
+different rules — `M15` meant "any user may read any game", "any user is an
+admin", and "users is listable again" on three different branches. Merged, the
+array would have held duplicate ids, and the harness resolves by first match,
+so cases would have verified against the wrong rule and reported green. Admin
+mutations moved to M50–M53, lookup mutations to M60–M67, and the harness now
+**fails on any duplicate id** and on any `killedBy` naming a mutation that does
+not exist.
+
+**Two cross-branch breakages**, each invisible until combined:
+
+- `M60`'s target included `allow create: if true;`, which branch 1 replaces —
+  so the mutation silently stopped matching. Re-anchored.
+- The `usersRole` cases used an email-based admin, which branch 1 removes. The
+  actor now carries the real admin UID too, so it holds either way.
+
+### Conflicts you will still hit, and how to resolve each
+
+**Merging branch 1 into `main`: clean.**
+
+**Merging branch 2:** conflicts in `tests/helpers/env.ts`,
+`tests/helpers/suites.ts`, `tests/helpers/mutations.ts`.
+
+- `env.ts` — a one-word comment difference. Take either side.
+- `suites.ts` — both branches add imports and suite entries. **Keep both sides.**
+- `mutations.ts` — both add entries. **Do not resolve by naive union**: the
+  entries interleave and split an object mid-literal, which `tsc` catches but
+  only after a confusing error. Take one side's file wholesale, then re-insert
+  the other side's block before the closing `];`.
+
+**Merging branch 3:** the important one — `firestore.rules`, in the
+`users/{userId}` block.
+
+Both branches rewrite it. **Taking either side alone loses a security fix.**
+
+- Branch 1's side has the `role` guard on `create` and `update`.
+- Branch 3's side has the `get`/`list` split that withdraws listability, but
+  carries the *old* `allow create: if true`.
+
+The correct resolution keeps `allow get` and `allow list` from branch 3, and
+`allow create`/`allow update` from branch 1:
+
+```
+      allow get: if isAuthenticated();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId)
+                    && (!request.resource.data.keys().hasAny(['role']) || isAdmin());
+      allow update: if (isOwner(userId) || isAdmin() || isMigrating(userId))
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])
+                        || isAdmin());
+      allow delete: if isOwner(userId) || isAdmin() || isMigrating(userId);
+```
+
+Same three test-helper conflicts as branch 2, resolved the same way.
+
+**Merging branch 4:** one conflict in `tests/mutation.test.ts`, where both
+sides add a guard block. Keep the version containing
+`has no duplicate mutation ids` — it supersedes the other.
+
+### What the merged tree looked like
+
+Rules compiled, build clean, **243 of 245 tests passing** — the two failures
+being exactly the cross-branch breakages described above, both since fixed at
+source. **I did not re-run the full merged verification after those fixes**, so
+treat "245 green" as expected rather than demonstrated. Run the suite once
+after merging before you deploy.
+
+---
+
 ## FIXED — verified on the emulator, with a mutation proving each test bites
 
 ### Critical
