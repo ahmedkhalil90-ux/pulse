@@ -65,6 +65,7 @@ import {
   boostQuestion,
   unlockDemographics,
 } from './lib/credits';
+import { ModerationQueue } from './components/ModerationQueue';
 import { Question, QuestionResult, UserProfile, Group, UserAnswer } from './types';
 import { moderateQuestion } from './services/geminiService';
 import { Toaster, toast } from 'sonner';

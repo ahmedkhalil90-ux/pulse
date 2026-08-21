@@ -4,6 +4,7 @@ import { gamesCases } from '../cases/games.cases';
 import { groupMembersCases } from '../cases/groupMembers.cases';
 import { groupsCases } from '../cases/groups.cases';
 import { migrationCases } from '../cases/migration.cases';
+import { moderationCases } from '../cases/moderation.cases';
 import { questionsCases } from '../cases/questions.cases';
 import { resultsCases } from '../cases/results.cases';
 import { resultsReadCases } from '../cases/resultsRead.cases';
@@ -19,6 +20,7 @@ export const SUITES: Array<[string, Case[]]> = [
   ['results/{questionId}', resultsCases],
   ['results/{questionId} reads', resultsReadCases],
   ['questions/{questionId}', questionsCases],
+  ['moderation queue', moderationCases],
   ['isMigrating() via users/{oldUid}', migrationCases],
   ['user_answers/{answerId}', userAnswersCases],
   ['games/{gameId} reads', gamesCases],
