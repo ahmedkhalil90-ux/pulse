@@ -37,6 +37,30 @@ async function runUnderMutation(mutationId: string, cases: Case[]) {
   }
 }
 
+describe('the mutation table is internally consistent', () => {
+  it('has no duplicate mutation ids', () => {
+    // Branches allocate mutation ids independently, so a merge can land two
+    // entries under one id. runUnderMutation() resolves by first match, which
+    // would silently verify a case against the wrong rule -- a green suite
+    // proving nothing. This is the check that makes that impossible.
+    const seen = new Map<string, number>();
+    for (const m of MUTATIONS) seen.set(m.id, (seen.get(m.id) ?? 0) + 1);
+    const dupes = [...seen.entries()].filter(([, n]) => n > 1).map(([id, n]) => `${id} x${n}`);
+    expect(dupes, `duplicate mutation ids:\n${dupes.join('\n')}`).toEqual([]);
+  });
+
+  it('every killedBy names a mutation that exists', () => {
+    const ids = new Set(MUTATIONS.map((m) => m.id));
+    const dangling = ALL_CASES.filter((c) => c.killedBy && !ids.has(c.killedBy)).map(
+      (c) => `${c.name} -> ${c.killedBy}`,
+    );
+    // A case pointing at a deleted mutation is never verified by anything: the
+    // harness iterates mutations, so the case drops out of the report while
+    // still looking covered.
+    expect(dangling, `deny-cases naming a mutation that no longer exists:\n${dangling.join('\n')}`).toEqual([]);
+  });
+});
+
 describe('mutation verification: each deny-case is load-bearing', () => {
   for (const m of killers) {
     const targets = ALL_CASES.filter((c) => c.killedBy === m.id);
