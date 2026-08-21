@@ -92,10 +92,11 @@ export function GameSummary({ game }: { game: Game }) {
           if (d.exists()) authorMap[d.id] = d.data().authorUsername as string;
         });
         setAuthors(authorMap);
-
-        setLoading(false);
       } catch (error) {
         handleFirestoreError(error, OperationType.LIST, 'game_questions');
+      } finally {
+        // In a finally: a failed read must not leave the screen spinning.
+        setLoading(false);
       }
     };
 

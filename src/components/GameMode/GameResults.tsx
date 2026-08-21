@@ -82,9 +82,11 @@ export function GameResults({ game, questionId }: { game: Game, questionId: stri
           if (d.exists()) playerMap[d.id] = (d.data() as UserProfile).username;
         });
         setPlayers(playerMap);
-        setLoading(false);
       } catch (error) {
         handleFirestoreError(error, OperationType.GET, `game_questions/${questionId}`);
+      } finally {
+        // In a finally: a failed read must not leave the screen spinning.
+        setLoading(false);
       }
     };
 
