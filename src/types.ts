@@ -66,7 +66,7 @@ export type Group = {
   description?: string;
   inviteCode: string;
   adminUid: string;
-  members: string[];
+  memberCount: number;
 };
 
 export type GameStatus = 'lobby' | 'active' | 'finished';

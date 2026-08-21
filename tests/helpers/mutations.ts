@@ -218,53 +218,111 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M17',
-    label: 'groups: the self-only join/leave shape checks are removed',
+    id: 'M18',
+    label: 'groups: update reverts to any authenticated user',
     edits: [
       {
         find:
           '                        && (\n' +
-          '                          // Join: add yourself and no one else, having proved the code.\n' +
-          '                          (request.resource.data.members.hasAll(resource.data.members)\n' +
-          '                           && request.resource.data.members.size() == resource.data.members.size() + 1\n' +
-          '                           && !(request.auth.uid in resource.data.members)\n' +
-          '                           && request.auth.uid in request.resource.data.members\n' +
-          '                           && hasJoinProof(groupId, resource.data.inviteCode))\n' +
+          '                          // Join: your membership document now exists, so the\n' +
+          '                          // count goes up by one. The invite-code proof is\n' +
+          "                          // enforced on that document's create.\n" +
+          '                          (request.resource.data.memberCount == resource.data.memberCount + 1\n' +
+          '                           && isGroupMember(groupId))\n' +
           '                          ||\n' +
-          '                          // Leave: remove yourself and no one else.\n' +
-          '                          (resource.data.members.hasAll(request.resource.data.members)\n' +
-          '                           && request.resource.data.members.size() == resource.data.members.size() - 1\n' +
-          '                           && request.auth.uid in resource.data.members\n' +
-          '                           && !(request.auth.uid in request.resource.data.members))\n' +
+          '                          // Leave: your membership document is gone, so the\n' +
+          '                          // count goes down by one.\n' +
+          '                          (request.resource.data.memberCount == resource.data.memberCount - 1\n' +
+          '                           && !isGroupMember(groupId))\n' +
           '                        ));',
         replace: '                        && true);',
+      },
+      {
+        find:
+          "                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount'])\n",
+        replace: '                        && true\n',
       },
     ],
   },
   {
-    id: 'M18',
-    label: 'groups: update reverts to any authenticated user (the pre-fix rule)',
+    id: 'M38',
+    label: 'groups: a membership document is readable by anyone',
     edits: [
       {
         find:
-          '      allow update: if isAdmin()\n' +
-          '                    || (isAuthenticated()\n' +
-          "                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])\n" +
-          '                        && (\n' +
-          '                          // Join: add yourself and no one else, having proved the code.\n' +
-          '                          (request.resource.data.members.hasAll(resource.data.members)\n' +
-          '                           && request.resource.data.members.size() == resource.data.members.size() + 1\n' +
-          '                           && !(request.auth.uid in resource.data.members)\n' +
-          '                           && request.auth.uid in request.resource.data.members\n' +
-          '                           && hasJoinProof(groupId, resource.data.inviteCode))\n' +
-          '                          ||\n' +
-          '                          // Leave: remove yourself and no one else.\n' +
-          '                          (resource.data.members.hasAll(request.resource.data.members)\n' +
-          '                           && request.resource.data.members.size() == resource.data.members.size() - 1\n' +
-          '                           && request.auth.uid in resource.data.members\n' +
-          '                           && !(request.auth.uid in request.resource.data.members))\n' +
-          '                        ));',
-        replace: '      allow update: if isAuthenticated();',
+          '        allow get: if isAdmin()\n' +
+          '                   || (isAuthenticated() && resource.data.uid == request.auth.uid);',
+        replace: '        allow get: if isAuthenticated();',
+      },
+    ],
+  },
+  {
+    id: 'M39',
+    label: 'groups: the roster becomes listable',
+    edits: [
+      {
+        find: '        allow list: if isAuthenticated() && resource.data.uid == request.auth.uid;',
+        replace: '        allow list: if isAuthenticated();',
+      },
+    ],
+  },
+    {
+    id: 'M41',
+    label: 'groups: a membership may be created for any UID',
+    edits: [
+      {
+        find: '        allow create: if isOwner(memberUid)\n',
+        replace: '        allow create: if isAuthenticated()\n',
+      },
+    ],
+  },
+  {
+    id: 'M42',
+    label: 'groups: the membership field allowlist is removed',
+    edits: [
+      {
+        find: "                      && request.resource.data.keys().hasOnly(['uid', 'joinedAt'])\n",
+        replace: '                      && true\n',
+      },
+    ],
+  },
+  {
+    id: 'M43',
+    label: 'groups: memberCount need not track the membership documents',
+    edits: [
+      {
+        find: '                          (request.resource.data.memberCount == resource.data.memberCount + 1\n                           && isGroupMember(groupId))\n                          ||\n                          // Leave: your membership document is gone, so the\n                          // count goes down by one.\n                          (request.resource.data.memberCount == resource.data.memberCount - 1\n                           && !isGroupMember(groupId))',
+        replace: '                          true',
+      },
+    ],
+  },
+  {
+    id: 'M44',
+    label: 'groups: a count update may touch other fields',
+    edits: [
+      {
+        find: "                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount'])\n",
+        replace: '                        && true\n',
+      },
+    ],
+  },
+  {
+    id: 'M45',
+    label: 'groups: any member may delete any membership',
+    edits: [
+      {
+        find: '        allow delete: if isOwner(memberUid)\n',
+        replace: '        allow delete: if isAuthenticated()\n',
+      },
+    ],
+  },
+  {
+    id: 'M46',
+    label: 'groups: create no longer constrains memberCount or forbids members',
+    edits: [
+      {
+        find: "                    request.resource.data.memberCount == 1 &&\n                    !request.resource.data.keys().hasAny(['members']);",
+        replace: '                    true;',
       },
     ],
   },

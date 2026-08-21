@@ -37,6 +37,20 @@ async function runUnderMutation(mutationId: string, cases: Case[]) {
   }
 }
 
+describe('the mutation table and the case table agree', () => {
+  it('every killedBy names a mutation that exists', () => {
+    const ids = new Set(MUTATIONS.map((m) => m.id));
+    const dangling = ALL_CASES.filter((c) => c.killedBy && !ids.has(c.killedBy)).map(
+      (c) => `${c.name} -> ${c.killedBy}`,
+    );
+    // A case pointing at a deleted mutation is never verified by anything: the
+    // harness iterates mutations, so the case simply drops out of the report
+    // while still looking covered. That is the exact failure this suite exists
+    // to prevent, so it is checked explicitly.
+    expect(dangling, `deny-cases naming a mutation that no longer exists:\n${dangling.join('\n')}`).toEqual([]);
+  });
+});
+
 describe('mutation verification: each deny-case is load-bearing', () => {
   for (const m of killers) {
     const targets = ALL_CASES.filter((c) => c.killedBy === m.id);
