@@ -15,8 +15,13 @@ waiting. Merge order matters — see the bottom of this file.
 | 2 | `security/collection-reads` | Game reads, group updates, results reads, invite-code proof | 176 pass |
 | 3 | `security/users-listability` | `users` no longer listable; lookup collections | 113 pass |
 | 4 | `security/groups-member-privacy` | Membership subcollection + `memberCount` | 198 pass |
+| 5 | `security/answer-immutability` | Recorded answers/predictions are append-only | 205 pass |
+| 6 | `ui/error-feedback` | Firestore errors reach the user instead of dead-ending | 205 pass |
 
 Compare links are in `docs/overnight-log-2026-08-21.md`.
+
+Branch 5 is stacked on branch 4, and branch 6 on branch 5, because each
+builds on rules the previous one introduces. Branch 6 also carries branch 5.
 
 Branch 4 is stacked on branch 2, deliberately — it rewrites the same group
 rules, and branching it from `main` would have produced a PR that silently
@@ -153,6 +158,16 @@ ownership** — all covered earlier in this work, 39 rules tests with mutations.
 double-charge and race, daily-bonus double-award.
 
 **Game scoring double-count** — advancing is idempotent per question.
+
+**A player could rewrite their own answer after seeing the split**, moving the
+majority and rewriting every score, because the results screen renders before
+the host advances. Recorded answers and predictions are now append-only.
+→ branch 5
+
+**~20 silent dead-end catch blocks.** `handleFirestoreError` logged and threw;
+the throw escaped async click handlers as an unhandled rejection, so a failure
+showed the user nothing at all. It now toasts and returns. Several call sites
+had recovery code after it that was unreachable and now runs. → branch 6
 
 ### Defects introduced by this work and then fixed
 
