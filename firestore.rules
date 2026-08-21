@@ -399,11 +399,18 @@ service cloud.firestore {
         // collectionGroup query for `uid == me` is allowed, and any broader
         // query is refused outright rather than per document.
         allow list: if isAuthenticated() && resource.data.uid == request.auth.uid;
-        // Joining: yourself only, having proved the invite code.
+        // Joining: yourself only, having proved the invite code -- except for
+        // the group's own creator, who has no proof because they invented the
+        // code. Without that exception the creator is never a member of their
+        // own group: memberCount says 1, the roster is empty, the group
+        // vanishes from their list, and they cannot post to it.
         allow create: if isOwner(memberUid)
                       && request.resource.data.keys().hasOnly(['uid', 'joinedAt'])
                       && request.resource.data.uid == request.auth.uid
-                      && hasJoinProof(groupId, get(/databases/$(database)/documents/groups/$(groupId)).data.inviteCode);
+                      && (request.auth.uid ==
+                            get(/databases/$(database)/documents/groups/$(groupId)).data.adminUid
+                          || hasJoinProof(groupId,
+                               get(/databases/$(database)/documents/groups/$(groupId)).data.inviteCode));
         allow update: if false;
         // Leaving: yourself only. The group admin may also remove a member.
         allow delete: if isOwner(memberUid)

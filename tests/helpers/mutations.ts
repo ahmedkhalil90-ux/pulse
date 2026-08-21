@@ -550,6 +550,20 @@ export const MUTATIONS: Mutation[] = [
       },
     ],
   },
+  {
+    id: 'M76',
+    label: 'groups: anyone may claim membership by posing as the admin path',
+    edits: [
+      {
+        find:
+          '                      && (request.auth.uid ==\n' +
+          '                            get(/databases/$(database)/documents/groups/$(groupId)).data.adminUid\n' +
+          '                          || hasJoinProof(groupId,\n' +
+          '                               get(/databases/$(database)/documents/groups/$(groupId)).data.inviteCode));',
+        replace: '                      && true;',
+      },
+    ],
+  },
 ];
 
 /**
