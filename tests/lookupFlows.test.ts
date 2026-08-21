@@ -120,6 +120,23 @@ describe('sign-in migration re-points the mapping', () => {
     );
   });
 
+  it('self-heals a missing mapping for an account that predates it', async () => {
+    // Every existing account is in this state: a profile, no mapping.
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users', ALICE.uid), {
+        username: 'alice',
+        isVerified: true,
+        credits: 13,
+      });
+    });
+
+    const db = dbFor(ALICE);
+    const before = await assertSucceeds(getDoc(doc(db, 'usernames', 'alice')));
+    expect(before.exists()).toBe(false);
+
+    await assertSucceeds(setDoc(doc(db, 'usernames', 'alice'), { uid: ALICE.uid }));
+  });
+
   it('does not let anyone else take a mapping over', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'usernames', 'alice'), { uid: ALICE.uid });

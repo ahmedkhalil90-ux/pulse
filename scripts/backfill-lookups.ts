@@ -18,12 +18,17 @@
  *   - signing in will not find an orphaned profile to migrate
  *   - existing referral codes cannot be redeemed
  *
- * MUST BE RUN BEFORE the rules change is deployed, or during a window where
- * both are acceptable -- it needs to list `users`, which the new rules only
- * permit for an admin.
+ * Run it AFTER deploying the rules, signed in as an admin. Both mapping
+ * collections permit an admin to write any document precisely so this can
+ * work -- it cannot hold anyone else's auth token. Listing `users` is
+ * likewise admin-only now.
  *
- * Signs in as a normal user, so every write goes through firestore.rules.
- * The account used must be an admin, because listing `users` now requires it.
+ * Largely belt-and-braces: the sign-in sweep self-heals a missing username
+ * mapping on that account's own next sign-in. This exists to fix everyone at
+ * once rather than waiting for each user to return, and to surface duplicate
+ * usernames, which self-healing cannot resolve.
+ *
+ * Signs in as a normal client, so every write goes through firestore.rules.
  *
  * Idempotent: existing mapping documents are left alone unless --force is
  * passed, and a mapping that already points at the right uid is never

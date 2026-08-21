@@ -26,6 +26,12 @@ import type { Case } from '../helpers/env';
  */
 const OWNER = { uid: 'lookupowner', email: 'alice@pulse.app' };
 const OTHER = { uid: 'lookupother', email: 'bob@pulse.app' };
+/**
+ * An admin under both rulesets: the UID satisfies the UID-only isAdmin() from
+ * security/admin-uid-only, and the email satisfies the allow-list this branch
+ * still carries. So this case survives that branch being merged first.
+ */
+const ADMIN = { uid: '7zNbw98m9jZYy8uTan7dqwolBud2', email: 'ak@pulse.app' };
 
 async function seedUsers(ctx: RulesTestContext) {
   const db = ctx.firestore();
@@ -118,6 +124,16 @@ export const usersLookupCases: Case[] = [
       await setDoc(doc(ctx.firestore(), 'usernames', 'alice'), { uid: OWNER.uid });
     },
     run: (db) => getDocs(collection(db, 'usernames')),
+  },
+
+  {
+    name: 'an admin may write a username mapping for another user',
+    expect: 'allow',
+    // The backfill script needs this: it creates mappings for accounts that
+    // predate the change and cannot hold anyone else's auth token.
+    as: ADMIN,
+    seed: seedUsers,
+    run: (db) => setDoc(doc(db, 'usernames', 'alice'), { uid: OWNER.uid }),
   },
 
   // --- referralCodes mapping ------------------------------------------------

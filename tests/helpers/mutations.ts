@@ -192,7 +192,12 @@ export const MUTATIONS: Mutation[] = [
   {
     id: 'M15',
     label: 'users: the collection is listable again',
-    edits: [{ find: '      allow list: if isAdmin();\n      allow create: if true;', replace: '      allow list: if isAuthenticated();\n      allow create: if true;' }],
+    edits: [
+      {
+        find: '      allow list: if isAdmin();\n      allow create: if true;',
+        replace: '      allow list: if isAuthenticated();\n      allow create: if true;',
+      },
+    ],
   },
   {
     id: 'M16',
@@ -200,9 +205,9 @@ export const MUTATIONS: Mutation[] = [
     edits: [
       {
         find:
-          '                            && request.auth.token.email != null\n' +
-          "                            && request.auth.token.email.lower() == usernameLower + '@pulse.app';",
-        replace: '                            && true;',
+          '                                && request.auth.token.email != null\n' +
+          "                                && request.auth.token.email.lower() == usernameLower + '@pulse.app');",
+        replace: '                                && true);',
       },
     ],
   },
@@ -211,10 +216,8 @@ export const MUTATIONS: Mutation[] = [
     label: 'usernames: the mapping may point at any uid',
     edits: [
       {
-        find:
-          '                            && request.resource.data.uid == request.auth.uid\n' +
-          '                            && request.auth.token.email != null',
-        replace: '                            && true\n                            && request.auth.token.email != null',
+        find: '                                && request.resource.data.uid == request.auth.uid\n',
+        replace: '                                && true\n',
       },
     ],
   },
@@ -223,8 +226,8 @@ export const MUTATIONS: Mutation[] = [
     label: 'usernames: the field allowlist is removed',
     edits: [
       {
-        find: "                            && request.resource.data.keys().hasOnly(['uid'])\n",
-        replace: '                            && true\n',
+        find: "                                && request.resource.data.keys().hasOnly(['uid'])\n",
+        replace: '                                && true\n',
       },
     ],
   },
@@ -233,8 +236,12 @@ export const MUTATIONS: Mutation[] = [
     label: 'usernames: the collection becomes listable',
     edits: [
       {
-        find: '      allow list: if isAdmin();\n      allow create, update: if isAuthenticated()',
-        replace: '      allow list: if isAuthenticated();\n      allow create, update: if isAuthenticated()',
+        find:
+          '      // everyone, which is the problem it was introduced to solve.\n' +
+          '      allow list: if isAdmin();',
+        replace:
+          '      // everyone, which is the problem it was introduced to solve.\n' +
+          '      allow list: if isAuthenticated();',
       },
     ],
   },
@@ -244,8 +251,8 @@ export const MUTATIONS: Mutation[] = [
     edits: [
       {
         find:
-          '                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code;',
-        replace: '                    && true;',
+          '                        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code);',
+        replace: '                        && true);',
       },
     ],
   },
@@ -255,11 +262,11 @@ export const MUTATIONS: Mutation[] = [
     edits: [
       {
         find:
-          '                    && request.resource.data.uid == request.auth.uid\n' +
-          '                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code;',
+          '                        && request.resource.data.uid == request.auth.uid\n' +
+          '                        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code);',
         replace:
-          '                    && true\n' +
-          '                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code;',
+          '                        && true\n' +
+          '                        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code);',
       },
     ],
   },
@@ -268,8 +275,8 @@ export const MUTATIONS: Mutation[] = [
     label: 'referralCodes: the collection becomes listable',
     edits: [
       {
-        find: '      allow list: if isAdmin();\n      allow create: if isAuthenticated()',
-        replace: '      allow list: if isAuthenticated();\n      allow create: if isAuthenticated()',
+        find: '      allow list: if isAdmin();\n      allow create: if isAdmin()',
+        replace: '      allow list: if isAuthenticated();\n      allow create: if isAdmin()',
       },
     ],
   },

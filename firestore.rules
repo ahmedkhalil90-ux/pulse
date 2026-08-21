@@ -225,11 +225,15 @@ service cloud.firestore {
       // Never listable: otherwise this becomes a second way to enumerate
       // everyone, which is the problem it was introduced to solve.
       allow list: if isAdmin();
-      allow create, update: if isAuthenticated()
-                            && request.resource.data.keys().hasOnly(['uid'])
-                            && request.resource.data.uid == request.auth.uid
-                            && request.auth.token.email != null
-                            && request.auth.token.email.lower() == usernameLower + '@pulse.app';
+      // An admin may write any mapping: the backfill script has to create
+      // these for accounts that predate the change, and it cannot hold anyone
+      // else's auth token.
+      allow create, update: if isAdmin()
+                            || (isAuthenticated()
+                                && request.resource.data.keys().hasOnly(['uid'])
+                                && request.resource.data.uid == request.auth.uid
+                                && request.auth.token.email != null
+                                && request.auth.token.email.lower() == usernameLower + '@pulse.app');
       allow delete: if isAdmin();
     }
 
@@ -241,11 +245,12 @@ service cloud.firestore {
     match /referralCodes/{code} {
       allow get: if isAuthenticated();
       allow list: if isAdmin();
-      allow create: if isAuthenticated()
-                    && request.resource.data.keys().hasOnly(['uid'])
-                    && request.resource.data.uid == request.auth.uid
-                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code;
-      // A code, once claimed, is never reassigned.
+      allow create: if isAdmin()
+                    || (isAuthenticated()
+                        && request.resource.data.keys().hasOnly(['uid'])
+                        && request.resource.data.uid == request.auth.uid
+                        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code);
+      // A code, once claimed, is never reassigned by its holder.
       allow update, delete: if isAdmin();
     }
 

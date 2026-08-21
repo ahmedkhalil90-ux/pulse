@@ -17,7 +17,8 @@ import {
   query, 
   where, 
   getDocs, 
-  deleteDoc, 
+  deleteDoc,
+  deleteField, 
   writeBatch 
 } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -92,14 +93,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!profile.referralCode) {
               try {
                 const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                // Profile field first, because the mapping rule checks the
+                // code against it -- then the mapping. If the mapping write
+                // fails we clear the field again, so the `!profile.referralCode`
+                // guard re-runs next session instead of leaving the user
+                // holding a code nobody can redeem.
                 await updateDoc(doc(db, 'users', firebaseUser.uid), {
                   referralCode: newCode
                 });
-                // The mapping is what redeemReferral looks up, so a backfilled
-                // code is useless without it.
-                await setDoc(doc(db, 'referralCodes', newCode), {
-                  uid: firebaseUser.uid,
-                });
+                try {
+                  await setDoc(doc(db, 'referralCodes', newCode), {
+                    uid: firebaseUser.uid,
+                  });
+                } catch (mapErr) {
+                  await updateDoc(doc(db, 'users', firebaseUser.uid), {
+                    referralCode: deleteField()
+                  });
+                  throw mapErr;
+                }
               } catch (err) {
                 console.error('Failed to backfill referralCode:', err);
               }
@@ -116,7 +127,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 ? (mappingSnap.data().uid as string)
                 : null;
 
-              if (mappedUid && mappedUid !== firebaseUser.uid) {
+              // Self-heal: accounts that predate the mapping have none, and
+              // nothing else would ever create one. The caller's own token is
+              // the proof, so this is always permitted.
+              if (!mappingSnap.exists()) {
+                try {
+                  await setDoc(doc(db, 'usernames', usernameKey), {
+                    uid: firebaseUser.uid,
+                  });
+                } catch (healErr) {
+                  console.error('Could not backfill username mapping:', healErr);
+                }
+              }
+
+              // A mapping pointing at a profile that no longer exists would
+              // wedge the sweep forever: the batch below deletes users/{oldUid},
+              // isMigrating() requires that document to exist, and the whole
+              // atomic batch -- including the re-point that would repair the
+              // mapping -- fails with it.
+              const orphanExists =
+                mappedUid && mappedUid !== firebaseUser.uid
+                  ? (await getDoc(doc(db, 'users', mappedUid))).exists()
+                  : false;
+
+              if (mappedUid && mappedUid !== firebaseUser.uid && !orphanExists) {
+                try {
+                  await setDoc(doc(db, 'usernames', usernameKey), {
+                    uid: firebaseUser.uid,
+                  });
+                } catch (repointErr) {
+                  console.error('Could not re-point a stale mapping:', repointErr);
+                }
+              }
+
+              if (mappedUid && mappedUid !== firebaseUser.uid && orphanExists) {
                 const batch = writeBatch(db);
                 let migrated = false;
 
@@ -252,13 +296,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       await setDoc(doc(db, 'users', firebaseUser.uid), profile);
 
-      // Claim the lookup mappings. The username mapping is authorised by this
-      // account's own auth token, and the referral mapping is checked against
-      // the profile just written, so both have to follow the profile write.
-      await setDoc(doc(db, 'usernames', usernameKey), { uid: firebaseUser.uid });
-      await setDoc(doc(db, 'referralCodes', profile.referralCode), {
-        uid: firebaseUser.uid,
-      });
+      // The referral mapping is checked against the profile just written, so
+      // it has to follow it. Non-fatal: a code collision would otherwise
+      // reject signUp after the auth account and profile already exist,
+      // leaving the user unable to sign up OR sign in.
+      try {
+        await setDoc(doc(db, 'referralCodes', profile.referralCode), {
+          uid: firebaseUser.uid,
+        });
+      } catch (codeErr) {
+        console.error('Referral code mapping not claimed (code may collide):', codeErr);
+      }
+
+      // NOTE: the username mapping is claimed AFTER migration, further down.
+      // Claiming it here would make migration single-shot -- the next sign-in
+      // would see the mapping already pointing at us and never retry.
 
       // 4. If we have an old account to migrate from
       if (oldUid) {
@@ -298,7 +350,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       }
-      
+
+      // Claim the username mapping last. If migration above failed, the
+      // mapping still points at the orphan, so the next sign-in finds it and
+      // tries again -- which is what the old username scan gave us for free.
+      try {
+        await setDoc(doc(db, 'usernames', usernameKey), { uid: firebaseUser.uid });
+      } catch (mapErr) {
+        console.error('Username mapping not claimed; sign-in will retry:', mapErr);
+      }
+
       setUser(profile);
     } catch (error: any) {
       throw error;
