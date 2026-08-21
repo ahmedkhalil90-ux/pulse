@@ -190,6 +190,55 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
+    id: 'M15',
+    label: 'admin: any authenticated caller is treated as an admin',
+    edits: [
+      {
+        find:
+          '         (request.auth.uid == "7zNbw98m9jZYy8uTan7dqwolBud2" ||\n' +
+          '          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));',
+        replace: '         true;',
+      },
+    ],
+  },
+  {
+    id: 'M16',
+    label: 'admin: the email short-circuit is restored',
+    edits: [
+      {
+        find: '         (request.auth.uid == "7zNbw98m9jZYy8uTan7dqwolBud2" ||\n',
+        replace:
+          '         (request.auth.token.email == "ahmedkhalil90@gmail.com" ||\n' +
+          '          request.auth.token.email == "ahmedkhalil90@pulse.app" ||\n' +
+          '          request.auth.token.email == "ak@pulse.app" ||\n' +
+          '          request.auth.token.email == "ak2@pulse.app" ||\n',
+      },
+    ],
+  },
+  {
+    id: 'M17',
+    label: 'admin: the self-written role field is consulted again',
+    edits: [
+      {
+        find: '          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));',
+        replace:
+          '          exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||\n' +
+          '          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&\n' +
+          "           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));",
+      },
+    ],
+  },
+  {
+    id: 'M18',
+    label: 'admin: the roster becomes client-readable and writable',
+    edits: [
+      {
+        find: '    match /admins/{adminUid} {\n      allow read, write: if false;\n    }',
+        replace: '    match /admins/{adminUid} {\n      allow read, write: if isAuthenticated();\n    }',
+      },
+    ],
+  },
+  {
     id: 'M14',
     label: 'user_answers: questionId is no longer immutable',
     edits: [

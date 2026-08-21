@@ -73,14 +73,23 @@ service cloud.firestore {
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
+    // Admin status keys on UID alone.
+    //
+    // It previously trusted `request.auth.token.email` against a list that
+    // included ak@pulse.app and ahmedkhalil90@pulse.app -- but AuthProvider
+    // builds every credential as `${username}@pulse.app`, so signing up with
+    // the username `ak` produced a genuine token bearing an allow-listed
+    // address. Registering a username granted full admin over every
+    // collection. It also trusted users/{uid}.role, a field the owner could
+    // write to their own profile.
+    //
+    // Both are gone. A UID is assigned by Firebase Auth and cannot be chosen,
+    // and admins/{uid} is unreachable from any client -- see the match block
+    // below. Nothing a signup can self-assert reaches this function.
     function isAdmin() {
-      return isAuthenticated() && 
-         (request.auth.uid == "sj03xZJ5ucVRqDIXvBc5R3H2wmz1" ||
-          request.auth.token.email == "ahmedkhalil90@gmail.com" || 
-          request.auth.token.email == "ahmedkhalil90@pulse.app" ||
-          request.auth.token.email == "ak@pulse.app" ||
-          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+      return isAuthenticated() &&
+         (request.auth.uid == "7zNbw98m9jZYy8uTan7dqwolBud2" ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
     function isSystem(data) {
       return data.authorUid == 'pulse_originals_system';
@@ -188,6 +197,17 @@ service cloud.firestore {
              == resource.data.get('flags_unclear', 0) + resource.data.get('flags_inappropriate', 0) + 1
         && (!changed.hasAny(['status'])
             || (request.resource.data.status == 'flagged' && request.resource.data.flags >= 5));
+    }
+
+    // Admin roster. Presence of admins/{uid} grants admin.
+    //
+    // Sealed off from every client, in both directions. isAdmin() reaches it
+    // with exists(), and get()/exists() inside rules are not subject to the
+    // rules of the path they read -- so denying everything here costs nothing
+    // and means no client can grant itself admin, discover who is an admin, or
+    // remove one. Writes are console or Admin SDK only.
+    match /admins/{adminUid} {
+      allow read, write: if false;
     }
 
     // User profiles

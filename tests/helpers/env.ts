@@ -10,7 +10,10 @@ import {
 export const RULES_URL = new URL('../../firestore.rules', import.meta.url);
 
 export function readRules(): string {
-  return readFileSync(RULES_URL, 'utf8');
+  // Normalised to LF. On Windows the file can land with CRLF endings, which
+  // would silently break every multi-line mutation target -- the harness would
+  // report "target not found" for rules that are present and unchanged.
+  return readFileSync(RULES_URL, 'utf8').replace(/\r\n/g, '\n');
 }
 
 /** Firestore handle as handed out by rules-unit-testing. */
