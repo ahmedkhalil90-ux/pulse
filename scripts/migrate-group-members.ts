@@ -8,16 +8,19 @@
  *   npx tsx scripts/migrate-group-members.ts --dry-run
  *   npx tsx scripts/migrate-group-members.ts
  *
- * MUST RUN BEFORE the rules and client for this change are deployed.
+ * RUN ORDER: deploy the rules FIRST, then run this, then deploy the client.
  *
- * After the new rules are live, `members` may no longer be written and a
- * group whose memberCount does not match real membership documents is stuck:
- * the count can only move in step with a membership document, so a group with
- * memberCount 0 and five real members can never be corrected from the client.
- * Run this while the OLD rules are still deployed, when the members array is
- * still writable and the subcollection is not yet gated.
+ * It cannot run before the rules deploy -- the members subcollection has no
+ * match block in the old rules, so every write default-denies. It writes
+ * membership documents on behalf of other users, which only an admin may do,
+ * and that exception only exists in the new rules.
  *
- * Signs in as an admin, because it has to read every group.
+ * Between the rules deploy and this script, joining a group is briefly broken
+ * for groups that predate the change: memberCount will not match a roster that
+ * does not exist yet. Keep the window short.
+ *
+ * Signs in as an admin, because it has to read every group and write
+ * membership documents it does not own.
  *
  * Idempotent: a membership document that already exists is left alone, and
  * memberCount is recomputed from the array each time.
