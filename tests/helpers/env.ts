@@ -12,14 +12,14 @@ export const RULES_URL = new URL('../../firestore.rules', import.meta.url);
 export function readRules(): string {
   // Normalised to LF. On Windows the file can land with CRLF endings, which
   // would silently break every multi-line mutation target -- the harness would
-  // report "target not found" for rules that are present and unchanged.
+  // report "target not found" for real rules that are present and unchanged.
   return readFileSync(RULES_URL, 'utf8').replace(/\r\n/g, '\n');
 }
 
 /** Firestore handle as handed out by rules-unit-testing. */
 export type Db = ReturnType<RulesTestContext['firestore']>;
 
-export type Actor = { uid: string; email?: string };
+export type Actor = { uid: string; email?: string } | 'unauthenticated';
 
 export type Case = {
   /** Human-readable, used as the `it()` name and in the mutation report. */
@@ -69,7 +69,10 @@ export async function outcome(env: RulesTestEnvironment, c: Case): Promise<'allo
   await env.clearFirestore();
   if (c.seed) await env.withSecurityRulesDisabled(c.seed);
 
-  const ctx = env.authenticatedContext(c.as.uid, c.as.email ? { email: c.as.email } : {});
+  const ctx =
+    c.as === 'unauthenticated'
+      ? env.unauthenticatedContext()
+      : env.authenticatedContext(c.as.uid, c.as.email ? { email: c.as.email } : {});
   const op = c.run(ctx.firestore());
 
   let allowed = false;

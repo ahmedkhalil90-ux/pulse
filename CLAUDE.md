@@ -140,23 +140,56 @@ Do not introduce new UI libraries or a light theme without asking.
 
 **Safe to proceed on:** dependency updates, test coverage, copy fixes, UI polish, seed content generation, refactors that do not touch the above.
 
-**Testing:** never write a test that passes whether or not the behaviour it tests exists. Verify each new rules test fails when its rule is removed. Report the result of that verification.
+**Testing:** 106 tests. `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
+
+- **Rules — 39 tests** (`tests/rules.test.ts`, cases in `tests/cases/`). Vote integrity, flagging and boosting, the UID-migration takeover fix, answer-record ownership, game reads, group updates, results reads.
+- **Mutation verification** (`tests/mutation.test.ts`). Every deny-case names the mutation that should make it pass. The harness loosens that one guard in an in-memory copy of the rules, loads it into a throwaway emulator project, and asserts the case flips to allowed. `firestore.rules` is only ever read, never written. A mutation target that no longer matches exactly once throws, so a reworded rule breaks loudly instead of silently making a test vacuous.
+- **Credit economy** (`tests/credits.test.ts`) and **game mode** (`tests/game.test.ts`).
+
+Never write a test that passes whether or not the behaviour it tests exists. Every new rules test needs a matching mutation, and that mutation must be shown to kill it. Report the result of that verification — "all green" without it is not a report.
+
+**CI:** `.github/workflows/ci.yml` runs `npm ci`, `tsc --noEmit`, `npm run build`, then `npm test` on every push and pull request to `main`. Check its status at https://github.com/ahmedkhalil90-ux/pulse/actions — never assume it is green and never report it as green without having looked. Red CI is a blocker, not a nuisance.
 
 **Never:**
 - Commit secrets. `.env` is gitignored — keep it that way.
 - Deploy to production without being asked.
-- Delete or weaken a failing test to make a build pass. Report the failure instead.
+- **Weaken or delete a test to make a build pass. Report the failure instead** — whether the test or the code is wrong is Ahmed's call, not the agent's.
 - Force push to `main`.
 
 **Commit style:** short imperative subject line, one logical change per commit.
 
-## Known issues
+## Fixed and closed
 
-- Gemini API key currently reaches the client bundle. Interim fix applied for beta; proper fix is moving moderation to a Cloud Function (requires Blaze plan). **Must be resolved before public launch.**
-- No IAP integration yet.
-- Referral system not yet built.
-- Capacitor conversion not yet started.
+Do not re-report these, and do not "fix" them again.
+
+- Client env leak — `VITE_`-prefixed variables only; nothing else reaches the bundle.
+- Firestore vote-integrity rules — a vote must match the caller's own answer record, on their own option and their own demographic bucket.
+- `isMigrating` account-takeover vector — proof of ownership is the auth token, never a username field the caller can write.
+- Flagging and revisit write paths.
+- Moderation fails closed to `pending` on any error.
+- Publish path no longer hardcodes `status: live`.
+- Group feed filters on `status`.
+- Feed shuffle works — the seeder writes `random`.
+- Six credit bugs: boost overdraft, unlock overdraft, non-atomic boost, unlock double-charge, unlock race, daily bonus double-award.
+- Game scoring double-count — advancing is idempotent per question.
+
+## Open issues — in priority order
+
+1. **`game_questions` exposes `authorUsername` to every player from write time.** Contradicts the rule that the question author is revealed only on the final results screen. Leakage among players, not to outsiders.
+2. **`users` is listable by any authenticated user**, leaking every username with demographics and credit balance. Correct fix is a `usernames/{lowercased}` → `{uid}` mapping so lookups are `get` by document ID and `list` can be dropped. Note that uniqueness is enforced by Firebase Auth via the synthetic `username@pulse.app` address, not by this query — the query is an orphan-profile lookup and runs after sign-in, so tightening it does not break signup.
+3. **`groups` read exposes the full member UID list.** The members tab is meant to show a count only. Needs a denormalised `memberCount` plus membership in a subcollection; the array cannot be hidden while `array-contains` queries and join-by-code depend on it.
+4. **Results min-10 threshold and the 3-credit unlock are unenforceable in rules.** *(Blaze)* Rules are all-or-nothing on a document — they cannot withhold `demographics` or count a bucket before releasing it. Needs a callable Cloud Function.
+5. **Gemini key still reaches the client bundle.** *(Blaze)* Needs moderation in a Cloud Function. **Must be resolved before public launch.**
+6. **Vote replay.** *(Blaze)* A user who genuinely answered can repeat the `results` +1 indefinitely. Rules cannot detect a replay; needs a server-side transaction.
+7. **No password recovery.** *(Blaze)* Synthetic `username@pulse.app` addresses cannot receive reset mail, so resetting one needs the Admin SDK. A user who forgets their password loses their account, credits, and history permanently.
+8. **No admin moderation queue.** Questions correctly fail closed to `pending`, but nothing reviews them, so held questions sit indefinitely.
+
+**Items 4–7 are blocked on the Blaze plan and should ship together** — they are all the same piece of work, a Cloud Functions codebase, and doing them one at a time pays the setup cost four times.
+
+Also outstanding, unchanged: no IAP integration, referral system not built, Capacitor conversion not started.
 
 ## Current phase
 
-Pre-launch beta. Priorities in order: (1) anonymity enforcement is airtight, (2) test coverage on the three engines, (3) shareable beta link for friends, (4) real-device testing, (5) Capacitor and Play Store.
+Pre-beta. Priorities in order: (1) anonymity enforcement is airtight, (2) test coverage on the three engines, (3) shareable beta link for friends, (4) real-device testing, (5) Capacitor and Play Store.
+
+Branch `security/collection-reads` is **unmerged, unpushed, and undeployed**, awaiting smoke-testing of join-by-code for both games and groups. Those two flows read a document before the caller is a member, so they are the paths most likely to have been tightened too far.

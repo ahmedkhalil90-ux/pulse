@@ -190,6 +190,309 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
+    id: 'M15',
+    label: 'games: any authenticated user may read any game',
+    edits: [
+      {
+        find:
+          '      allow read: if isAuthenticated() && (\n' +
+          '                    request.auth.uid in resource.data.players ||\n' +
+          "                    resource.data.status == 'lobby'\n" +
+          '                  );',
+        replace: '      allow read: if isAuthenticated();',
+      },
+    ],
+  },
+  {
+    id: 'M16',
+    label: 'games: the read auth gate is removed',
+    edits: [
+      {
+        find:
+          '      allow read: if isAuthenticated() && (\n' +
+          '                    request.auth.uid in resource.data.players ||\n' +
+          "                    resource.data.status == 'lobby'\n" +
+          '                  );',
+        replace: '      allow read: if true;',
+      },
+    ],
+  },
+  {
+    id: 'M17',
+    label: 'groups: the self-only join/leave shape checks are removed',
+    edits: [
+      {
+        find:
+          '                        && (\n' +
+          '                          // Join: add yourself and no one else, having proved the code.\n' +
+          '                          (request.resource.data.members.hasAll(resource.data.members)\n' +
+          '                           && request.resource.data.members.size() == resource.data.members.size() + 1\n' +
+          '                           && !(request.auth.uid in resource.data.members)\n' +
+          '                           && request.auth.uid in request.resource.data.members\n' +
+          '                           && hasJoinProof(groupId, resource.data.inviteCode))\n' +
+          '                          ||\n' +
+          '                          // Leave: remove yourself and no one else.\n' +
+          '                          (resource.data.members.hasAll(request.resource.data.members)\n' +
+          '                           && request.resource.data.members.size() == resource.data.members.size() - 1\n' +
+          '                           && request.auth.uid in resource.data.members\n' +
+          '                           && !(request.auth.uid in request.resource.data.members))\n' +
+          '                        ));',
+        replace: '                        && true);',
+      },
+    ],
+  },
+  {
+    id: 'M18',
+    label: 'groups: update reverts to any authenticated user (the pre-fix rule)',
+    edits: [
+      {
+        find:
+          '      allow update: if isAdmin()\n' +
+          '                    || (isAuthenticated()\n' +
+          "                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])\n" +
+          '                        && (\n' +
+          '                          // Join: add yourself and no one else, having proved the code.\n' +
+          '                          (request.resource.data.members.hasAll(resource.data.members)\n' +
+          '                           && request.resource.data.members.size() == resource.data.members.size() + 1\n' +
+          '                           && !(request.auth.uid in resource.data.members)\n' +
+          '                           && request.auth.uid in request.resource.data.members\n' +
+          '                           && hasJoinProof(groupId, resource.data.inviteCode))\n' +
+          '                          ||\n' +
+          '                          // Leave: remove yourself and no one else.\n' +
+          '                          (resource.data.members.hasAll(request.resource.data.members)\n' +
+          '                           && request.resource.data.members.size() == resource.data.members.size() - 1\n' +
+          '                           && request.auth.uid in resource.data.members\n' +
+          '                           && !(request.auth.uid in request.resource.data.members))\n' +
+          '                        ));',
+        replace: '      allow update: if isAuthenticated();',
+      },
+    ],
+  },
+  {
+    id: 'M20',
+    label: 'groups: joining no longer requires proof of the invite code',
+    edits: [
+      {
+        find:
+          '      return exists(/databases/$(database)/documents/groups/$(groupId)/joinRequests/$(request.auth.uid))\n' +
+          '             && get(/databases/$(database)/documents/groups/$(groupId)/joinRequests/$(request.auth.uid)).data.code == inviteCode;',
+        replace: '      return true;',
+      },
+    ],
+  },
+  {
+    id: 'M24',
+    label: 'groups: a proof is accepted on existence alone, without matching the current code',
+    edits: [
+      {
+        find:
+          '\n             && get(/databases/$(database)/documents/groups/$(groupId)/joinRequests/$(request.auth.uid)).data.code == inviteCode;',
+        replace: ';',
+      },
+    ],
+  },
+  {
+    id: 'M21',
+    label: 'groups: the submitted code is no longer compared to the group',
+    edits: [
+      {
+        find:
+          '                      && request.resource.data.code ==\n' +
+          '                           get(/databases/$(database)/documents/groups/$(groupId)).data.inviteCode;',
+        replace: '                      && true;',
+      },
+    ],
+  },
+  {
+    id: 'M22',
+    label: 'groups: a proof may be created for any UID, not just the caller',
+    edits: [
+      {
+        find: '                      && request.auth.uid == requesterUid\n',
+        replace: '                      && true\n',
+      },
+    ],
+  },
+  {
+    id: 'M23',
+    label: 'groups: the proof field allowlist is removed',
+    edits: [
+      {
+        find: "                      && request.resource.data.keys().hasOnly(['code'])\n",
+        replace: '                      && true\n',
+      },
+    ],
+  },
+  {
+    id: 'M25',
+    label: 'users: the role guard is removed, allowing self-promotion to admin',
+    edits: [
+      {
+        find:
+          "                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])\n" +
+          '                        || isAdmin());',
+        replace: '                    && true;',
+      },
+    ],
+  },
+  {
+    id: 'M26',
+    label: 'games: joining no longer requires the game to be in the lobby',
+    edits: [
+      {
+        find: "        (resource.data.status == 'lobby' &&\n",
+        replace: '        (true &&\n',
+      },
+    ],
+  },
+  {
+    id: 'M27',
+    label: 'games: the added player need not be the caller',
+    edits: [
+      {
+        find: '         !(request.auth.uid in resource.data.players) &&\n',
+        replace: '         true &&\n',
+      },
+    ],
+  },
+  {
+    id: 'M28',
+    label: 'games: the join field allowlist is removed',
+    edits: [
+      {
+        find:
+          "         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'scores']) &&\n",
+        replace: '         true &&\n',
+      },
+    ],
+  },
+  {
+    id: 'M29',
+    label: 'games: leaving may remove someone other than the caller',
+    edits: [
+      {
+        find: '         !(request.auth.uid in request.resource.data.players)) ||\n',
+        replace: '         true) ||\n',
+      },
+    ],
+  },
+  {
+    id: 'M30',
+    label: 'games: the host field allowlist is removed',
+    edits: [
+      {
+        find:
+          '         request.resource.data.diff(resource.data).affectedKeys().hasOnly(\n' +
+          "           ['status', 'currentQuestionIndex', 'scores', 'scoredQuestions',\n" +
+          "            'deadline', 'questionsPerPlayer', 'lastUpdated'])) ||",
+        replace: '         true) ||',
+      },
+    ],
+  },
+  {
+    id: 'M31',
+    label: 'games: the player field allowlist is removed',
+    edits: [
+      {
+        find:
+          '         request.resource.data.diff(resource.data).affectedKeys().hasOnly(\n' +
+          "           ['answers', 'predictions', 'playerQuestions', 'questions', 'lastUpdated']) &&\n",
+        replace: '         true &&\n',
+      },
+    ],
+  },
+  {
+    id: 'M32',
+    label: "games: a player may write another player's map entries",
+    edits: [
+      {
+        find:
+          '      return newData.get(field, {}).diff(oldData.get(field, {}))\n' +
+          '               .affectedKeys().hasOnly([request.auth.uid]);',
+        replace: '      return true;',
+      },
+    ],
+  },
+  {
+    id: 'M33',
+    label: 'games: the question list need not be append-only',
+    edits: [
+      {
+        find:
+          "         request.resource.data.get('questions', []).hasAll(resource.data.get('questions', []))) ||",
+        replace: '         true) ||',
+      },
+    ],
+  },
+  {
+    id: 'M34',
+    label: 'users: profile creation may carry a role field',
+    edits: [
+      {
+        find: "                    && (!request.resource.data.keys().hasAny(['role']) || isAdmin());",
+        replace: '                    && true;',
+      },
+    ],
+  },
+  {
+    id: 'M35',
+    label: 'users: a profile may be created for any UID',
+    edits: [
+      {
+        find: '      allow create: if isOwner(userId)\n',
+        replace: '      allow create: if isAuthenticated()\n',
+      },
+    ],
+  },
+  {
+    id: 'M36',
+    label: 'games: status may move in any direction, including back to lobby',
+    edits: [
+      {
+        find:
+          "      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status'])\n" +
+          "             || (resource.data.status == 'lobby' && request.resource.data.status == 'active')\n" +
+          "             || (resource.data.status == 'active' && request.resource.data.status == 'finished');",
+        replace: '      return true;',
+      },
+    ],
+  },
+  {
+    id: 'M37',
+    label: 'games: a joiner may rewrite scores beyond their own entry',
+    edits: [
+      {
+        find: "         ownKeyOnly(resource.data, request.resource.data, 'scores') &&\n",
+        replace: '         true &&\n',
+      },
+    ],
+  },
+  {
+    id: 'M19',
+    label: 'results: the read auth gate is removed',
+    edits: [
+      {
+        find:
+          '      // it is. See AUTOMATION_SETUP.md finding 2.\n' +
+          '      allow read: if isAuthenticated();',
+        replace:
+          '      // it is. See AUTOMATION_SETUP.md finding 2.\n' +
+          '      allow read: if true;',
+      },
+    ],
+  },
+  {
+    id: 'M14',
+    label: 'user_answers: questionId is no longer immutable',
+    edits: [
+      {
+        find:
+          '                        && request.resource.data.questionId == resource.data.questionId);',
+        replace: '                        && true);',
+      },
+    ],
+  },
+  {
     id: 'M50',
     label: 'admin: any authenticated caller is treated as an admin',
     edits: [
@@ -235,17 +538,6 @@ export const MUTATIONS: Mutation[] = [
       {
         find: '    match /admins/{adminUid} {\n      allow read, write: if false;\n    }',
         replace: '    match /admins/{adminUid} {\n      allow read, write: if isAuthenticated();\n    }',
-      },
-    ],
-  },
-  {
-    id: 'M14',
-    label: 'user_answers: questionId is no longer immutable',
-    edits: [
-      {
-        find:
-          '                        && request.resource.data.questionId == resource.data.questionId);',
-        replace: '                        && true);',
       },
     ],
   },

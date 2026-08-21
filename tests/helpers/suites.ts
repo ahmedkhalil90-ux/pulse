@@ -1,9 +1,13 @@
 import type { Case } from './env';
 import { adminIdentityCases } from '../cases/adminIdentity.cases';
+import { gamesCases } from '../cases/games.cases';
+import { groupsCases } from '../cases/groups.cases';
 import { migrationCases } from '../cases/migration.cases';
 import { questionsCases } from '../cases/questions.cases';
 import { resultsCases } from '../cases/results.cases';
+import { resultsReadCases } from '../cases/resultsRead.cases';
 import { userAnswersCases } from '../cases/userAnswers.cases';
+import { usersRoleCases } from '../cases/usersRole.cases';
 
 /**
  * The single source of truth for every rules case. Both the real suite and the
@@ -12,10 +16,14 @@ import { userAnswersCases } from '../cases/userAnswers.cases';
  */
 export const SUITES: Array<[string, Case[]]> = [
   ['results/{questionId}', resultsCases],
+  ['results/{questionId} reads', resultsReadCases],
   ['questions/{questionId}', questionsCases],
   ['isMigrating() via users/{oldUid}', migrationCases],
   ['user_answers/{answerId}', userAnswersCases],
   ['admin identity', adminIdentityCases],
+  ['games/{gameId} reads', gamesCases],
+  ['groups/{groupId} updates', groupsCases],
+  ['users/{userId} role escalation', usersRoleCases],
 ];
 
 export const ALL_CASES: Case[] = SUITES.flatMap(([, cases]) => cases);
