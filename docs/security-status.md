@@ -2,7 +2,7 @@
 
 Every finding from the security work to date, with its current state.
 
-**Nothing is merged, deployed, or on Blaze.** Nine branches are pushed and
+**Nothing is merged, deployed, or on Blaze.** Ten branches are pushed and
 waiting. Merge order matters — see the bottom of this file.
 
 ---
@@ -20,6 +20,7 @@ waiting. Merge order matters — see the bottom of this file.
 | 7 | `security/game-author-privacy` | Question authorship hidden until the game finishes | 220 pass |
 | 8 | `security/question-list-integrity` | Question submission bounded; game screens no longer spin forever | 225 pass |
 | 9 | `feature/moderation-queue` | Admin review of questions held at `pending` | 230 pass |
+| 10 | `security/skips-and-unlocks` | Skip and unlock records covered and tightened | 253 pass |
 
 Compare links are in `docs/overnight-log-2026-08-21.md`.
 
@@ -180,6 +181,13 @@ because rules cannot compare list positions. → branch 8
 nothing reviewed them. Built, admin-gated by the rules rather than by a
 client-side claim. → branch 9
 
+**Re-skipping a question failed with a permission error.** The skip id is
+deterministic, so a repeat is an update, and update was admin-only. Owners may
+now rewrite their own. → branch 10
+
+**A user could delete an unlock they had paid for** and be charged again.
+`write` on unlockedDemographics covered delete. Now create-only. → branch 10
+
 **~20 silent dead-end catch blocks.** `handleFirestoreError` logged and threw;
 the throw escaped async click handlers as an unhandled rejection, so a failure
 showed the user nothing at all. It now toasts and returns. Several call sites
@@ -257,6 +265,13 @@ a chosen question to index 0; appending an ID from another game deadlocks the
 session.
 
 **`isValidUser` and `isSystem` are defined and never referenced.**
+
+**No UI tests anywhere.** All 253 tests are rules, credits and game logic.
+No component renders are verified, including the new moderation queue.
+
+**Neither migration script has ever run**, not even `--dry-run` against real
+data. They are the two things that must work at deploy time and the least
+exercised code in the repo.
 
 ### Blocked on Blaze
 
