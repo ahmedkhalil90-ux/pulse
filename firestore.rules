@@ -112,6 +112,12 @@ service cloud.firestore {
                get(/databases/$(database)/documents/users/$(oldUid)).data.username.lower() + '@pulse.app';
     }
 
+    // Membership is a document, not an array entry -- see match /groups below.
+    function isGroupMember(groupId) {
+      return isAuthenticated()
+             && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
     // Proof that the caller knew this group's CURRENT invite code.
     //
     // Existence alone would make the proof a bearer token: it outlives
@@ -129,6 +135,43 @@ service cloud.firestore {
     function ownKeyOnly(oldData, newData, field) {
       return newData.get(field, {}).diff(oldData.get(field, {}))
                .affectedKeys().hasOnly([request.auth.uid]);
+    }
+
+    // A player may ADD their answer or prediction for a question, never change
+    // or remove one already recorded.
+    //
+    // Without this, a player looking at the results screen -- which renders as
+    // soon as everyone has answered and predicted, before the host advances --
+    // could flip their own answer, move the majority, and rewrite every
+    // player's score, because scoring reads the document at advance time.
+    function ownEntriesAppendOnly(oldData, newData, field) {
+      return newData.get(field, {}).get(request.auth.uid, {})
+               .diff(oldData.get(field, {}).get(request.auth.uid, {}))
+               .changedKeys().size() == 0
+             && newData.get(field, {}).get(request.auth.uid, {})
+                  .diff(oldData.get(field, {}).get(request.auth.uid, {}))
+                  .removedKeys().size() == 0;
+    }
+
+    // Submitting questions: the list only ever grows, by exactly this game's
+    // per-player quota, and only once per player.
+    //
+    // Plain containment was not enough. `hasAll` is a subset test, so it
+    // permitted reordering -- which moves a chosen question to index 0, where
+    // currentQuestionIndex starts -- as well as duplication and unbounded
+    // padding. Requiring an exact size increase rejects a pure reorder, since
+    // that leaves the size unchanged.
+    //
+    // A write that does not touch `questions` passes untouched, so answering
+    // and predicting are unaffected.
+    function questionSubmissionOk() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['questions'])
+             || (request.resource.data.questions.hasAll(resource.data.get('questions', []))
+                 && request.resource.data.questions.size()
+                      == resource.data.get('questions', []).size() + resource.data.questionsPerPlayer
+                 && !(request.auth.uid in resource.data.get('playerQuestions', {}).keys())
+                 && request.resource.data.get('playerQuestions', {}).get(request.auth.uid, []).size()
+                      == resource.data.questionsPerPlayer);
     }
 
     // Game status only ever moves forward: lobby -> active -> finished.
@@ -273,8 +316,19 @@ service cloud.firestore {
       allow delete: if isOwner(userId) || isAdmin() || isMigrating(userId);
 
       // Unlocked demographics subcollection
+      // Proof that this user has paid to see one question's demographic
+      // breakdown. `write` used to cover create, update and delete with no
+      // field validation.
+      //
+      // An unlock is permanent. CLAUDE.md: once unlocked for a question, never
+      // charge again -- which only holds if the record cannot be removed, since
+      // deleting it is exactly how a user would be charged a second time.
       match /unlockedDemographics/{questionId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAdmin()
+                      || (isOwner(userId)
+                          && request.resource.data.keys().hasOnly(['unlockedAt']));
+        allow update, delete: if isAdmin();
       }
     }
     
@@ -338,7 +392,7 @@ service cloud.firestore {
                       // Group question (must be member of group)
                       (request.resource.data.isPublic == false && 
                        request.resource.data.groupId != null &&
-                       request.auth.uid in get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.members &&
+                       isGroupMember(request.resource.data.groupId) &&
                        request.resource.data.authorUid == request.auth.uid) ||
                       // System questions
                       request.resource.data.authorUid == 'pulse_originals_system' ||
@@ -416,39 +470,63 @@ service cloud.firestore {
 
     // Groups
     match /groups/{groupId} {
+      // The document no longer carries a `members` array. It held every
+      // member's UID and was readable by anyone signed in, while the members
+      // tab is only ever meant to show a count. Membership now lives in the
+      // members subcollection below, where each document is private to its
+      // owner, and the group carries `memberCount` instead.
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() &&
                     request.resource.data.adminUid == request.auth.uid &&
-                    request.resource.data.members == [request.auth.uid];
+                    request.resource.data.memberCount == 1 &&
+                    !request.resource.data.keys().hasAny(['members']);
 
-      // The client has exactly two update paths: join (arrayUnion self) and
-      // leave (arrayRemove self), both touching `members` only. Renaming,
-      // reassigning the admin, rotating the invite code, and adding or
-      // removing anyone else have no call site and are refused.
-      //
-      // Joining is gated on the invite code. The code never appears in the
-      // members write and rules cannot see a query's where-clauses, so proof
-      // is staged in the joinRequests subcollection below, where the code is
-      // compared against this document server-side. The join branch only has
-      // to confirm that proof exists.
+      // Only `memberCount` may change, and only by one, and only in step with
+      // the caller's own membership document. Renaming, reassigning the admin
+      // and rotating the invite code still have no call site and are refused.
       allow update: if isAdmin()
                     || (isAuthenticated()
-                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount'])
                         && (
-                          // Join: add yourself and no one else, having proved the code.
-                          (request.resource.data.members.hasAll(resource.data.members)
-                           && request.resource.data.members.size() == resource.data.members.size() + 1
-                           && !(request.auth.uid in resource.data.members)
-                           && request.auth.uid in request.resource.data.members
-                           && hasJoinProof(groupId, resource.data.inviteCode))
+                          // Join: your membership document now exists, so the
+                          // count goes up by one. The invite-code proof is
+                          // enforced on that document's create.
+                          (request.resource.data.memberCount == resource.data.memberCount + 1
+                           && isGroupMember(groupId))
                           ||
-                          // Leave: remove yourself and no one else.
-                          (resource.data.members.hasAll(request.resource.data.members)
-                           && request.resource.data.members.size() == resource.data.members.size() - 1
-                           && request.auth.uid in resource.data.members
-                           && !(request.auth.uid in request.resource.data.members))
+                          // Leave: your membership document is gone, so the
+                          // count goes down by one.
+                          (request.resource.data.memberCount == resource.data.memberCount - 1
+                           && !isGroupMember(groupId))
                         ));
       allow delete: if isAuthenticated() && (request.auth.uid == resource.data.adminUid || isAdmin());
+
+      // Membership, one document per member.
+      //
+      // Read is restricted to the member themselves, so no client can
+      // enumerate a group's roster -- the members tab shows `memberCount` off
+      // the parent document and nothing else. "My groups" is a collectionGroup
+      // query on `uid`, which returns only the caller's own documents.
+      match /members/{memberUid} {
+        allow get: if isAdmin()
+                   || (isAuthenticated() && resource.data.uid == request.auth.uid);
+        // Keyed on the document field rather than the path wildcard, because
+        // that is what Firestore can prove a query's filter against: a
+        // collectionGroup query for `uid == me` is allowed, and any broader
+        // query is refused outright rather than per document.
+        allow list: if isAuthenticated() && resource.data.uid == request.auth.uid;
+        // Joining: yourself only, having proved the invite code.
+        allow create: if isOwner(memberUid)
+                      && request.resource.data.keys().hasOnly(['uid', 'joinedAt'])
+                      && request.resource.data.uid == request.auth.uid
+                      && hasJoinProof(groupId, get(/databases/$(database)/documents/groups/$(groupId)).data.inviteCode);
+        allow update: if false;
+        // Leaving: yourself only. The group admin may also remove a member.
+        allow delete: if isOwner(memberUid)
+                      || isAdmin()
+                      || (isAuthenticated()
+                          && request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.adminUid);
+      }
 
       // Proof that the caller knew the invite code.
       //
@@ -489,8 +567,26 @@ service cloud.firestore {
     // Skipped Questions
     match /skipped_questions/{skipId} {
       allow read: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAdmin();
+
+      allow create: if isAdmin()
+                    || (isAuthenticated()
+                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])
+                        && request.resource.data.userId == request.auth.uid);
+
+      // Update matters because the skip id is deterministic --
+      // `${uid}_${questionId}` -- so skipping the same question again, or any
+      // retry after a failed write, is a setDoc over an existing document,
+      // which Firestore evaluates as an update. Restricting this to admins
+      // made re-skipping fail with a permission error.
+      //
+      // Both sides are pinned to the caller, so a record can never be
+      // reassigned or overwritten by anyone else.
+      allow update: if isAdmin()
+                    || (isAuthenticated()
+                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])
+                        && request.resource.data.userId == request.auth.uid
+                        && resource.data.userId == request.auth.uid);
+
       allow delete: if isAdmin() || isOwner(resource.data.userId);
     }
 
@@ -554,9 +650,11 @@ service cloud.firestore {
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
            ['answers', 'predictions', 'playerQuestions', 'questions', 'lastUpdated']) &&
          ownKeyOnly(resource.data, request.resource.data, 'answers') &&
+         ownEntriesAppendOnly(resource.data, request.resource.data, 'answers') &&
+         ownEntriesAppendOnly(resource.data, request.resource.data, 'predictions') &&
          ownKeyOnly(resource.data, request.resource.data, 'predictions') &&
          ownKeyOnly(resource.data, request.resource.data, 'playerQuestions') &&
-         request.resource.data.get('questions', []).hasAll(resource.data.get('questions', []))) ||
+         questionSubmissionOk()) ||
 
         isAdmin()
       );
@@ -565,17 +663,40 @@ service cloud.firestore {
     }
 
     // Game Questions
+    // Game questions carry NO authorship. They used to hold authorUid and
+    // authorUsername, readable by every player from the moment of submission,
+    // while CLAUDE.md says the author is revealed only on the final results
+    // screen. Authorship now lives in game_question_authors below, gated on the
+    // game being finished.
     match /game_questions/{questionId} {
-      // Read allowed if player is in the game the question belongs to
-      allow read: if isAuthenticated() && 
+      allow read: if isAuthenticated() &&
                     request.auth.uid in get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.players;
-      
-      // Create allowed for players in the game
-      allow create: if isAuthenticated() && 
+
+      allow create: if isAuthenticated() &&
+                    request.resource.data.keys().hasOnly(['gameId', 'text', 'options', 'createdAt']) &&
+                    request.auth.uid in get(/databases/$(database)/documents/games/$(request.resource.data.gameId)).data.players;
+
+      // No client path updates or deletes a game question.
+      allow update, delete: if isAdmin();
+    }
+
+    // Who submitted which game question.
+    //
+    // Readable only once the game is finished, which is when the summary screen
+    // is allowed to attribute questions. Before that a player can read the
+    // question but not who wrote it.
+    match /game_question_authors/{questionId} {
+      allow read: if isAuthenticated() &&
+                    request.auth.uid in get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.players &&
+                    get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.status == 'finished';
+
+      allow create: if isAuthenticated() &&
+                    request.resource.data.keys().hasOnly(['gameId', 'authorUid', 'authorUsername']) &&
                     request.resource.data.authorUid == request.auth.uid &&
                     request.auth.uid in get(/databases/$(database)/documents/games/$(request.resource.data.gameId)).data.players;
-      
-      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.authorUid == request.auth.uid);
+
+      // Immutable: attribution is written once, at submission.
+      allow update, delete: if isAdmin();
     }
   }
 }

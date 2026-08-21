@@ -39,7 +39,8 @@ import {
 import { useAuth, AuthProvider } from './components/AuthProvider';
 import { db, auth, handleFirestoreError, OperationType } from './lib/firebase';
 import { 
-  collection, 
+  collection,
+  collectionGroup, 
   query, 
   where, 
   orderBy, 
@@ -64,6 +65,7 @@ import {
   boostQuestion,
   unlockDemographics,
 } from './lib/credits';
+import { ModerationQueue } from './components/ModerationQueue';
 import { Question, QuestionResult, UserProfile, Group, UserAnswer } from './types';
 import { moderateQuestion } from './services/geminiService';
 import { Toaster, toast } from 'sonner';
@@ -1722,7 +1724,7 @@ function GroupsView() {
                 <h3 className="font-bold text-lg">{group.name}</h3>
                 <div className="flex items-center gap-2 text-zinc-500 text-xs">
                   <Users className="w-3 h-3" />
-                  <span>{group.members.length} Members</span>
+                  <span>{group.memberCount} Members</span>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-zinc-700" />
@@ -1912,14 +1914,14 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
           </div>
           <div className={cn(
             "bg-zinc-900/50 border rounded-2xl p-4 flex flex-col justify-center items-center min-w-[80px]",
-            group.members.length < 5 ? "border-amber-500/20" : "border-white/5"
+            group.memberCount < 5 ? "border-amber-500/20" : "border-white/5"
           )}>
             <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">Members</span>
-            <p className="font-bold text-lg">{group.members.length}</p>
+            <p className="font-bold text-lg">{group.memberCount}</p>
           </div>
         </div>
 
-        {group.members.length < 5 && (
+        {group.memberCount < 5 && (
           <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 flex items-start gap-3">
             <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
             <div className="space-y-1">
@@ -2021,7 +2023,7 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
           <div className="space-y-1">
             <h3 className="font-bold text-lg">Anonymity First</h3>
             <p className="text-zinc-500 text-sm">
-              We only show the total member count ({group.members.length}). Individual usernames are hidden to ensure everyone feels safe sharing their true pulse.
+              We only show the total member count ({group.memberCount}). Individual usernames are hidden to ensure everyone feels safe sharing their true pulse.
             </p>
           </div>
         </div>
@@ -2058,7 +2060,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void, onCreat
         description: description.trim(),
         inviteCode,
         adminUid: user.uid,
-        members: [user.uid],
+        memberCount: 1,
         createdAt: new Date().toISOString()
       };
 
@@ -2140,7 +2142,10 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
       const groupDoc = snapshot.docs[0];
       const groupData = groupDoc.data() as Group;
 
-      if (groupData.members.includes(user.uid)) {
+      const alreadyMember = await getDoc(
+        doc(db, 'groups', groupDoc.id, 'members', user.uid)
+      );
+      if (alreadyMember.exists()) {
         toast.error('You are already a member');
         onJoined({ id: groupDoc.id, ...groupData });
         onClose();
@@ -2154,23 +2159,26 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
         code: code.toUpperCase()
       });
 
+      // Membership is its own document. The invite-code proof is enforced on
+      // its create; the count update below only has to confirm it exists.
+      await setDoc(doc(db, 'groups', groupDoc.id, 'members', user.uid), {
+        uid: user.uid,
+        joinedAt: new Date().toISOString()
+      });
+
       await updateDoc(groupDoc.ref, {
-        members: arrayUnion(user.uid)
+        memberCount: increment(1)
       });
 
       toast.success(`Joined ${groupData.name}`);
-      onJoined({ id: groupDoc.id, ...groupData, members: [...groupData.members, user.uid] });
+      onJoined({ id: groupDoc.id, ...groupData, memberCount: groupData.memberCount + 1 });
       onClose();
     } catch (error) {
-      // The join is two writes now, so a failure between them must say
-      // something. handleFirestoreError logs and rethrows; letting that escape
-      // an async onClick leaves the modal open with no message at all.
+      // The join is several writes now, so a failure partway must say
+      // something specific -- the generic message from handleFirestoreError
+      // would not tell the user to check the code.
       toast.error('Could not join that group. Check the code and try again.');
-      try {
-        handleFirestoreError(error, OperationType.UPDATE, 'groups');
-      } catch {
-        // Already surfaced above; keep the modal usable.
-      }
+      handleFirestoreError(error, OperationType.UPDATE, 'groups');
     } finally {
       setLoading(false);
     }

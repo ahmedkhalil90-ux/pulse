@@ -218,53 +218,111 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M17',
-    label: 'groups: the self-only join/leave shape checks are removed',
+    id: 'M18',
+    label: 'groups: update reverts to any authenticated user',
     edits: [
       {
         find:
           '                        && (\n' +
-          '                          // Join: add yourself and no one else, having proved the code.\n' +
-          '                          (request.resource.data.members.hasAll(resource.data.members)\n' +
-          '                           && request.resource.data.members.size() == resource.data.members.size() + 1\n' +
-          '                           && !(request.auth.uid in resource.data.members)\n' +
-          '                           && request.auth.uid in request.resource.data.members\n' +
-          '                           && hasJoinProof(groupId, resource.data.inviteCode))\n' +
+          '                          // Join: your membership document now exists, so the\n' +
+          '                          // count goes up by one. The invite-code proof is\n' +
+          "                          // enforced on that document's create.\n" +
+          '                          (request.resource.data.memberCount == resource.data.memberCount + 1\n' +
+          '                           && isGroupMember(groupId))\n' +
           '                          ||\n' +
-          '                          // Leave: remove yourself and no one else.\n' +
-          '                          (resource.data.members.hasAll(request.resource.data.members)\n' +
-          '                           && request.resource.data.members.size() == resource.data.members.size() - 1\n' +
-          '                           && request.auth.uid in resource.data.members\n' +
-          '                           && !(request.auth.uid in request.resource.data.members))\n' +
+          '                          // Leave: your membership document is gone, so the\n' +
+          '                          // count goes down by one.\n' +
+          '                          (request.resource.data.memberCount == resource.data.memberCount - 1\n' +
+          '                           && !isGroupMember(groupId))\n' +
           '                        ));',
         replace: '                        && true);',
+      },
+      {
+        find:
+          "                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount'])\n",
+        replace: '                        && true\n',
       },
     ],
   },
   {
-    id: 'M18',
-    label: 'groups: update reverts to any authenticated user (the pre-fix rule)',
+    id: 'M38',
+    label: 'groups: a membership document is readable by anyone',
     edits: [
       {
         find:
-          '      allow update: if isAdmin()\n' +
-          '                    || (isAuthenticated()\n' +
-          "                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])\n" +
-          '                        && (\n' +
-          '                          // Join: add yourself and no one else, having proved the code.\n' +
-          '                          (request.resource.data.members.hasAll(resource.data.members)\n' +
-          '                           && request.resource.data.members.size() == resource.data.members.size() + 1\n' +
-          '                           && !(request.auth.uid in resource.data.members)\n' +
-          '                           && request.auth.uid in request.resource.data.members\n' +
-          '                           && hasJoinProof(groupId, resource.data.inviteCode))\n' +
-          '                          ||\n' +
-          '                          // Leave: remove yourself and no one else.\n' +
-          '                          (resource.data.members.hasAll(request.resource.data.members)\n' +
-          '                           && request.resource.data.members.size() == resource.data.members.size() - 1\n' +
-          '                           && request.auth.uid in resource.data.members\n' +
-          '                           && !(request.auth.uid in request.resource.data.members))\n' +
-          '                        ));',
-        replace: '      allow update: if isAuthenticated();',
+          '        allow get: if isAdmin()\n' +
+          '                   || (isAuthenticated() && resource.data.uid == request.auth.uid);',
+        replace: '        allow get: if isAuthenticated();',
+      },
+    ],
+  },
+  {
+    id: 'M39',
+    label: 'groups: the roster becomes listable',
+    edits: [
+      {
+        find: '        allow list: if isAuthenticated() && resource.data.uid == request.auth.uid;',
+        replace: '        allow list: if isAuthenticated();',
+      },
+    ],
+  },
+    {
+    id: 'M41',
+    label: 'groups: a membership may be created for any UID',
+    edits: [
+      {
+        find: '        allow create: if isOwner(memberUid)\n',
+        replace: '        allow create: if isAuthenticated()\n',
+      },
+    ],
+  },
+  {
+    id: 'M42',
+    label: 'groups: the membership field allowlist is removed',
+    edits: [
+      {
+        find: "                      && request.resource.data.keys().hasOnly(['uid', 'joinedAt'])\n",
+        replace: '                      && true\n',
+      },
+    ],
+  },
+  {
+    id: 'M43',
+    label: 'groups: memberCount need not track the membership documents',
+    edits: [
+      {
+        find: '                          (request.resource.data.memberCount == resource.data.memberCount + 1\n                           && isGroupMember(groupId))\n                          ||\n                          // Leave: your membership document is gone, so the\n                          // count goes down by one.\n                          (request.resource.data.memberCount == resource.data.memberCount - 1\n                           && !isGroupMember(groupId))',
+        replace: '                          true',
+      },
+    ],
+  },
+  {
+    id: 'M44',
+    label: 'groups: a count update may touch other fields',
+    edits: [
+      {
+        find: "                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount'])\n",
+        replace: '                        && true\n',
+      },
+    ],
+  },
+  {
+    id: 'M45',
+    label: 'groups: any member may delete any membership',
+    edits: [
+      {
+        find: '        allow delete: if isOwner(memberUid)\n',
+        replace: '        allow delete: if isAuthenticated()\n',
+      },
+    ],
+  },
+  {
+    id: 'M46',
+    label: 'groups: create no longer constrains memberCount or forbids members',
+    edits: [
+      {
+        find: "                    request.resource.data.memberCount == 1 &&\n                    !request.resource.data.keys().hasAny(['members']);",
+        replace: '                    true;',
       },
     ],
   },
@@ -415,12 +473,47 @@ export const MUTATIONS: Mutation[] = [
   },
   {
     id: 'M33',
-    label: 'games: the question list need not be append-only',
+    label: 'games: the question-submission shape is unchecked entirely',
     edits: [
       {
         find:
-          "         request.resource.data.get('questions', []).hasAll(resource.data.get('questions', []))) ||",
-        replace: '         true) ||',
+          "      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['questions'])\n" +
+          "             || (request.resource.data.questions.hasAll(resource.data.get('questions', []))\n" +
+          '                 && request.resource.data.questions.size()\n' +
+          "                      == resource.data.get('questions', []).size() + resource.data.questionsPerPlayer\n" +
+          "                 && !(request.auth.uid in resource.data.get('playerQuestions', {}).keys())\n" +
+          "                 && request.resource.data.get('playerQuestions', {}).get(request.auth.uid, []).size()\n" +
+          '                      == resource.data.questionsPerPlayer);',
+        replace: '      return true;',
+      },
+    ],
+  },
+  {
+    id: 'M53a',
+    label: 'games: the per-player quota is no longer enforced on either side',
+    edits: [
+      {
+        find:
+          '                 && request.resource.data.questions.size()\n' +
+          "                      == resource.data.get('questions', []).size() + resource.data.questionsPerPlayer\n",
+        replace: '                 && true\n',
+      },
+      {
+        find:
+          "                 && request.resource.data.get('playerQuestions', {}).get(request.auth.uid, []).size()\n" +
+          '                      == resource.data.questionsPerPlayer);',
+        replace: '                 && true);',
+      },
+    ],
+  },
+  {
+    id: 'M54a',
+    label: 'games: a player may submit questions more than once',
+    edits: [
+      {
+        find:
+          "                 && !(request.auth.uid in resource.data.get('playerQuestions', {}).keys())\n",
+        replace: '                 && true\n',
       },
     ],
   },
@@ -468,6 +561,22 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
+    id: 'M47',
+    label: 'games: a player may change an answer or prediction already recorded',
+    edits: [
+      {
+        find:
+          '      return newData.get(field, {}).get(request.auth.uid, {})\n' +
+          '               .diff(oldData.get(field, {}).get(request.auth.uid, {}))\n' +
+          '               .changedKeys().size() == 0\n' +
+          '             && newData.get(field, {}).get(request.auth.uid, {})\n' +
+          '                  .diff(oldData.get(field, {}).get(request.auth.uid, {}))\n' +
+          '                  .removedKeys().size() == 0;',
+        replace: '      return true;',
+      },
+    ],
+  },
+  {
     id: 'M19',
     label: 'results: the read auth gate is removed',
     edits: [
@@ -489,6 +598,151 @@ export const MUTATIONS: Mutation[] = [
         find:
           '                        && request.resource.data.questionId == resource.data.questionId);',
         replace: '                        && true);',
+      },
+    ],
+  },
+  {
+    id: 'M48',
+    label: 'game_questions: the create field allowlist is removed',
+    edits: [
+      {
+        find:
+          "                    request.resource.data.keys().hasOnly(['gameId', 'text', 'options', 'createdAt']) &&\n",
+        replace: '                    true &&\n',
+      },
+    ],
+  },
+  {
+    id: 'M49',
+    label: 'game_question_authors: attribution is readable before the game finishes',
+    edits: [
+      {
+        find:
+          "                    get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.status == 'finished';",
+        replace: '                    true;',
+      },
+    ],
+  },
+  {
+    id: 'M50a',
+    label: 'game_question_authors: attribution is readable by non-players',
+    edits: [
+      {
+        find:
+          '      allow read: if isAuthenticated() &&\n' +
+          '                    request.auth.uid in get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.players &&\n' +
+          "                    get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.status == 'finished';",
+        replace:
+          '      allow read: if isAuthenticated() &&\n' +
+          '                    true &&\n' +
+          "                    get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.status == 'finished';",
+      },
+    ],
+  },
+  {
+    id: 'M51a',
+    label: 'game_question_authors: attribution may name someone other than the caller',
+    edits: [
+      {
+        find: '                    request.resource.data.authorUid == request.auth.uid &&\n',
+        replace: '                    true &&\n',
+      },
+    ],
+  },
+  {
+    id: 'M52a',
+    label: 'game_question_authors: attribution becomes rewritable',
+    edits: [
+      {
+        find:
+          '      // Immutable: attribution is written once, at submission.\n' +
+          '      allow update, delete: if isAdmin();',
+        replace:
+          '      // Immutable: attribution is written once, at submission.\n' +
+          '      allow update, delete: if isAuthenticated();',
+      },
+    ],
+  },
+  {
+    id: 'M70',
+    label: 'skipped_questions: any authenticated caller may read any skip',
+    edits: [
+      {
+        find:
+          '      allow read: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);\n\n      allow create: if isAdmin()',
+        replace: '      allow read: if isAuthenticated();\n\n      allow create: if isAdmin()',
+      },
+    ],
+  },
+  {
+    id: 'M71',
+    label: 'skipped_questions: a skip may be written for any user',
+    edits: [
+      {
+        find:
+          "                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])\n" +
+          '                        && request.resource.data.userId == request.auth.uid);\n',
+        replace:
+          "                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])\n" +
+          '                        && true);\n',
+      },
+      {
+        find:
+          "                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])\n" +
+          '                        && request.resource.data.userId == request.auth.uid\n' +
+          '                        && resource.data.userId == request.auth.uid);',
+        replace:
+          "                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])\n" +
+          '                        && true\n' +
+          '                        && true);',
+      },
+    ],
+  },
+  {
+    id: 'M72',
+    label: 'skipped_questions: the field allowlist is removed',
+    edits: [
+      {
+        find:
+          "                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])\n" +
+          '                        && request.resource.data.userId == request.auth.uid);\n',
+        replace: '                        && request.resource.data.userId == request.auth.uid);\n',
+      },
+    ],
+  },
+  {
+    id: 'M73',
+    label: 'unlockedDemographics: any authenticated caller may read or create',
+    edits: [
+      {
+        find:
+          '        allow read: if isOwner(userId) || isAdmin();\n' +
+          '        allow create: if isAdmin()\n' +
+          '                      || (isOwner(userId)\n',
+        replace:
+          '        allow read: if isAuthenticated();\n' +
+          '        allow create: if isAdmin()\n' +
+          '                      || (isAuthenticated()\n',
+      },
+    ],
+  },
+  {
+    id: 'M74',
+    label: 'unlockedDemographics: an unlock may be rewritten or deleted',
+    edits: [
+      {
+        find: '        allow update, delete: if isAdmin();',
+        replace: '        allow update, delete: if isOwner(userId) || isAdmin();',
+      },
+    ],
+  },
+  {
+    id: 'M75',
+    label: 'unlockedDemographics: the field allowlist is removed',
+    edits: [
+      {
+        find: "                          && request.resource.data.keys().hasOnly(['unlockedAt']));",
+        replace: '                          && true);',
       },
     ],
   },

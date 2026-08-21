@@ -4,11 +4,13 @@ import {
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
-  arrayRemove,
   arrayUnion,
   collection,
+  deleteDoc,
   doc,
+  getDoc,
   getDocs,
+  increment,
   limit,
   query,
   setDoc,
@@ -154,14 +156,20 @@ async function createGroup() {
       description: '',
       inviteCode: GROUP_CODE,
       adminUid: HOST.uid,
-      members: [HOST.uid],
+      memberCount: 1,
       createdAt: '2026-08-19T00:00:00.000Z',
     }),
   );
 }
 
 describe('join a group by code', () => {
-  it('a non-member with the correct code can find, prove, and join', async () => {
+  const proofRef = (db: any) =>
+    doc(db, 'groups', 'flowgroup', 'joinRequests', JOINER.uid);
+  const memberRef = (db: any, uid: string) =>
+    doc(db, 'groups', 'flowgroup', 'members', uid);
+  const groupRef = (db: any) => doc(db, 'groups', 'flowgroup');
+
+  it('a non-member with the correct code can find, prove, join, and count', async () => {
     await createGroup();
     const db = joinerDb();
 
@@ -172,98 +180,91 @@ describe('join a group by code', () => {
     expect(found.empty).toBe(false);
 
     // 2. Stage proof of the code.
+    await assertSucceeds(setDoc(proofRef(db), { code: GROUP_CODE }));
+
+    // 3. Create your membership document.
     await assertSucceeds(
-      setDoc(doc(db, 'groups', 'flowgroup', 'joinRequests', JOINER.uid), {
-        code: GROUP_CODE,
+      setDoc(memberRef(db, JOINER.uid), {
+        uid: JOINER.uid,
+        joinedAt: '2026-08-20T00:00:00.000Z',
       }),
     );
 
-    // 3. Add self to members.
-    await assertSucceeds(
-      updateDoc(doc(db, 'groups', 'flowgroup'), { members: arrayUnion(JOINER.uid) }),
-    );
+    // 4. Bump the count, which the rule ties to that document existing.
+    await assertSucceeds(updateDoc(groupRef(db), { memberCount: increment(1) }));
   });
 
   it('a member who left can rejoin with the same code', async () => {
     await createGroup();
     const db = joinerDb();
-    const proof = doc(db, 'groups', 'flowgroup', 'joinRequests', JOINER.uid);
-    const group = doc(db, 'groups', 'flowgroup');
 
-    await assertSucceeds(setDoc(proof, { code: GROUP_CODE }));
-    await assertSucceeds(updateDoc(group, { members: arrayUnion(JOINER.uid) }));
-
-    await assertSucceeds(updateDoc(group, { members: arrayRemove(JOINER.uid) }));
-
-    // Rejoining re-stages the proof. setDoc over the existing document is an
-    // update, not a create -- the path that previously locked the user out.
-    await assertSucceeds(setDoc(proof, { code: GROUP_CODE }));
-    await assertSucceeds(updateDoc(group, { members: arrayUnion(JOINER.uid) }));
-  });
-
-  it('a retry after a failed members write can re-stage its proof', async () => {
-    await createGroup();
-    const db = joinerDb();
-    const proof = doc(db, 'groups', 'flowgroup', 'joinRequests', JOINER.uid);
-
-    await assertSucceeds(setDoc(proof, { code: GROUP_CODE }));
-    // Second attempt writes the proof again before retrying the join.
-    await assertSucceeds(setDoc(proof, { code: GROUP_CODE }));
+    await assertSucceeds(setDoc(proofRef(db), { code: GROUP_CODE }));
     await assertSucceeds(
-      updateDoc(doc(db, 'groups', 'flowgroup'), { members: arrayUnion(JOINER.uid) }),
+      setDoc(memberRef(db, JOINER.uid), { uid: JOINER.uid, joinedAt: 'x' }),
     );
+    await assertSucceeds(updateDoc(groupRef(db), { memberCount: increment(1) }));
+
+    // Leave.
+    await assertSucceeds(deleteDoc(memberRef(db, JOINER.uid)));
+    await assertSucceeds(updateDoc(groupRef(db), { memberCount: increment(-1) }));
+
+    // Rejoin. setDoc over the existing proof is an update, not a create.
+    await assertSucceeds(setDoc(proofRef(db), { code: GROUP_CODE }));
+    await assertSucceeds(
+      setDoc(memberRef(db, JOINER.uid), { uid: JOINER.uid, joinedAt: 'y' }),
+    );
+    await assertSucceeds(updateDoc(groupRef(db), { memberCount: increment(1) }));
   });
 
   it('a wrong code is rejected at the proof step, and the join then fails', async () => {
     await createGroup();
     const db = joinerDb();
 
+    await assertFails(setDoc(proofRef(db), { code: 'NOPE99' }));
     await assertFails(
-      setDoc(doc(db, 'groups', 'flowgroup', 'joinRequests', JOINER.uid), {
-        code: 'NOPE99',
-      }),
+      setDoc(memberRef(db, JOINER.uid), { uid: JOINER.uid, joinedAt: 'x' }),
     );
-
-    // Without proof the members write is refused too.
-    await assertFails(
-      updateDoc(doc(db, 'groups', 'flowgroup'), { members: arrayUnion(JOINER.uid) }),
-    );
+    // And the count cannot move without the membership document.
+    await assertFails(updateDoc(groupRef(db), { memberCount: increment(1) }));
   });
 
   it('a non-member cannot rename the group even holding a valid proof', async () => {
     await createGroup();
     const db = joinerDb();
 
-    await assertSucceeds(
-      setDoc(doc(db, 'groups', 'flowgroup', 'joinRequests', JOINER.uid), {
-        code: GROUP_CODE,
-      }),
-    );
+    await assertSucceeds(setDoc(proofRef(db), { code: GROUP_CODE }));
 
-    await assertFails(updateDoc(doc(db, 'groups', 'flowgroup'), { name: 'Hijacked' }));
-    await assertFails(
-      updateDoc(doc(db, 'groups', 'flowgroup'), { adminUid: JOINER.uid }),
-    );
-    await assertFails(
-      updateDoc(doc(db, 'groups', 'flowgroup'), { inviteCode: 'STOLEN' }),
-    );
+    await assertFails(updateDoc(groupRef(db), { name: 'Hijacked' }));
+    await assertFails(updateDoc(groupRef(db), { adminUid: JOINER.uid }));
+    await assertFails(updateDoc(groupRef(db), { inviteCode: 'STOLEN' }));
   });
 
-  it('a non-member cannot join and rename in the same well-formed write', async () => {
+  it('a joiner cannot bump the count and rename in one write', async () => {
     await createGroup();
     const db = joinerDb();
 
+    await assertSucceeds(setDoc(proofRef(db), { code: GROUP_CODE }));
     await assertSucceeds(
-      setDoc(doc(db, 'groups', 'flowgroup', 'joinRequests', JOINER.uid), {
-        code: GROUP_CODE,
-      }),
+      setDoc(memberRef(db, JOINER.uid), { uid: JOINER.uid, joinedAt: 'x' }),
     );
 
     await assertFails(
-      updateDoc(doc(db, 'groups', 'flowgroup'), {
-        members: arrayUnion(JOINER.uid),
-        name: 'Hijacked',
-      }),
+      updateDoc(groupRef(db), { memberCount: increment(1), name: 'Hijacked' }),
     );
+  });
+
+  it('the roster stays private to each member', async () => {
+    await createGroup();
+    const db = joinerDb();
+
+    await assertSucceeds(setDoc(proofRef(db), { code: GROUP_CODE }));
+    await assertSucceeds(
+      setDoc(memberRef(db, JOINER.uid), { uid: JOINER.uid, joinedAt: 'x' }),
+    );
+
+    // Own membership: fine. The host's: refused. The whole roster: refused.
+    await assertSucceeds(getDoc(memberRef(db, JOINER.uid)));
+    await assertFails(getDoc(memberRef(db, HOST.uid)));
+    await assertFails(getDocs(collection(db, 'groups', 'flowgroup', 'members')));
   });
 });

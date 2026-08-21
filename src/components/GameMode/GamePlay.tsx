@@ -62,18 +62,29 @@ export function GamePlay({ game, questionId }: { game: Game, questionId: string 
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(30);
   const [submitting, setSubmitting] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchQuestion = async () => {
+      setUnavailable(false);
       try {
         const qDoc = await getDoc(doc(db, 'game_questions', questionId));
         if (qDoc.exists()) {
           setQuestion({ id: qDoc.id, ...qDoc.data() } as GameQuestion);
+        } else {
+          // A question id in the list that resolves to nothing.
+          setUnavailable(true);
         }
-        setLoading(false);
       } catch (error) {
+        // Reading it was refused -- most likely an id belonging to a different
+        // game, which no one here has permission to read.
+        setUnavailable(true);
         handleFirestoreError(error, OperationType.GET, `game_questions/${questionId}`);
+      } finally {
+        // In a finally, or a refused read leaves the player on a spinner with
+        // no message and no way forward.
+        setLoading(false);
       }
     };
 
@@ -142,6 +153,18 @@ export function GamePlay({ game, questionId }: { game: Game, questionId: string 
       setSubmitting(false);
     }
   };
+
+  if (!loading && unavailable) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <h2 className="text-2xl font-bold">This question couldn't be loaded</h2>
+        <p className="text-zinc-500 max-w-sm mx-auto">
+          It may have been removed. Ask the host to move on to the next
+          question — the rest of the game is unaffected.
+        </p>
+      </div>
+    );
+  }
 
   if (loading || !question) {
     return (

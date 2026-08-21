@@ -1,4 +1,4 @@
-import { arrayUnion, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { arrayUnion, deleteField, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import type { Case } from '../helpers/env';
 import type { RulesTestContext } from '@firebase/rules-unit-testing';
 
@@ -271,6 +271,56 @@ export const gamesCases: Case[] = [
         lastUpdated: '2026-08-20T00:00:00.000Z',
       }),
   },
+  // --- answers are append-only -----------------------------------------------
+  {
+    name: 'a player cannot change an answer they already recorded',
+    expect: 'deny',
+    killedBy: 'M47',
+    // The results screen renders before the host advances, so a player who has
+    // seen the split could otherwise flip their answer and move the majority.
+    as: SECOND,
+    seed: seedGame('active', {
+      players: [PLAYER.uid, SECOND.uid],
+      answers: { [SECOND.uid]: { gq1: 0 } },
+    }),
+    run: (db) => updateDoc(doc(db, 'games', GID), { [`answers.${SECOND.uid}.gq1`]: 1 }),
+  },
+  {
+    name: 'a player cannot change a prediction they already recorded',
+    expect: 'deny',
+    killedBy: 'M47',
+    as: SECOND,
+    seed: seedGame('active', {
+      players: [PLAYER.uid, SECOND.uid],
+      predictions: { [SECOND.uid]: { gq1: 0 } },
+    }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), { [`predictions.${SECOND.uid}.gq1`]: 1 }),
+  },
+  {
+    name: 'a player cannot delete an answer they already recorded',
+    expect: 'deny',
+    killedBy: 'M47',
+    as: SECOND,
+    seed: seedGame('active', {
+      players: [PLAYER.uid, SECOND.uid],
+      answers: { [SECOND.uid]: { gq1: 0 } },
+    }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), { [`answers.${SECOND.uid}.gq1`]: deleteField() }),
+  },
+  {
+    name: 'a player may answer a second question having answered the first',
+    expect: 'allow',
+    // Append-only must not mean answer-once-per-game.
+    as: SECOND,
+    seed: seedGame('active', {
+      players: [PLAYER.uid, SECOND.uid],
+      questions: ['gq1', 'gq2'],
+      answers: { [SECOND.uid]: { gq1: 0 } },
+    }),
+    run: (db) => updateDoc(doc(db, 'games', GID), { [`answers.${SECOND.uid}.gq2`]: 1 }),
+  },
   {
     name: "a player cannot write another player's answer",
     expect: 'deny',
@@ -306,6 +356,47 @@ export const gamesCases: Case[] = [
       updateDoc(doc(db, 'games', GID), {
         questions: ['gq-replaced'],
         [`playerQuestions.${SECOND.uid}`]: ['gq-replaced'],
+      }),
+  },
+  {
+    name: 'a player cannot reorder the question list without submitting',
+    expect: 'deny',
+    killedBy: 'M53a',
+    // Reordering moves a chosen question to index 0, where the game starts.
+    // A pure reorder leaves the size unchanged, which the size check rejects.
+    as: SECOND,
+    seed: seedGame('active', {
+      players: [PLAYER.uid, SECOND.uid],
+      questions: ['gq1', 'gq2', 'gq3'],
+    }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), { questions: ['gq3', 'gq2', 'gq1'] }),
+  },
+  {
+    name: 'a player cannot pad the question list beyond their quota',
+    expect: 'deny',
+    killedBy: 'M53a',
+    as: SECOND,
+    seed: seedGame('active', { players: [PLAYER.uid, SECOND.uid] }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), {
+        questions: ['gq1', 'pad1', 'pad2', 'pad3'],
+        [`playerQuestions.${SECOND.uid}`]: ['pad1', 'pad2', 'pad3'],
+      }),
+  },
+  {
+    name: 'a player cannot submit a second time',
+    expect: 'deny',
+    killedBy: 'M54a',
+    as: SECOND,
+    seed: seedGame('active', {
+      players: [PLAYER.uid, SECOND.uid],
+      playerQuestions: { [SECOND.uid]: ['gq1'] },
+    }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), {
+        questions: ['gq1', 'gq9'],
+        [`playerQuestions.${SECOND.uid}`]: ['gq9'],
       }),
   },
   {

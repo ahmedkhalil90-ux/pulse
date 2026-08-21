@@ -1,41 +1,36 @@
-import { arrayRemove, arrayUnion, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import type { RulesTestContext } from '@firebase/rules-unit-testing';
 import type { Case } from '../helpers/env';
 
 /**
- * groups/{groupId} membership.
+ * groups/{groupId} -- invite-code proof and document-level tampering.
  *
- * Two legitimate update paths exist in the client:
- *   join  -- App.tsx handleJoin, arrayUnion(self) on members
- *   leave -- App.tsx handleLeave, arrayRemove(self) on members
- *
- * Joining is gated on the invite code, but the code never appears in the
- * members write and rules cannot inspect a query's where-clauses. Proof is
- * therefore staged in groups/{groupId}/joinRequests/{uid}: its create rule
- * compares the submitted code against the group document server-side, and the
- * join branch only has to confirm that document exists.
+ * Membership itself moved to groups/{groupId}/members/{uid}; those cases live
+ * in groupMembers.cases.ts. What remains here is the proof-of-code mechanism
+ * and the guards on the group document's own fields.
  */
-const ADMIN = { uid: 'gadmin1', email: 'gadmin1@pulse.app' };
+const ADMIN_U = { uid: 'gadmin1', email: 'gadmin1@pulse.app' };
 const MEMBER = { uid: 'gmember1', email: 'gmember1@pulse.app' };
 const OUTSIDER = { uid: 'goutsider2', email: 'goutsider2@pulse.app' };
 const GID = 'grp1';
 const CODE = 'GRP001';
 
 async function seedGroup(ctx: RulesTestContext) {
-  await setDoc(doc(ctx.firestore(), 'groups', GID), {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'groups', GID), {
     name: 'Book Club',
     description: 'Monthly reads',
     inviteCode: CODE,
-    adminUid: ADMIN.uid,
-    members: [ADMIN.uid, MEMBER.uid],
+    adminUid: ADMIN_U.uid,
+    memberCount: 2,
   });
-}
-
-/** Group plus an accepted proof-of-code for the outsider. */
-async function seedGroupWithProof(ctx: RulesTestContext) {
-  await seedGroup(ctx);
-  await setDoc(doc(ctx.firestore(), 'groups', GID, 'joinRequests', OUTSIDER.uid), {
-    code: CODE,
+  await setDoc(doc(db, 'groups', GID, 'members', ADMIN_U.uid), {
+    uid: ADMIN_U.uid,
+    joinedAt: '2026-08-19T00:00:00.000Z',
+  });
+  await setDoc(doc(db, 'groups', GID, 'members', MEMBER.uid), {
+    uid: MEMBER.uid,
+    joinedAt: '2026-08-19T00:00:00.000Z',
   });
 }
 
@@ -84,14 +79,6 @@ export const groupsCases: Case[] = [
     run: (db) => setDoc(proofRef(db, OUTSIDER.uid), { code: CODE, elevated: true }),
   },
 
-  // --- join / leave ---------------------------------------------------------
-  {
-    name: 'a non-member who proved the invite code may add themselves',
-    expect: 'allow',
-    as: OUTSIDER,
-    seed: seedGroupWithProof,
-    run: (db) => updateDoc(groupRef(db), { members: arrayUnion(OUTSIDER.uid) }),
-  },
   {
     name: 'a proof holding a superseded invite code no longer admits',
     expect: 'deny',
@@ -99,55 +86,18 @@ export const groupsCases: Case[] = [
     as: OUTSIDER,
     seed: async (ctx) => {
       await seedGroup(ctx);
-      // The proof was staged against an older code; the group has since
-      // rotated. Existence alone must not be enough.
-      await setDoc(doc(ctx.firestore(), 'groups', GID, 'joinRequests', OUTSIDER.uid), {
-        code: 'OLDCDE',
-      });
+      // Staged against an older code; the group has since rotated. Existence
+      // alone must not be enough.
+      await setDoc(proofRef(ctx.firestore(), OUTSIDER.uid), { code: 'OLDCDE' });
     },
-    run: (db) => updateDoc(groupRef(db), { members: arrayUnion(OUTSIDER.uid) }),
-  },
-  {
-    name: 'a non-member with no proof of the invite code cannot join',
-    expect: 'deny',
-    killedBy: 'M20',
-    as: OUTSIDER,
-    seed: seedGroup,
-    run: (db) => updateDoc(groupRef(db), { members: arrayUnion(OUTSIDER.uid) }),
-  },
-  {
-    name: 'a member may remove themselves (leave)',
-    expect: 'allow',
-    as: MEMBER,
-    seed: seedGroup,
-    run: (db) => updateDoc(groupRef(db), { members: arrayRemove(MEMBER.uid) }),
-  },
-  {
-    name: 'leaving does not require a proof of the invite code',
-    expect: 'allow',
-    as: ADMIN,
-    seed: seedGroup,
-    run: (db) => updateDoc(groupRef(db), { members: arrayRemove(ADMIN.uid) }),
+    run: (db) =>
+      setDoc(doc(db, 'groups', GID, 'members', OUTSIDER.uid), {
+        uid: OUTSIDER.uid,
+        joinedAt: '2026-08-20T00:00:00.000Z',
+      }),
   },
 
-  // --- tampering ------------------------------------------------------------
-  {
-    name: 'a member cannot remove another member',
-    expect: 'deny',
-    killedBy: 'M17',
-    as: MEMBER,
-    seed: seedGroup,
-    run: (db) => updateDoc(groupRef(db), { members: arrayRemove(ADMIN.uid) }),
-  },
-  {
-    name: 'a non-member cannot add someone other than themselves',
-    expect: 'deny',
-    killedBy: 'M17',
-    // Proof is present, so the self-only shape check is the only thing left.
-    as: OUTSIDER,
-    seed: seedGroupWithProof,
-    run: (db) => updateDoc(groupRef(db), { members: arrayUnion('someone-else') }),
-  },
+  // --- document tampering ---------------------------------------------------
   {
     name: 'a member cannot rename the group',
     expect: 'deny',
@@ -173,20 +123,19 @@ export const groupsCases: Case[] = [
     run: (db) => updateDoc(groupRef(db), { inviteCode: 'STOLEN' }),
   },
   {
-    name: 'joining and renaming in one write is rejected',
+    name: 'a member cannot reintroduce a members array',
     expect: 'deny',
     killedBy: 'M18',
-    as: OUTSIDER,
-    seed: seedGroupWithProof,
-    run: (db) =>
-      updateDoc(groupRef(db), { members: arrayUnion(OUTSIDER.uid), name: 'Hijacked' }),
+    as: MEMBER,
+    seed: seedGroup,
+    run: (db) => updateDoc(groupRef(db), { members: [MEMBER.uid] }),
   },
   {
-    name: 'an unauthenticated caller cannot join a group',
+    name: 'an unauthenticated caller cannot touch a group',
     expect: 'deny',
     as: 'unauthenticated',
     note: 'Covered by the isAuthenticated() gate shared with every other update clause.',
     seed: seedGroup,
-    run: (db) => updateDoc(groupRef(db), { members: arrayUnion('anon') }),
+    run: (db) => updateDoc(groupRef(db), { memberCount: 99 }),
   },
 ];

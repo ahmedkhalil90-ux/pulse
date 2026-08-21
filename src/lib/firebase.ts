@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { toast } from 'sonner';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -55,5 +56,22 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  toast.error(messageFor(operationType));
+}
+
+/**
+ * User-facing text per operation. Deliberately plain and actionable: the point
+ * is that the user knows something failed and what to do, not what Firestore
+ * called it.
+ */
+function messageFor(operationType: OperationType): string {
+  switch (operationType) {
+    case OperationType.GET:
+    case OperationType.LIST:
+      return "Couldn't load that. Check your connection and try again.";
+    case OperationType.DELETE:
+      return "Couldn't delete that. Please try again.";
+    default:
+      return "Couldn't save that. Please try again.";
+  }
 }

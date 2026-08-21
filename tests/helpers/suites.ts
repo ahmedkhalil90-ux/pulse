@@ -1,11 +1,15 @@
 import type { Case } from './env';
 import { adminIdentityCases } from '../cases/adminIdentity.cases';
+import { gameAuthorCases } from '../cases/gameAuthor.cases';
 import { gamesCases } from '../cases/games.cases';
+import { groupMembersCases } from '../cases/groupMembers.cases';
 import { groupsCases } from '../cases/groups.cases';
 import { migrationCases } from '../cases/migration.cases';
+import { moderationCases } from '../cases/moderation.cases';
 import { questionsCases } from '../cases/questions.cases';
 import { resultsCases } from '../cases/results.cases';
 import { resultsReadCases } from '../cases/resultsRead.cases';
+import { skipsAndUnlocksCases } from '../cases/skipsAndUnlocks.cases';
 import { userAnswersCases } from '../cases/userAnswers.cases';
 import { usersRoleCases } from '../cases/usersRole.cases';
 import { usersLookupCases } from '../cases/usersLookup.cases';
@@ -19,11 +23,15 @@ export const SUITES: Array<[string, Case[]]> = [
   ['results/{questionId}', resultsCases],
   ['results/{questionId} reads', resultsReadCases],
   ['questions/{questionId}', questionsCases],
+  ['moderation queue', moderationCases],
   ['isMigrating() via users/{oldUid}', migrationCases],
   ['user_answers/{answerId}', userAnswersCases],
   ['admin identity', adminIdentityCases],
+  ['skips and unlocks', skipsAndUnlocksCases],
   ['games/{gameId} reads', gamesCases],
+  ['game question authorship', gameAuthorCases],
   ['groups/{groupId} updates', groupsCases],
+  ['groups member privacy', groupMembersCases],
   ['users/{userId} role escalation', usersRoleCases],
   ['users listability and lookups', usersLookupCases],
 ];
