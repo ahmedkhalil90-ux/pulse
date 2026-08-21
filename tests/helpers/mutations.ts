@@ -663,6 +663,89 @@ export const MUTATIONS: Mutation[] = [
       },
     ],
   },
+  {
+    id: 'M70',
+    label: 'skipped_questions: any authenticated caller may read any skip',
+    edits: [
+      {
+        find:
+          '      allow read: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);\n\n      allow create: if isAdmin()',
+        replace: '      allow read: if isAuthenticated();\n\n      allow create: if isAdmin()',
+      },
+    ],
+  },
+  {
+    id: 'M71',
+    label: 'skipped_questions: a skip may be written for any user',
+    edits: [
+      {
+        find:
+          "                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])\n" +
+          '                        && request.resource.data.userId == request.auth.uid);\n',
+        replace:
+          "                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])\n" +
+          '                        && true);\n',
+      },
+      {
+        find:
+          "                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])\n" +
+          '                        && request.resource.data.userId == request.auth.uid\n' +
+          '                        && resource.data.userId == request.auth.uid);',
+        replace:
+          "                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])\n" +
+          '                        && true\n' +
+          '                        && true);',
+      },
+    ],
+  },
+  {
+    id: 'M72',
+    label: 'skipped_questions: the field allowlist is removed',
+    edits: [
+      {
+        find:
+          "                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])\n" +
+          '                        && request.resource.data.userId == request.auth.uid);\n',
+        replace: '                        && request.resource.data.userId == request.auth.uid);\n',
+      },
+    ],
+  },
+  {
+    id: 'M73',
+    label: 'unlockedDemographics: any authenticated caller may read or create',
+    edits: [
+      {
+        find:
+          '        allow read: if isOwner(userId) || isAdmin();\n' +
+          '        allow create: if isAdmin()\n' +
+          '                      || (isOwner(userId)\n',
+        replace:
+          '        allow read: if isAuthenticated();\n' +
+          '        allow create: if isAdmin()\n' +
+          '                      || (isAuthenticated()\n',
+      },
+    ],
+  },
+  {
+    id: 'M74',
+    label: 'unlockedDemographics: an unlock may be rewritten or deleted',
+    edits: [
+      {
+        find: '        allow update, delete: if isAdmin();',
+        replace: '        allow update, delete: if isOwner(userId) || isAdmin();',
+      },
+    ],
+  },
+  {
+    id: 'M75',
+    label: 'unlockedDemographics: the field allowlist is removed',
+    edits: [
+      {
+        find: "                          && request.resource.data.keys().hasOnly(['unlockedAt']));",
+        replace: '                          && true);',
+      },
+    ],
+  },
 ];
 
 /**

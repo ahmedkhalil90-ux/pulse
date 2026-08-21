@@ -8,6 +8,7 @@ import { moderationCases } from '../cases/moderation.cases';
 import { questionsCases } from '../cases/questions.cases';
 import { resultsCases } from '../cases/results.cases';
 import { resultsReadCases } from '../cases/resultsRead.cases';
+import { skipsAndUnlocksCases } from '../cases/skipsAndUnlocks.cases';
 import { userAnswersCases } from '../cases/userAnswers.cases';
 import { usersRoleCases } from '../cases/usersRole.cases';
 
@@ -23,6 +24,7 @@ export const SUITES: Array<[string, Case[]]> = [
   ['moderation queue', moderationCases],
   ['isMigrating() via users/{oldUid}', migrationCases],
   ['user_answers/{answerId}', userAnswersCases],
+  ['skips and unlocks', skipsAndUnlocksCases],
   ['games/{gameId} reads', gamesCases],
   ['game question authorship', gameAuthorCases],
   ['groups/{groupId} updates', groupsCases],

@@ -288,8 +288,19 @@ service cloud.firestore {
       allow delete: if isOwner(userId) || isAdmin() || isMigrating(userId);
 
       // Unlocked demographics subcollection
+      // Proof that this user has paid to see one question's demographic
+      // breakdown. `write` used to cover create, update and delete with no
+      // field validation.
+      //
+      // An unlock is permanent. CLAUDE.md: once unlocked for a question, never
+      // charge again -- which only holds if the record cannot be removed, since
+      // deleting it is exactly how a user would be charged a second time.
       match /unlockedDemographics/{questionId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAdmin()
+                      || (isOwner(userId)
+                          && request.resource.data.keys().hasOnly(['unlockedAt']));
+        allow update, delete: if isAdmin();
       }
     }
     
@@ -488,8 +499,26 @@ service cloud.firestore {
     // Skipped Questions
     match /skipped_questions/{skipId} {
       allow read: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAdmin();
+
+      allow create: if isAdmin()
+                    || (isAuthenticated()
+                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])
+                        && request.resource.data.userId == request.auth.uid);
+
+      // Update matters because the skip id is deterministic --
+      // `${uid}_${questionId}` -- so skipping the same question again, or any
+      // retry after a failed write, is a setDoc over an existing document,
+      // which Firestore evaluates as an update. Restricting this to admins
+      // made re-skipping fail with a permission error.
+      //
+      // Both sides are pinned to the caller, so a record can never be
+      // reassigned or overwritten by anyone else.
+      allow update: if isAdmin()
+                    || (isAuthenticated()
+                        && request.resource.data.keys().hasOnly(['userId', 'questionId', 'skippedAt'])
+                        && request.resource.data.userId == request.auth.uid
+                        && resource.data.userId == request.auth.uid);
+
       allow delete: if isAdmin() || isOwner(resource.data.userId);
     }
 
