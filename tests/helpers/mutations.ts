@@ -190,7 +190,7 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M15',
+    id: 'M50',
     label: 'admin: any authenticated caller is treated as an admin',
     edits: [
       {
@@ -202,7 +202,7 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M16',
+    id: 'M51',
     label: 'admin: the email short-circuit is restored',
     edits: [
       {
@@ -216,7 +216,7 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M17',
+    id: 'M52',
     label: 'admin: the self-written role field is consulted again',
     edits: [
       {
@@ -229,7 +229,7 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
-    id: 'M18',
+    id: 'M53',
     label: 'admin: the roster becomes client-readable and writable',
     edits: [
       {

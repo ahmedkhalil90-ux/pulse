@@ -75,7 +75,7 @@ export const adminIdentityCases: Case[] = [
   {
     name: 'an ordinary user has no admin powers',
     expect: 'deny',
-    killedBy: 'M15',
+    killedBy: 'M50',
     as: PLAIN,
     seed: seedResults,
     run: deleteResults,
@@ -85,7 +85,7 @@ export const adminIdentityCases: Case[] = [
   {
     name: 'a newly registered `ak` gets no admin powers',
     expect: 'deny',
-    killedBy: 'M16',
+    killedBy: 'M51',
     as: FAKE_AK,
     seed: seedResults,
     run: deleteResults,
@@ -93,7 +93,7 @@ export const adminIdentityCases: Case[] = [
   {
     name: 'a newly registered `ak2` gets no admin powers',
     expect: 'deny',
-    killedBy: 'M16',
+    killedBy: 'M51',
     // The email matching the real admin's must count for nothing; only the UID
     // does.
     as: FAKE_AK2,
@@ -103,7 +103,7 @@ export const adminIdentityCases: Case[] = [
   {
     name: 'a newly registered `ahmedkhalil90` gets no admin powers',
     expect: 'deny',
-    killedBy: 'M16',
+    killedBy: 'M51',
     as: FAKE_AHMED,
     seed: seedResults,
     run: deleteResults,
@@ -111,7 +111,7 @@ export const adminIdentityCases: Case[] = [
   {
     name: 'a token bearing the gmail address gets no admin powers',
     expect: 'deny',
-    killedBy: 'M16',
+    killedBy: 'M51',
     as: FAKE_GMAIL,
     seed: seedResults,
     run: deleteResults,
@@ -119,7 +119,7 @@ export const adminIdentityCases: Case[] = [
   {
     name: 'the previously hardcoded UID no longer has admin powers',
     expect: 'deny',
-    killedBy: 'M15',
+    killedBy: 'M50',
     as: OLD_HARDCODED,
     seed: seedResults,
     run: deleteResults,
@@ -127,7 +127,7 @@ export const adminIdentityCases: Case[] = [
   {
     name: 'a self-written role field grants nothing',
     expect: 'deny',
-    killedBy: 'M17',
+    killedBy: 'M52',
     as: PLAIN,
     seed: seedRoleClaim,
     run: deleteResults,
@@ -137,14 +137,14 @@ export const adminIdentityCases: Case[] = [
   {
     name: 'a client cannot add itself to the admins roster',
     expect: 'deny',
-    killedBy: 'M18',
+    killedBy: 'M53',
     as: PLAIN,
     run: (db) => setDoc(doc(db, 'admins', PLAIN.uid), { note: 'self-granted' }),
   },
   {
     name: 'even the real admin cannot write the roster from a client',
     expect: 'deny',
-    killedBy: 'M18',
+    killedBy: 'M53',
     // Console or Admin SDK only, so a compromised admin session cannot mint
     // more admins.
     as: REAL_ADMIN,
@@ -153,7 +153,7 @@ export const adminIdentityCases: Case[] = [
   {
     name: 'a client cannot remove an admin from the roster',
     expect: 'deny',
-    killedBy: 'M18',
+    killedBy: 'M53',
     as: PLAIN,
     seed: seedResultsAndRoster,
     run: (db) => deleteDoc(doc(db, 'admins', ROSTERED.uid)),
@@ -161,7 +161,7 @@ export const adminIdentityCases: Case[] = [
   {
     name: 'a client cannot read the admins roster',
     expect: 'deny',
-    killedBy: 'M18',
+    killedBy: 'M53',
     // Admins should not be enumerable before being targeted.
     as: PLAIN,
     seed: seedResultsAndRoster,
