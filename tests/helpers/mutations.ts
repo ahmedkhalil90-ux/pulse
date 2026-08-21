@@ -194,8 +194,16 @@ export const MUTATIONS: Mutation[] = [
     label: 'users: the collection is listable again',
     edits: [
       {
-        find: '      allow list: if isAdmin();\n      allow create: if true;',
-        replace: '      allow list: if isAuthenticated();\n      allow create: if true;',
+        // Anchored on the users-block comment, not the adjacent create rule:
+        // security/admin-uid-only replaces `allow create: if true;` with a
+        // role-guarded version, which silently unmatched this target once the
+        // two branches were merged.
+        find:
+          '      // go through the usernames and referralCodes mappings below.\n' +
+          '      allow list: if isAdmin();',
+        replace:
+          '      // go through the usernames and referralCodes mappings below.\n' +
+          '      allow list: if isAuthenticated();',
       },
     ],
   },
