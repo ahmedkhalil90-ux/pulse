@@ -200,9 +200,11 @@ export const MUTATIONS: Mutation[] = [
         // two branches were merged.
         find:
           '      // go through the usernames and referralCodes mappings below.\n' +
+          '      allow get: if isAuthenticated();\n' +
           '      allow list: if isAdmin();',
         replace:
           '      // go through the usernames and referralCodes mappings below.\n' +
+          '      allow get: if isAuthenticated();\n' +
           '      allow list: if isAuthenticated();',
       },
     ],
