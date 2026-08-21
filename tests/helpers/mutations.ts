@@ -526,6 +526,22 @@ export const MUTATIONS: Mutation[] = [
     ],
   },
   {
+    id: 'M47',
+    label: 'games: a player may change an answer or prediction already recorded',
+    edits: [
+      {
+        find:
+          '      return newData.get(field, {}).get(request.auth.uid, {})\n' +
+          '               .diff(oldData.get(field, {}).get(request.auth.uid, {}))\n' +
+          '               .changedKeys().size() == 0\n' +
+          '             && newData.get(field, {}).get(request.auth.uid, {})\n' +
+          '                  .diff(oldData.get(field, {}).get(request.auth.uid, {}))\n' +
+          '                  .removedKeys().size() == 0;',
+        replace: '      return true;',
+      },
+    ],
+  },
+  {
     id: 'M19',
     label: 'results: the read auth gate is removed',
     edits: [

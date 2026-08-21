@@ -1,4 +1,4 @@
-import { arrayUnion, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { arrayUnion, deleteField, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import type { Case } from '../helpers/env';
 import type { RulesTestContext } from '@firebase/rules-unit-testing';
 
@@ -270,6 +270,56 @@ export const gamesCases: Case[] = [
         [`playerQuestions.${SECOND.uid}`]: ['gq2'],
         lastUpdated: '2026-08-20T00:00:00.000Z',
       }),
+  },
+  // --- answers are append-only -----------------------------------------------
+  {
+    name: 'a player cannot change an answer they already recorded',
+    expect: 'deny',
+    killedBy: 'M47',
+    // The results screen renders before the host advances, so a player who has
+    // seen the split could otherwise flip their answer and move the majority.
+    as: SECOND,
+    seed: seedGame('active', {
+      players: [PLAYER.uid, SECOND.uid],
+      answers: { [SECOND.uid]: { gq1: 0 } },
+    }),
+    run: (db) => updateDoc(doc(db, 'games', GID), { [`answers.${SECOND.uid}.gq1`]: 1 }),
+  },
+  {
+    name: 'a player cannot change a prediction they already recorded',
+    expect: 'deny',
+    killedBy: 'M47',
+    as: SECOND,
+    seed: seedGame('active', {
+      players: [PLAYER.uid, SECOND.uid],
+      predictions: { [SECOND.uid]: { gq1: 0 } },
+    }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), { [`predictions.${SECOND.uid}.gq1`]: 1 }),
+  },
+  {
+    name: 'a player cannot delete an answer they already recorded',
+    expect: 'deny',
+    killedBy: 'M47',
+    as: SECOND,
+    seed: seedGame('active', {
+      players: [PLAYER.uid, SECOND.uid],
+      answers: { [SECOND.uid]: { gq1: 0 } },
+    }),
+    run: (db) =>
+      updateDoc(doc(db, 'games', GID), { [`answers.${SECOND.uid}.gq1`]: deleteField() }),
+  },
+  {
+    name: 'a player may answer a second question having answered the first',
+    expect: 'allow',
+    // Append-only must not mean answer-once-per-game.
+    as: SECOND,
+    seed: seedGame('active', {
+      players: [PLAYER.uid, SECOND.uid],
+      questions: ['gq1', 'gq2'],
+      answers: { [SECOND.uid]: { gq1: 0 } },
+    }),
+    run: (db) => updateDoc(doc(db, 'games', GID), { [`answers.${SECOND.uid}.gq2`]: 1 }),
   },
   {
     name: "a player cannot write another player's answer",

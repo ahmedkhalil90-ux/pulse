@@ -128,6 +128,22 @@ service cloud.firestore {
                .affectedKeys().hasOnly([request.auth.uid]);
     }
 
+    // A player may ADD their answer or prediction for a question, never change
+    // or remove one already recorded.
+    //
+    // Without this, a player looking at the results screen -- which renders as
+    // soon as everyone has answered and predicted, before the host advances --
+    // could flip their own answer, move the majority, and rewrite every
+    // player's score, because scoring reads the document at advance time.
+    function ownEntriesAppendOnly(oldData, newData, field) {
+      return newData.get(field, {}).get(request.auth.uid, {})
+               .diff(oldData.get(field, {}).get(request.auth.uid, {}))
+               .changedKeys().size() == 0
+             && newData.get(field, {}).get(request.auth.uid, {})
+                  .diff(oldData.get(field, {}).get(request.auth.uid, {}))
+                  .removedKeys().size() == 0;
+    }
+
     // Game status only ever moves forward: lobby -> active -> finished.
     //
     // Reverting a started game to 'lobby' would re-open the whole document to
@@ -516,6 +532,8 @@ service cloud.firestore {
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
            ['answers', 'predictions', 'playerQuestions', 'questions', 'lastUpdated']) &&
          ownKeyOnly(resource.data, request.resource.data, 'answers') &&
+         ownEntriesAppendOnly(resource.data, request.resource.data, 'answers') &&
+         ownEntriesAppendOnly(resource.data, request.resource.data, 'predictions') &&
          ownKeyOnly(resource.data, request.resource.data, 'predictions') &&
          ownKeyOnly(resource.data, request.resource.data, 'playerQuestions') &&
          request.resource.data.get('questions', []).hasAll(resource.data.get('questions', []))) ||
