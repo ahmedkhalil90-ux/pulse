@@ -2,7 +2,7 @@
 
 Every finding from the security work to date, with its current state.
 
-**Nothing is merged, deployed, or on Blaze.** Eight branches are pushed and
+**Nothing is merged, deployed, or on Blaze.** Nine branches are pushed and
 waiting. Merge order matters — see the bottom of this file.
 
 ---
@@ -18,7 +18,8 @@ waiting. Merge order matters — see the bottom of this file.
 | 5 | `security/answer-immutability` | Recorded answers/predictions are append-only | 205 pass |
 | 6 | `ui/error-feedback` | Firestore errors reach the user instead of dead-ending | 205 pass |
 | 7 | `security/game-author-privacy` | Question authorship hidden until the game finishes | 220 pass |
-| 8 | `security/question-list-integrity` | Question submission bounded to the per-player quota | 225 pass |
+| 8 | `security/question-list-integrity` | Question submission bounded; game screens no longer spin forever | 225 pass |
+| 9 | `feature/moderation-queue` | Admin review of questions held at `pending` | 230 pass |
 
 Compare links are in `docs/overnight-log-2026-08-21.md`.
 
@@ -174,6 +175,10 @@ author is revealed only on the final results screen. Attribution moved to
 duplicated, padded, or submitted twice. Now bounded to the per-player quota,
 once. **Partial**: reordering during a genuine submission is still possible,
 because rules cannot compare list positions. → branch 8
+
+**No admin moderation queue** — questions held at `pending` were invisible and
+nothing reviewed them. Built, admin-gated by the rules rather than by a
+client-side claim. → branch 9
 
 **~20 silent dead-end catch blocks.** `handleFirestoreError` logged and threw;
 the throw escaped async click handlers as an unhandled rejection, so a failure
