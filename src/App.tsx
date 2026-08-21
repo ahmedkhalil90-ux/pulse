@@ -2173,15 +2173,11 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
       onJoined({ id: groupDoc.id, ...groupData, memberCount: groupData.memberCount + 1 });
       onClose();
     } catch (error) {
-      // The join is two writes now, so a failure between them must say
-      // something. handleFirestoreError logs and rethrows; letting that escape
-      // an async onClick leaves the modal open with no message at all.
+      // The join is several writes now, so a failure partway must say
+      // something specific -- the generic message from handleFirestoreError
+      // would not tell the user to check the code.
       toast.error('Could not join that group. Check the code and try again.');
-      try {
-        handleFirestoreError(error, OperationType.UPDATE, 'groups');
-      } catch {
-        // Already surfaced above; keep the modal usable.
-      }
+      handleFirestoreError(error, OperationType.UPDATE, 'groups');
     } finally {
       setLoading(false);
     }
