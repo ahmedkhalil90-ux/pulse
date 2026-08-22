@@ -107,6 +107,50 @@ export const groupMembersCases: Case[] = [
       ),
   },
 
+  // --- creation -------------------------------------------------------------
+  {
+    name: 'the group creator can add their own membership without a proof',
+    expect: 'allow',
+    killedBy: undefined,
+    // They invented the invite code, so they have no joinRequests document.
+    // Missing this made memberCount say 1 over an empty roster, hid the group
+    // from its own creator, and blocked them posting to it. Found by driving
+    // the real app, not by the rules suite.
+    as: ADMIN_U,
+    seed: async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'groups', 'fresh-group'), {
+        name: 'Fresh',
+        inviteCode: 'FRESH1',
+        adminUid: ADMIN_U.uid,
+        memberCount: 1,
+      });
+    },
+    run: (db) =>
+      setDoc(doc(db, 'groups', 'fresh-group', 'members', ADMIN_U.uid), {
+        uid: ADMIN_U.uid,
+        joinedAt: '2026-08-21T00:00:00.000Z',
+      }),
+  },
+  {
+    name: 'a non-admin still cannot add themselves without a proof',
+    expect: 'deny',
+    killedBy: 'M76',
+    as: OUTSIDER,
+    seed: async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'groups', 'fresh-group'), {
+        name: 'Fresh',
+        inviteCode: 'FRESH1',
+        adminUid: ADMIN_U.uid,
+        memberCount: 1,
+      });
+    },
+    run: (db) =>
+      setDoc(doc(db, 'groups', 'fresh-group', 'members', OUTSIDER.uid), {
+        uid: OUTSIDER.uid,
+        joinedAt: '2026-08-21T00:00:00.000Z',
+      }),
+  },
+
   // --- joining --------------------------------------------------------------
   {
     name: 'a non-member with a valid proof may create their membership',
