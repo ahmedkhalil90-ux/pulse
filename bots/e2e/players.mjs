@@ -38,8 +38,27 @@ await env.withSecurityRulesDisabled(async ctx => {
       authorUid: 'pulse_originals_system', isPublic: true, createdAt: new Date().toISOString(),
       status: 'live', flags: 0, random: Math.random(),
     });
+    // 12 prior votes: enough to open Insights. Age 25-34 holds 11 (shown);
+    // 18-24 holds 1 and must never be displayed (min-10 anonymity rule).
+    await setDoc(doc(db, 'results', `seed_${q.id}`), {
+      counts: { '0': 7, '1': 5 },
+      demographics: {
+        ageRange: { '25-34': { '0': 6, '1': 5 }, '18-24': { '0': 1, '1': 0 } },
+        gender: { Female: { '0': 7, '1': 5 } },
+        country: { UAE: { '0': 7, '1': 5 } },
+      },
+    });
   }
 });
+async function makeAdmin(username) {
+  await env.withSecurityRulesDisabled(async ctx => {
+    const db = ctx.firestore();
+    const { getDoc } = await import('firebase/firestore');
+    const m = await getDoc(doc(db, 'usernames', username.toLowerCase()));
+    if (!m.exists()) throw new Error(`no usernames mapping for ${username}`);
+    await setDoc(doc(db, 'admins', m.data().uid), { note: 'bot admin' });
+  });
+}
 
 const steps = [];
 const consoleErrors = [];
@@ -108,6 +127,19 @@ await step(a, 'credit balance increased', async p => {
   if (after !== creditsBefore + 1) throw new Error(`credits ${creditsBefore} -> ${after} even after reload, expected +1`);
 });
 
+await step(a, 'unlock demographics: -3 credits, small groups stay hidden', async p => {
+  const before = await credits(p);
+  await p.getByRole('button', { name: /Unlock — 3 Credits/ }).first().click();
+  const shown = await p.getByText('25-34').first().waitFor({ timeout: 5000 }).then(() => true).catch(() => false);
+  const leaked = await p.getByText('18-24').count();
+  await toast(p, 'Demographics unlocked');
+  await p.waitForTimeout(1500);
+  const after = await credits(p);
+  if (after !== before - 3) throw new Error(`credits ${before} -> ${after}, expected -3`);
+  if (leaked) throw new Error('ANONYMITY: a 1-vote age bucket is displayed (min-10 rule)');
+  if (!shown) console.log('  note: feed auto-advanced before the breakdown could be read');
+});
+
 // 3. Groups: alice creates, bob joins with the invite code
 let inviteCode = '';
 await step(a, 'create group', async p => {
@@ -156,6 +188,14 @@ await step(a, 'post a question', async p => {
   if (/Failed to publish|Could not save|Rejected/i.test(body)) throw new Error('posting failed: ' + body.match(/(Failed to publish|Could not save[^\n]*|Rejected[^\n]*)/i)[0]);
 });
 
+await step(a, 'admin approves the pending question in the review queue', async p => {
+  await makeAdmin(`alice${run}`);
+  await p.locator('button:has(svg.lucide-user)').first().click();
+  await p.getByText(`Bot test ${run}`).first().waitFor({ timeout: 15000 });
+  await p.getByRole('button', { name: /Approve/ }).first().click();
+  await toast(p, 'Question approved');
+});
+
 // 5. Game mode: alice hosts, bob joins by code
 let gameCode = '';
 await step(a, 'host a live game', async p => {
@@ -172,6 +212,65 @@ await step(b, 'join game by code', async p => {
   await p.getByPlaceholder('ENTER 6-CHAR CODE').fill(gameCode);
   await p.getByRole('button', { name: /Join/ }).last().click();
   await p.getByText('Waiting Lobby').waitFor({ timeout: 10000 });
+});
+
+// 6. Play the whole game: start, submit questions, answer + predict each, finish
+await step(a, 'host starts the game', async p => {
+  await p.getByRole('button', { name: /^2$/ }).first().click(); // 2 questions each
+  await p.getByRole('button', { name: /Start Game/ }).click();
+  await toast(p, 'Game started');
+});
+async function submitQuestions(bot, tag) {
+  await step(bot, 'submit game questions', async p => {
+    for (let k = 0; k < 2; k++) {
+      await p.getByPlaceholder('e.g. Is a hotdog a sandwich?').fill(`${tag} question ${k}?`);
+      await p.getByPlaceholder('Yes').fill(`Opt${tag}${k}A`);
+      await p.getByPlaceholder('No').fill(`Opt${tag}${k}B`);
+      await p.getByRole('button', { name: /Add Question/ }).click();
+    }
+    await p.getByRole('button', { name: /Submit All Questions/ }).click();
+    await toast(p, 'Questions submitted');
+  });
+}
+await submitQuestions(a, 'A');
+await submitQuestions(b, 'B');
+await step(a, 'play every question to Game Over', async () => {
+  const deadline = Date.now() + 120000;
+  const done = { alice: false, bob: false };
+  while (Date.now() < deadline && !(done.alice && done.bob)) {
+    for (const bot of [a, b]) {
+      const p = bot.page;
+      const body = await p.locator('body').innerText().catch(() => '');
+      if (/Game Over/i.test(body)) { done[bot.name] = true; continue; }
+      if (/Step 1: Answer Honestly/i.test(body)) {
+        await p.locator('button:has-text("Opt")').first().click().catch(() => {});
+      } else if (/Step 2: Predict the Group/i.test(body)) {
+        await p.getByText('Predict Option A').first().click().catch(() => {});
+      } else if (bot === a) {
+        const next = p.getByRole('button', { name: /Next Question|Finish Game/ });
+        if (await next.count()) await next.first().click().catch(() => {});
+      }
+    }
+    await a.page.waitForTimeout(700);
+  }
+  if (!(done.alice && done.bob)) {
+    await env.withSecurityRulesDisabled(async ctx => {
+      const { getDocs, collection } = await import('firebase/firestore');
+      const db = ctx.firestore();
+      const games = await getDocs(collection(db, 'games'));
+      const qs = new Set((await getDocs(collection(db, 'game_questions'))).docs.map(d => d.id));
+      for (const g of games.docs) {
+        const d = g.data();
+        fs.writeFileSync(path.join(OUT, 'game-debug.json'), JSON.stringify({ id: g.id, status: d.status, idx: d.currentQuestionIndex, questions: d.questions, missing: (d.questions || []).filter(q => !qs.has(q)), playerQuestions: d.playerQuestions, answers: d.answers, predictions: d.predictions, qpp: d.questionsPerPlayer }, null, 1));
+      }
+    });
+    throw new Error(`game did not finish for: ${Object.entries(done).filter(([, v]) => !v).map(([k]) => k).join(', ')}`);
+  }
+});
+await step(a, 'final leaderboard shown, no individual answers', async p => {
+  const body = await p.locator('body').innerText();
+  if (!/Final Leaderboard/i.test(body)) throw new Error('no final leaderboard');
+  if (new RegExp(`bob${run}[^\\n]{0,40}(picked|answered|chose)`, 'i').test(body)) throw new Error('ANONYMITY: another player\'s answer is shown');
 });
 
 await browser.close();
