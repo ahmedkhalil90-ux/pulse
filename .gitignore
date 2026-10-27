@@ -7,3 +7,5 @@ coverage/
 .env*
 !.env.example
 users.json
+bots/e2e/out/
+bots/out-vitest.log

@@ -10,7 +10,8 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test": "firebase emulators:exec --only firestore --project pulse-test \"vitest run\"",
-    "test:watch": "firebase emulators:exec --only firestore --project pulse-test \"vitest\""
+    "test:watch": "firebase emulators:exec --only firestore --project pulse-test \"vitest\"",
+    "bots": "bash bots/run-all.sh"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -36,6 +37,7 @@
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
