@@ -309,4 +309,20 @@ export const groupMembersCases: Case[] = [
         memberCount: 500,
       }),
   },
+  // --- join-by-code pre-check (found by the player bots) ------------------
+  {
+    name: 'a non-member can check their own (missing) membership before joining',
+    expect: 'allow',
+    as: OUTSIDER,
+    seed: seedGroup,
+    run: (db) => getDoc(doc(db, 'groups', GID, 'members', OUTSIDER.uid)),
+  },
+  {
+    name: "a user cannot probe whether someone else is a member",
+    expect: 'deny',
+    killedBy: 'M77',
+    as: OUTSIDER,
+    seed: seedGroup,
+    run: (db) => getDoc(doc(db, 'groups', GID, 'members', MEMBER.uid)),
+  },
 ];

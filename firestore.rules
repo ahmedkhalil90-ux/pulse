@@ -508,8 +508,13 @@ service cloud.firestore {
       // the parent document and nothing else. "My groups" is a collectionGroup
       // query on `uid`, which returns only the caller's own documents.
       match /members/{memberUid} {
+        // Keyed on the path, not resource.data: the join flow asks "am I
+        // already a member?" BEFORE joining, when the document does not
+        // exist. resource is null then, and a resource.data check errors and
+        // denies -- which broke join-by-code for everyone. The path is the
+        // caller's own uid, so this still reveals nothing about anyone else.
         allow get: if isAdmin()
-                   || (isAuthenticated() && resource.data.uid == request.auth.uid);
+                   || (isAuthenticated() && memberUid == request.auth.uid);
         // Keyed on the document field rather than the path wildcard, because
         // that is what Firestore can prove a query's filter against: a
         // collectionGroup query for `uid == me` is allowed, and any broader
@@ -558,7 +563,15 @@ service cloud.firestore {
 
     // User Answers (Tracking)
     match /user_answers/{answerId} {
-      allow read: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
+      // get: the feed asks "have I answered this?" for every card, usually
+      // before an answer exists. A missing document must not error (that was
+      // an uncaught crash on every new card), but it may only be probed on the
+      // caller's OWN id -- otherwise "missing" vs "denied" would reveal whether
+      // someone else answered a question.
+      allow get: if isAuthenticated() && (isAdmin()
+                    || (resource == null && answerId.matches(request.auth.uid + '_.+'))
+                    || (resource != null && resource.data.userId == request.auth.uid));
+      allow list: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       // Revisit rewrites the caller's own answer record. userId is pinned on
       // both sides so a record can never be reassigned to another user, and

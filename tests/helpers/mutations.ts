@@ -251,7 +251,7 @@ export const MUTATIONS: Mutation[] = [
       {
         find:
           '        allow get: if isAdmin()\n' +
-          '                   || (isAuthenticated() && resource.data.uid == request.auth.uid);',
+          '                   || (isAuthenticated() && memberUid == request.auth.uid);',
         replace: '        allow get: if isAuthenticated();',
       },
     ],
@@ -907,6 +907,26 @@ export const MUTATIONS: Mutation[] = [
           '                          || hasJoinProof(groupId,\n' +
           '                               get(/databases/$(database)/documents/groups/$(groupId)).data.inviteCode));',
         replace: '                      && true;',
+      },
+    ],
+  },
+  {
+    id: 'M77',
+    label: 'groups/members: any signed-in user may get any membership document',
+    edits: [
+      {
+        find: '                   || (isAuthenticated() && memberUid == request.auth.uid);',
+        replace: '                   || isAuthenticated();',
+      },
+    ],
+  },
+  {
+    id: 'M78',
+    label: "user_answers: a missing answer may be probed on anyone's id",
+    edits: [
+      {
+        find: "(resource == null && answerId.matches(request.auth.uid + '_.+'))",
+        replace: '(resource == null)',
       },
     ],
   },

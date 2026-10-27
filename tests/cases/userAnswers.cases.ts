@@ -1,4 +1,4 @@
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import type { Case } from '../helpers/env';
 import { ATTACKER, OWNER, QID, seedAnswer, seedUser } from '../helpers/fixtures';
 
@@ -30,5 +30,20 @@ export const userAnswersCases: Case[] = [
     as: OWNER,
     seed: (ctx) => seedAnswer(ctx, OWNER.uid, QID, 0),
     run: (db) => updateDoc(answerRef(db), { questionId: 'q2' }),
+  },
+  // --- "have I answered this?" before answering (found by the player bots) ---
+  {
+    name: 'a user can check their own missing answer record without an error',
+    expect: 'allow',
+    as: OWNER,
+    run: (db) => getDoc(doc(db, 'user_answers', `${OWNER.uid}_${QID}`)),
+  },
+  {
+    name: "a user cannot probe whether someone else answered a question",
+    expect: 'deny',
+    killedBy: 'M78',
+    as: ATTACKER,
+    seed: (ctx) => seedUser(ctx, ATTACKER.uid),
+    run: (db) => getDoc(doc(db, 'user_answers', `${OWNER.uid}_${QID}`)),
   },
 ];
