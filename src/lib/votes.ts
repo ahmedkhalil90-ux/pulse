@@ -32,19 +32,36 @@ export async function addVoteToResults(
   const update: Record<string, unknown> = { [`counts.${optionIndex}`]: increment(1) };
   for (const k of buckets) update[`demographics.${k}.${demographics[k]}.${optionIndex}`] = increment(1);
 
-  if ((await getDoc(ref)).exists()) {
-    await updateDoc(ref, update);
-    return;
-  }
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    if (snap.exists()) {
-      tx.update(ref, update);
-    } else {
-      const c = { '0': optionIndex === 0 ? 1 : 0, '1': optionIndex === 1 ? 1 : 0 };
-      const demo: Record<string, Record<string, typeof c>> = { ageRange: {}, gender: {}, country: {} };
-      for (const k of buckets) demo[k] = { [demographics[k] as string]: c };
-      tx.set(ref, { counts: c, demographics: demo });
+  // Retry only on errors that guarantee nothing was written (an aborted
+  // transaction, or a create refused because another voter created the
+  // document first), so a retry can never count a vote twice.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await writeOnce();
+      return;
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      const definitelyNotWritten = code === 'aborted' || code === 'permission-denied' || code === 'failed-precondition';
+      if (!definitelyNotWritten || attempt >= 5) throw e;
+      await new Promise((r) => setTimeout(r, 100 + Math.random() * 300 * (attempt + 1)));
     }
-  });
+  }
+
+  async function writeOnce() {
+    if ((await getDoc(ref)).exists()) {
+      await updateDoc(ref, update);
+      return;
+    }
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (snap.exists()) {
+        tx.update(ref, update);
+      } else {
+        const c = { '0': optionIndex === 0 ? 1 : 0, '1': optionIndex === 1 ? 1 : 0 };
+        const demo: Record<string, Record<string, typeof c>> = { ageRange: {}, gender: {}, country: {} };
+        for (const k of buckets) demo[k] = { [demographics[k] as string]: c };
+        tx.set(ref, { counts: c, demographics: demo });
+      }
+    });
+  }
 }
