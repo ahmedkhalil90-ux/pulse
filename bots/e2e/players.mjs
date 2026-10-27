@@ -64,6 +64,8 @@ async function step(bot, name, fn) {
     steps.push({ bot: bot.name, step: name, ok: false, ms: Date.now() - t0, error: String(e.message).split('\n')[0].slice(0, 300), screenshot: path.relative(ROOT, shot) });
   }
 }
+const nav = (page, label) => page.locator('nav').getByText(label, { exact: true }).click();
+const credits = async page => Number(await page.locator('svg.lucide-coins + span').first().innerText());
 const toast = (page, text) => page.getByText(text, { exact: false }).first().waitFor({ timeout: 10000 });
 
 async function signup(bot, username, age, gender, country) {
@@ -90,7 +92,9 @@ await signup(a, `alice${run}`, '25-34', 'Female', 'UAE');
 await signup(b, `bob${run}`, '18-24', 'Male', 'Egypt');
 
 // 2. Feed: vote, see results and the anonymity confirmation
+let creditsBefore = 0;
 await step(a, 'vote in feed', async p => {
+  creditsBefore = await credits(p);
   const option = p.locator('h3 + div button').first();
   await option.waitFor({ timeout: 10000 });
   await option.click();
@@ -98,15 +102,16 @@ await step(a, 'vote in feed', async p => {
 });
 await step(a, 'anonymity confirmation shown', p => toast(p, 'Your answer is anonymous'));
 await step(a, 'credit balance increased', async p => {
-  await p.waitForTimeout(1000);
-  const body = await p.locator('body').innerText();
-  if (!/Credits[\s\S]{0,40}\b([1-9]\d*)\b/.test(body)) throw new Error('credit balance not visible or still 0');
+  await p.waitForTimeout(1500);
+  let after = await credits(p);
+  if (after !== creditsBefore + 1) { await p.reload({ waitUntil: 'networkidle' }); after = await credits(p); if (after === creditsBefore + 1) throw new Error(`top-bar balance stale: showed ${creditsBefore} until reload, then ${after}`); }
+  if (after !== creditsBefore + 1) throw new Error(`credits ${creditsBefore} -> ${after}, expected +1`);
 });
 
 // 3. Groups: alice creates, bob joins with the invite code
 let inviteCode = '';
 await step(a, 'create group', async p => {
-  await p.getByText('Groups', { exact: true }).click();
+  await nav(p, 'Groups');
   await p.getByRole('button', { name: 'Create Group' }).click();
   await p.getByPlaceholder('e.g. The Inner Circle').fill(`Bots ${run}`);
   await p.getByRole('button', { name: /Create/ }).last().click();
@@ -116,12 +121,12 @@ await step(a, 'read invite code', async p => {
   await p.getByText(`Bots ${run}`).first().click();
   await p.getByText('Invite Code').waitFor({ timeout: 10000 });
   const text = await p.locator('body').innerText();
-  inviteCode = (text.match(/Invite Code\s*\n?\s*([A-Z0-9]{6})/) || [])[1] || '';
+  inviteCode = (text.match(/Invite Code\s*\n?\s*([A-Z0-9]{6})/i) || [])[1] || '';
   if (!inviteCode) throw new Error('invite code not found on group page');
 });
 await step(b, 'join group by code', async p => {
   if (!inviteCode) throw new Error('skipped: no invite code from alice');
-  await p.getByText('Groups', { exact: true }).click();
+  await nav(p, 'Groups');
   await p.getByRole('button', { name: 'Join Group' }).click();
   await p.getByPlaceholder('XXXXXX').fill(inviteCode);
   await p.getByRole('button', { name: /Join/ }).last().click();
@@ -135,35 +140,35 @@ await step(b, 'members tab shows count only, no usernames', async p => {
 
 // 4. Posting: verify phone, post, question held for moderation (no Gemini key in test)
 await step(a, 'verify phone', async p => {
-  await p.getByText('Profile', { exact: false }).first().click().catch(() => {});
-  await p.getByRole('button', { name: /Verify/i }).first().click();
+  await p.locator('button:has(svg.lucide-user)').first().click();
+  await p.getByRole('button', { name: 'Verify Phone Number' }).click();
   await toast(p, 'Phone verified');
 });
 await step(a, 'post a question', async p => {
-  await p.getByText('Feed', { exact: true }).click();
+  await nav(p, 'Feed');
   await p.locator('nav button').nth(2).click(); // centre "+" button
   await p.getByPlaceholder("What's on your mind?").fill(`Bot test ${run}: karak or flat white?`);
   await p.getByPlaceholder('First choice...').fill('Karak');
   await p.getByPlaceholder('Second choice...').fill('Flat white');
-  await p.getByRole('button', { name: /Publish|Post/i }).last().click();
-  await p.waitForTimeout(2000);
+  await p.getByRole('button', { name: 'Publish', exact: true }).click();
+  await p.getByText(/held for review|question live|Failed to publish|Could not save|Rejected/i).first().waitFor({ timeout: 20000 });
   const body = await p.locator('body').innerText();
-  if (/Failed to publish|Could not save/.test(body)) throw new Error('posting failed');
+  if (/Failed to publish|Could not save|Rejected/i.test(body)) throw new Error('posting failed: ' + body.match(/(Failed to publish|Could not save[^\n]*|Rejected[^\n]*)/i)[0]);
 });
 
 // 5. Game mode: alice hosts, bob joins by code
 let gameCode = '';
 await step(a, 'host a live game', async p => {
-  await p.getByText('Games', { exact: true }).click();
+  await nav(p, 'Games');
   await p.getByText('Play Live').click();
   await p.getByText('Waiting Lobby').waitFor({ timeout: 10000 });
   const text = await p.locator('body').innerText();
-  gameCode = (text.match(/Share this code\s*\n?\s*([A-Z0-9]{6})/) || [])[1] || '';
+  gameCode = (text.match(/Share this code\s*\n?\s*([A-Z0-9]{6})/i) || [])[1] || '';
   if (!gameCode) throw new Error('game code not visible in lobby');
 });
 await step(b, 'join game by code', async p => {
   if (!gameCode) throw new Error('skipped: no game code from alice');
-  await p.getByText('Games', { exact: true }).click();
+  await nav(p, 'Games');
   await p.getByPlaceholder('ENTER 6-CHAR CODE').fill(gameCode);
   await p.getByRole('button', { name: /Join/ }).last().click();
   await p.getByText('Waiting Lobby').waitFor({ timeout: 10000 });
