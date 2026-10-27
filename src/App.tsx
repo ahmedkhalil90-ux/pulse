@@ -65,6 +65,7 @@ import {
   boostQuestion,
   unlockDemographics,
 } from './lib/credits';
+import { addVoteToResults } from './lib/votes';
 import { ModerationQueue } from './components/ModerationQueue';
 import { Question, QuestionResult, UserProfile, Group, UserAnswer } from './types';
 import { moderateQuestion } from './services/geminiService';
@@ -1024,35 +1025,9 @@ function QuestionCard({
       await setDoc(answerRef, answerData);
 
       if (!isRevisit) {
-        const updateData: any = {
-          [`counts.${optionIndex}`]: increment(1)
-        };
-
-        // Add demographic data
-        if (user.demographics.ageRange) {
-          updateData[`demographics.ageRange.${user.demographics.ageRange}.${optionIndex}`] = increment(1);
-        }
-        if (user.demographics.gender) {
-          updateData[`demographics.gender.${user.demographics.gender}.${optionIndex}`] = increment(1);
-        }
-        if (user.demographics.country) {
-          updateData[`demographics.country.${user.demographics.country}.${optionIndex}`] = increment(1);
-        }
-
-        if (resultDoc.exists()) {
-          await updateDoc(resultRef, updateData);
-        } else {
-          // Initialize results if first vote
-          const initialResults = {
-            counts: { '0': optionIndex === 0 ? 1 : 0, '1': optionIndex === 1 ? 1 : 0 },
-            demographics: {
-              ageRange: user.demographics.ageRange ? { [user.demographics.ageRange]: { '0': optionIndex === 0 ? 1 : 0, '1': optionIndex === 1 ? 1 : 0 } } : {},
-              gender: user.demographics.gender ? { [user.demographics.gender]: { '0': optionIndex === 0 ? 1 : 0, '1': optionIndex === 1 ? 1 : 0 } } : {},
-              country: user.demographics.country ? { [user.demographics.country]: { '0': optionIndex === 0 ? 1 : 0, '1': optionIndex === 1 ? 1 : 0 } } : {}
-            }
-          };
-          await setDoc(resultRef, initialResults);
-        }
+        // Transactional: concurrent first votes used to overwrite each other
+        // and lose every vote but one. See src/lib/votes.ts.
+        await addVoteToResults(db, question.id, optionIndex as 0 | 1, user.demographics);
 
         // 3. Award credit
         await awardAnswerCredit(db, user.uid);
