@@ -66,29 +66,40 @@ export function GamePlay({ game, questionId }: { game: Game, questionId: string 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchQuestion = async () => {
       setUnavailable(false);
-      try {
-        const qDoc = await getDoc(doc(db, 'game_questions', questionId));
-        if (qDoc.exists()) {
-          setQuestion({ id: qDoc.id, ...qDoc.data() } as GameQuestion);
-        } else {
-          // A question id in the list that resolves to nothing.
-          setUnavailable(true);
+      setLoading(true);
+      // Retried: when the last player submits, every screen moves to play from
+      // the locally-applied write, a moment BEFORE the server has the new
+      // question documents. The first read then finds nothing and is refused,
+      // which used to strand everyone on "couldn't be loaded" for good.
+      // Found by the player bots.
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 6 && !cancelled; attempt++) {
+        try {
+          const qDoc = await getDoc(doc(db, 'game_questions', questionId));
+          if (qDoc.exists()) {
+            if (!cancelled) {
+              setQuestion({ id: qDoc.id, ...qDoc.data() } as GameQuestion);
+              setLoading(false);
+            }
+            return;
+          }
+        } catch (error) {
+          lastError = error;
         }
-      } catch (error) {
-        // Reading it was refused -- most likely an id belonging to a different
-        // game, which no one here has permission to read.
-        setUnavailable(true);
-        handleFirestoreError(error, OperationType.GET, `game_questions/${questionId}`);
-      } finally {
-        // In a finally, or a refused read leaves the player on a spinner with
-        // no message and no way forward.
-        setLoading(false);
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
       }
+      if (cancelled) return;
+      // Still nothing: an id that resolves to nothing, or one belonging to a
+      // different game that no one here may read.
+      setUnavailable(true);
+      setLoading(false);
+      if (lastError) handleFirestoreError(lastError, OperationType.GET, `game_questions/${questionId}`);
     };
-
     fetchQuestion();
+    return () => { cancelled = true; };
   }, [questionId]);
 
   useEffect(() => {
