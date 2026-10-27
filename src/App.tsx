@@ -67,6 +67,9 @@ import {
 } from './lib/credits';
 import { addVoteToResults } from './lib/votes';
 import { ModerationQueue } from './components/ModerationQueue';
+
+// Mirrors the hardcoded UID in firestore.rules isAdmin().
+const HARDCODED_ADMIN_UID = '7zNbw98m9jZYy8uTan7dqwolBud2';
 import { Question, QuestionResult, UserProfile, Group, UserAnswer } from './types';
 import { Toaster, toast } from 'sonner';
 import { cn } from './lib/utils';
@@ -2470,8 +2473,18 @@ function ProfileView() {
 
   if (!user) return null;
 
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  useEffect(() => {
+    if (!user) return;
+    // Display only: the rules authorise every approval independently.
+    getDoc(doc(db, 'admins', user.uid))
+      .then((snap) => setIsAdminUser(snap.exists() || user.uid === HARDCODED_ADMIN_UID))
+      .catch(() => setIsAdminUser(user.uid === HARDCODED_ADMIN_UID));
+  }, [user?.uid]);
+
   return (
     <div className="space-y-8">
+      {isAdminUser && <ModerationQueue />}
       <div className="flex flex-col items-center gap-4 py-8">
         <div className="w-24 h-24 bg-zinc-900 rounded-full flex items-center justify-center border border-white/5">
           <User className="w-12 h-12 text-zinc-600" />

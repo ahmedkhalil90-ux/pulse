@@ -790,8 +790,8 @@ export const MUTATIONS: Mutation[] = [
     label: 'admin: the roster becomes client-readable and writable',
     edits: [
       {
-        find: '    match /admins/{adminUid} {\n      allow read, write: if false;\n    }',
-        replace: '    match /admins/{adminUid} {\n      allow read, write: if isAuthenticated();\n    }',
+        find: '      allow get: if isAuthenticated() && request.auth.uid == adminUid;\n      allow list, write: if false;',
+        replace: '      allow read, write: if isAuthenticated();',
       },
     ],
   },
@@ -953,6 +953,16 @@ export const MUTATIONS: Mutation[] = [
           '                      // signed-in user could previously post as the official\n' +
           '                      // account, straight to live.\n' +
           "                      request.resource.data.authorUid == 'pulse_originals_system' || isAdmin()",
+      },
+    ],
+  },
+  {
+    id: 'M81',
+    label: "admins: any signed-in user may read anyone's roster entry",
+    edits: [
+      {
+        find: '      allow get: if isAuthenticated() && request.auth.uid == adminUid;',
+        replace: '      allow get: if isAuthenticated();',
       },
     ],
   },

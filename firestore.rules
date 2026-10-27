@@ -281,7 +281,10 @@ service cloud.firestore {
     // and means no client can grant itself admin, discover who is an admin, or
     // remove one. Writes are console or Admin SDK only.
     match /admins/{adminUid} {
-      allow read, write: if false;
+      // A user may check only their OWN entry, so the app can show the review
+      // queue to admins. It reveals nothing about who else is an admin.
+      allow get: if isAuthenticated() && request.auth.uid == adminUid;
+      allow list, write: if false;
     }
 
     // User profiles

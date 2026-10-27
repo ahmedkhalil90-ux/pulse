@@ -167,4 +167,26 @@ export const adminIdentityCases: Case[] = [
     seed: seedResultsAndRoster,
     run: (db) => getDoc(doc(db, 'admins', ROSTERED.uid)),
   },
+  {
+    name: 'an admin can check their own roster entry (to show the review queue)',
+    expect: 'allow',
+    as: ROSTERED,
+    seed: seedResultsAndRoster,
+    run: (db) => getDoc(doc(db, 'admins', ROSTERED.uid)),
+  },
+  {
+    name: 'a non-admin can check their own (missing) roster entry',
+    expect: 'allow',
+    as: PLAIN,
+    seed: seedResultsAndRoster,
+    run: (db) => getDoc(doc(db, 'admins', PLAIN.uid)),
+  },
+  {
+    name: "a user cannot check whether someone else is an admin",
+    expect: 'deny',
+    killedBy: 'M81',
+    as: PLAIN,
+    seed: seedResultsAndRoster,
+    run: (db) => getDoc(doc(db, 'admins', ROSTERED.uid)),
+  },
 ];
