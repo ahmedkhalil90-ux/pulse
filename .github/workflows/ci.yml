@@ -50,3 +50,21 @@ jobs:
 
       - name: Test against the Firestore emulator
         run: npm test
+
+      # Player, swarm and attacker bots: real browsers and concurrent users
+      # against the emulators. Screenshots of any failed step are uploaded.
+      - name: Install Chromium for the player bots
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the bots
+        run: npm run bots
+
+      - name: Upload bot report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-report
+          path: |
+            bots/e2e/out/
+            bots/out-vitest.log
+          if-no-files-found: ignore

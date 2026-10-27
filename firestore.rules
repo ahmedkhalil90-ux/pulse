@@ -387,15 +387,21 @@ service cloud.firestore {
       );
       
       allow create: if isAuthenticated() && (
-                      // Public question (costs credits, handled by app logic but rules allow if status is live/pending)
-                      (request.resource.data.isPublic == true && request.resource.data.authorUid == request.auth.uid) ||
+                      // Public question: always enters as 'pending'. Moderation
+                      // runs server-side and is the only thing that can make it
+                      // live; a client verdict cannot be trusted (the attacker
+                      // bots wrote status 'live' directly).
+                      (request.resource.data.isPublic == true
+                       && request.resource.data.authorUid == request.auth.uid
+                       && request.resource.data.status == 'pending') ||
                       // Group question (must be member of group)
                       (request.resource.data.isPublic == false && 
                        request.resource.data.groupId != null &&
                        isGroupMember(request.resource.data.groupId) &&
                        request.resource.data.authorUid == request.auth.uid) ||
-                      // System questions
-                      request.resource.data.authorUid == 'pulse_originals_system' ||
+                      // System (Pulse Originals) questions: admin only. Any
+                      // signed-in user could previously post as the official
+                      // account, straight to live.
                       isAdmin()
                     );
       

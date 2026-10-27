@@ -151,7 +151,7 @@ await step(a, 'post a question', async p => {
   await p.getByPlaceholder('First choice...').fill('Karak');
   await p.getByPlaceholder('Second choice...').fill('Flat white');
   await p.getByRole('button', { name: 'Publish', exact: true }).click();
-  await p.getByText(/held for review|question live|Failed to publish|Could not save|Rejected/i).first().waitFor({ timeout: 20000 });
+  await p.getByText(/passes review|held for review|question live|Failed to publish|Could not save|Rejected/i).first().waitFor({ timeout: 20000 });
   const body = await p.locator('body').innerText();
   if (/Failed to publish|Could not save|Rejected/i.test(body)) throw new Error('posting failed: ' + body.match(/(Failed to publish|Could not save[^\n]*|Rejected[^\n]*)/i)[0]);
 });

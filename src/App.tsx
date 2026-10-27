@@ -68,7 +68,6 @@ import {
 import { addVoteToResults } from './lib/votes';
 import { ModerationQueue } from './components/ModerationQueue';
 import { Question, QuestionResult, UserProfile, Group, UserAnswer } from './types';
-import { moderateQuestion } from './services/geminiService';
 import { Toaster, toast } from 'sonner';
 import { cn } from './lib/utils';
 import { GameView } from './components/GameMode/GameView';
@@ -1470,15 +1469,11 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
 
     setLoading(true);
     try {
-      // AI Moderation. Only an explicit 'live' verdict publishes; a failed or
-      // unavailable moderator returns 'pending', which is stored but never
-      // shown in the feed.
-      const mod = await moderateQuestion(text, [opt1, opt2]);
-      if (mod.status === 'rejected') {
-        toast.error(`Rejected: ${mod.reason}`);
-        setLoading(false);
-        return;
-      }
+      // Public questions always enter as 'pending': the rules refuse anything
+      // else, because a verdict computed on the phone cannot be trusted.
+      // Moderation runs server-side and is the only path to 'live'. Group
+      // questions are private to invited members and go live directly.
+      const status = groupId ? 'live' : 'pending';
 
       // Create Question
       try {
@@ -1490,7 +1485,7 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
           isPublic: !groupId,
           groupId: groupId || null,
           createdAt: new Date().toISOString(),
-          status: mod.status,
+          status,
           flags: 0,
           random: Math.random(),
           boostCount: 0
@@ -1503,12 +1498,10 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
         return;
       }
 
-      if (mod.status === 'pending') {
-        toast.warning(mod.reason ?? 'Your question is held for review and is not visible yet.', {
-          duration: 8000
-        });
+      if (status === 'pending') {
+        toast.success('Submitted! Your question goes live once it passes review.', { duration: 6000 });
       } else {
-        toast.success(groupId ? 'Group question live!' : 'Public question live!');
+        toast.success('Group question live!');
       }
       onClose();
     } catch (e) {
@@ -1593,7 +1586,7 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
           
           <div className="flex items-center gap-2 text-zinc-500 px-2">
             <ShieldCheck className="w-4 h-4" />
-            <span className="text-xs font-medium">AI Moderated</span>
+            <span className="text-xs font-medium">Reviewed before going live</span>
           </div>
           <div className="flex gap-3">
             <button 

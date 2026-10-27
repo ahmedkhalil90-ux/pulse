@@ -930,6 +930,32 @@ export const MUTATIONS: Mutation[] = [
       },
     ],
   },
+  {
+    id: 'M79',
+    label: 'questions: a public question may be created live, skipping moderation',
+    edits: [
+      {
+        find: "                       && request.resource.data.status == 'pending') ||",
+        replace: '                       ) ||',
+      },
+    ],
+  },
+  {
+    id: 'M80',
+    label: 'questions: anyone may post as pulse_originals_system',
+    edits: [
+      {
+        find:
+          '                      // signed-in user could previously post as the official\n' +
+          '                      // account, straight to live.\n' +
+          '                      isAdmin()',
+        replace:
+          '                      // signed-in user could previously post as the official\n' +
+          '                      // account, straight to live.\n' +
+          "                      request.resource.data.authorUid == 'pulse_originals_system' || isAdmin()",
+      },
+    ],
+  },
 ];
 
 /**

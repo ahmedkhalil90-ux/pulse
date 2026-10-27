@@ -1,4 +1,4 @@
-import { doc, increment, updateDoc } from 'firebase/firestore';
+import { doc, increment, setDoc, updateDoc } from 'firebase/firestore';
 import type { Case } from '../helpers/env';
 import { AUTHOR, FLAGGER, NEW_UID, OLD_UID, seedQuestion, seedUser } from '../helpers/fixtures';
 
@@ -104,5 +104,41 @@ export const questionsCases: Case[] = [
       await seedQuestion(ctx, QN, { authorUid: OLD_UID, text: 'original text' });
     },
     run: (db) => updateDoc(qRef(db), { authorUid: NEW_UID.uid, text: 'hijacked text' }),
+  },
+  // --- create: moderation cannot be skipped (found by the attacker bots) ---
+  {
+    name: 'a user may submit a public question as pending',
+    expect: 'allow',
+    as: AUTHOR,
+    seed: (ctx) => seedUser(ctx, AUTHOR.uid),
+    run: (db) => setDoc(doc(db, 'questions', 'new_pending'), {
+        text: 'Karak or flat white?', options: ['Karak', 'Flat white'], category: 'Food',
+        authorUid: AUTHOR.uid, isPublic: true, groupId: null, createdAt: '2026-10-27T00:00:00.000Z',
+        status: 'pending', flags: 0, random: 0.5, boostCount: 0,
+      }),
+  },
+  {
+    name: 'a user may not publish a public question straight to live',
+    expect: 'deny',
+    killedBy: 'M79',
+    as: AUTHOR,
+    seed: (ctx) => seedUser(ctx, AUTHOR.uid),
+    run: (db) => setDoc(doc(db, 'questions', 'new_live'), {
+        text: 'Karak or flat white?', options: ['Karak', 'Flat white'], category: 'Food',
+        authorUid: AUTHOR.uid, isPublic: true, groupId: null, createdAt: '2026-10-27T00:00:00.000Z',
+        status: 'live', flags: 0, random: 0.5, boostCount: 0,
+      }),
+  },
+  {
+    name: 'a user may not post as the official Pulse Originals account',
+    expect: 'deny',
+    killedBy: 'M80',
+    as: AUTHOR,
+    seed: (ctx) => seedUser(ctx, AUTHOR.uid),
+    run: (db) => setDoc(doc(db, 'questions', 'fake_official'), {
+        text: 'Karak or flat white?', options: ['Karak', 'Flat white'], category: 'Food',
+        authorUid: 'pulse_originals_system', isPublic: true, groupId: null, createdAt: '2026-10-27T00:00:00.000Z',
+        status: 'live', flags: 0, random: 0.5, boostCount: 0,
+      }),
   },
 ];
