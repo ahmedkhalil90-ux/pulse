@@ -40,6 +40,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const uid = user?.uid ?? null;
+
+  // Live profile listener, keyed on uid. Previously it was only attached when
+  // a profile already existed at sign-in, so a new account (profile written
+  // during signup, after the auth callback) never saw its credit balance
+  // change until the app was reloaded. Found by the player bots.
+  useEffect(() => {
+    if (!uid) return;
+    return onSnapshot(doc(db, 'users', uid), (snap) => {
+      if (snap.exists()) setUser({ uid, ...snap.data() } as UserProfile);
+    }, (error) => {
+      console.error('Profile snapshot error:', error);
+    });
+  }, [uid]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -66,14 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Set initial user state immediately for better UX
             setUser(profile);
             
-            // Listen for real-time updates to user profile (credits, etc.)
-            unsubProfile = onSnapshot(doc(db, 'users', firebaseUser.uid), (doc) => {
-              if (doc.exists()) {
-                setUser({ uid: firebaseUser.uid, ...doc.data() } as UserProfile);
-              }
-            }, (error) => {
-              console.error('Profile snapshot error:', error);
-            });
+            // Real-time profile updates (credits etc.) are handled by the
+            // uid-keyed effect below, so they also cover brand-new accounts
+            // whose profile is written after this handler has already run.
 
             // Daily Bonus Logic. The lastLogin check runs inside the
             // transaction rather than against this snapshot, so two tabs

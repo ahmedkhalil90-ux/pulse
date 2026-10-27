@@ -104,8 +104,8 @@ await step(a, 'anonymity confirmation shown', p => toast(p, 'Your answer is anon
 await step(a, 'credit balance increased', async p => {
   await p.waitForTimeout(1500);
   let after = await credits(p);
-  if (after !== creditsBefore + 1) { await p.reload({ waitUntil: 'networkidle' }); after = await credits(p); if (after === creditsBefore + 1) throw new Error(`top-bar balance stale: showed ${creditsBefore} until reload, then ${after}`); }
-  if (after !== creditsBefore + 1) throw new Error(`credits ${creditsBefore} -> ${after}, expected +1`);
+  if (after !== creditsBefore + 1) { await p.reload({ waitUntil: 'domcontentloaded' }); await p.locator('svg.lucide-coins + span').first().waitFor(); await p.waitForTimeout(2000); after = await credits(p); if (after === creditsBefore + 1) throw new Error(`top-bar balance stale: showed ${creditsBefore} until reload, then ${after}`); }
+  if (after !== creditsBefore + 1) throw new Error(`credits ${creditsBefore} -> ${after} even after reload, expected +1`);
 });
 
 // 3. Groups: alice creates, bob joins with the invite code
