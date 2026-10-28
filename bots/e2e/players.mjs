@@ -172,6 +172,29 @@ await step(a, 'unlock demographics: -3 credits, small groups stay hidden', async
   if (!shown) console.log('  note: feed auto-advanced before the breakdown could be read');
 });
 
+await step(a, 'returning user: answered questions do not come back', async p => {
+  for (let k = 0; k < 3; k++) {            // answer a few more first
+    await p.locator('h3 + div button').first().click().catch(() => {});
+    await p.waitForTimeout(700);
+    await p.getByRole('button', { name: /Next/ }).first().click().catch(() => {});
+    await p.waitForTimeout(500);
+  }
+  const answeredTexts = new Set();
+  await env.withSecurityRulesDisabled(async ctx => {
+    const { getDocs, getDoc, collection, query, where } = await import('firebase/firestore');
+    const db = ctx.firestore();
+    const m = await getDoc(doc(db, 'usernames', `alice${run}`.toLowerCase()));
+    const ans = await getDocs(query(collection(db, 'user_answers'), where('userId', '==', m.data().uid)));
+    for (const d of ans.docs) answeredTexts.add((await getDoc(doc(db, 'questions', d.data().questionId))).data()?.text);
+  });
+  if (answeredTexts.size < 2) throw new Error(`bot answered only ${answeredTexts.size} questions`);
+  for (let r = 0; r < 3; r++) {            // reopen the app three times
+    await p.reload({ waitUntil: 'domcontentloaded' });
+    const first = (await p.locator('h3').first().innerText({ timeout: 15000 })).trim();
+    if (answeredTexts.has(first)) throw new Error(`reopened app shows an already-answered question first: "${first}"`);
+  }
+});
+
 // 3. Groups: alice creates, bob joins with the invite code
 let inviteCode = '';
 await step(a, 'create group', async p => {
