@@ -33,10 +33,25 @@ export function setLang(next: Lang) {
   window.location.reload();
 }
 
-/** Question text in the reader's language, falling back to English. */
-export function qText(q: { text: string; text_ar?: string }): string {
-  return lang === 'ar' && q.text_ar ? q.text_ar : q.text;
+const GULF = new Set(['UAE', 'Saudi Arabia', 'Kuwait', 'Qatar', 'Bahrain', 'Oman']);
+type QText = {
+  text: string; options: string[];
+  text_ar?: string; options_ar?: string[];
+  text_ar_gulf?: string; options_ar_gulf?: string[];
+  text_ar_eg?: string; options_ar_eg?: string[];
+};
+/** Which Arabic version suits the reader: Gulf, Egyptian, or neutral. */
+function variant(q: QText, country?: string): [string | undefined, string[] | undefined] {
+  if (country && GULF.has(country) && q.text_ar_gulf) return [q.text_ar_gulf, q.options_ar_gulf];
+  if (country === 'Egypt' && q.text_ar_eg) return [q.text_ar_eg, q.options_ar_eg];
+  return [q.text_ar, q.options_ar];
 }
-export function qOptions(q: { options: string[]; options_ar?: string[] }): string[] {
-  return lang === 'ar' && q.options_ar?.length === 2 ? q.options_ar : q.options;
+/** Question text in the reader's language (and dialect), falling back to English. */
+export function qText(q: QText, country?: string): string {
+  const [t] = variant(q, country);
+  return lang === 'ar' && t ? t : q.text;
+}
+export function qOptions(q: QText, country?: string): string[] {
+  const [, o] = variant(q, country);
+  return lang === 'ar' && o?.length === 2 ? o : q.options;
 }
