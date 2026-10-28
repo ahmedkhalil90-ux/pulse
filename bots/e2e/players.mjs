@@ -50,6 +50,13 @@ await env.withSecurityRulesDisabled(async ctx => {
     });
   }
 });
+// Question index for the duplicate check (normally written by the ranking job).
+await env.withSecurityRulesDisabled(async ctx => {
+  const seedQs = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/pulse_seed_questions.json'), 'utf8')).questions.slice(0, 15);
+  await setDoc(doc(ctx.firestore(), 'ops', 'questionIndex'), { items: seedQs.map(q => ({ id: `seed_${q.id}`, t: q.question, o: [q.option_a, q.option_b] })) });
+});
+const DUP_SEED = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/pulse_seed_questions.json'), 'utf8')).questions[3];
+
 async function makeAdmin(username) {
   await env.withSecurityRulesDisabled(async ctx => {
     const db = ctx.firestore();
@@ -175,6 +182,15 @@ await step(a, 'verify phone', async p => {
   await p.locator('button:has(svg.lucide-user)').first().click();
   await p.getByRole('button', { name: 'Verify Phone Number' }).click();
   await toast(p, 'Phone verified');
+});
+await step(a, 'duplicate question: shown the existing one and can answer it', async p => {
+  await nav(p, 'Feed');
+  await p.locator('nav button').nth(2).click();
+  await p.getByPlaceholder("What's on your mind?").fill(DUP_SEED.question);
+  await p.locator('[data-testid="duplicate-panel"]').waitFor({ timeout: 8000 });
+  await p.getByRole('button', { name: 'Answer it' }).click();
+  await p.locator('[data-testid="duplicate-panel"]').getByText(DUP_SEED.option_a, { exact: true }).first().waitFor({ timeout: 8000 });
+  await p.getByRole('button', { name: 'Cancel', exact: true }).click();
 });
 await step(a, 'post a question', async p => {
   await nav(p, 'Feed');
