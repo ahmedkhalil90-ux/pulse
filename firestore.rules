@@ -287,6 +287,14 @@ service cloud.firestore {
       allow list, write: if false;
     }
 
+    // Operational documents written by the scheduled jobs (Admin SDK).
+    // Only the question index is readable: the app checks new submissions
+    // against it for duplicates. It holds live public question text only.
+    match /ops/{docId} {
+      allow get: if isAuthenticated() && docId == 'questionIndex';
+      allow list, write: if false;
+    }
+
     // User profiles
     match /users/{userId} {
       // `get` stays open to signed-in callers: games and groups display

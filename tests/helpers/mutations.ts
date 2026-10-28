@@ -966,6 +966,16 @@ export const MUTATIONS: Mutation[] = [
       },
     ],
   },
+  {
+    id: 'M82',
+    label: 'ops: every operational document becomes readable',
+    edits: [
+      {
+        find: "      allow get: if isAuthenticated() && docId == 'questionIndex';",
+        replace: '      allow get: if isAuthenticated();',
+      },
+    ],
+  },
 ];
 
 /**
