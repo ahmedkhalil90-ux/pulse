@@ -29,7 +29,7 @@ const key = JSON.parse(readFileSync(process.env.PULSE_SA_KEY, 'utf8'));
 const db = getFirestore(initializeApp({ credential: cert(key) }));
 db.settings({ ignoreUndefinedProperties: true });
 const DEADLINE = Date.now() + Number(process.env.MAX_MINUTES ?? 14) * 60000;
-const TASKS = (process.env.TASKS ?? 'moderate,trends,dialects,generate').split(',');
+const TASKS = (process.env.TASKS ?? 'moderate,trends,qotd,dialects,generate').split(',');
 const timeLeft = () => DEADLINE - Date.now();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
@@ -213,6 +213,22 @@ Return ONLY a JSON array: [{"category":"<one of ${CATEGORIES.join(' | ')}>","q_e
   }
 }
 
+// ---------- 2b. question of the day ----------
+// Freshest trend question if there is one (timely, made to be shared), else
+// the best-ranked live question that has not been featured in the last 30 days.
+async function qotd() {
+  const since = new Date(Date.now() - 3 * 86400000).toISOString();
+  const recent = new Set(((await db.doc('ops/questionOfDay').get()).data()?.history ?? []).slice(-30));
+  const live = (await db.collection('questions').where('status', '==', 'live').where('isPublic', '==', true).get()).docs
+    .map((d) => ({ id: d.id, ...d.data() })).filter((q) => !recent.has(q.id));
+  const trends = live.filter((q) => q.source?.startsWith('trend-') && q.createdAt >= since);
+  const pick = trends.length ? trends[Math.floor(Math.random() * trends.length)]
+    : live.sort((a, b) => (b.rank ?? 0) - (a.rank ?? 0))[0];
+  if (!pick) return;
+  await db.doc('ops/questionOfDay').set({ id: pick.id, date: new Date().toISOString().slice(0, 10), history: [...recent, pick.id].slice(-30) });
+  report.qotd = pick.text;
+}
+
 // ---------- 3. dialect variants ----------
 async function dialects() {
   const snap = await db.collection('questions').where('status', '==', 'live').limit(500).get();
@@ -254,7 +270,7 @@ Return a JSON array: [{"q_en","a_en","b_en","q_ar","a_ar","b_ar"}].`);
 
 // ---------- run ----------
 known = (await db.collection('questions').select('text').get()).docs.map((d) => norm(d.data().text ?? ''));
-for (const [name, fn] of Object.entries({ moderate, trends, dialects, generate })) {
+for (const [name, fn] of Object.entries({ moderate, trends, qotd, dialects, generate })) {
   if (!TASKS.includes(name) || timeLeft() < 30000) continue;
   log(`task ${name}`);
   try { await fn(); } catch (e) { report.errors.push(`${name}: ${String(e.message).slice(0, 160)}`); }
@@ -262,7 +278,7 @@ for (const [name, fn] of Object.entries({ moderate, trends, dialects, generate }
 report.when = new Date().toISOString();
 const md = [`### Pulse daily bot, ${report.when.slice(0, 10)}`,
   `- Moderation: ${report.moderated.approved} approved, ${report.moderated.rejected} rejected, ${report.moderated.duplicates ?? 0} merged as duplicates, ${report.moderated.held} left for you`,
-  `- Trend questions added: ${report.trends}`, `- Dialect versions added: ${report.dialects}`,
+  `- Trend questions added: ${report.trends}`, `- Question of the day: ${report.qotd ?? 'unchanged'}`, `- Dialect versions added: ${report.dialects}`,
   `- New questions: ${report.generated} drafted, ${report.pooled} passed review into the pool`,
   `- Model calls: ${Object.entries(report.calls).map(([m, n]) => `${m} ${n}`).join(', ') || 'none'}`,
   `- Quotas used up: ${report.exhausted.join(', ') || 'none'}`, ...(report.errors.length ? [`- Errors: ${report.errors.slice(0, 5).join('; ')}`] : [])].join('\n');
