@@ -45,7 +45,7 @@ const json = (t) => JSON.parse(t.replace(/^```(json)?/m, '').replace(/```\s*$/m,
 
 async function gemini(prompt, { search = false } = {}) {
   for (const m of GEMINI) {
-    if (dead.has(m)) continue;
+    if (dead.has(m) || (search && dead.has(`${m}+search`))) continue;
     const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.9, ...(search ? {} : { responseMimeType: 'application/json' }) } };
     if (search) body.tools = [{ google_search: {} }];
     try {
@@ -54,8 +54,8 @@ async function gemini(prompt, { search = false } = {}) {
         headers: { 'content-type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY }, body: JSON.stringify(body),
       });
       report.calls[m] = (report.calls[m] ?? 0) + 1;
-      if (r.status === 429) { dead.add(m); report.exhausted.push(m); continue; }
-      if (!r.ok) { if (r.status === 404 || r.status === 400) dead.add(m); continue; }
+      if (r.status === 429) { const k = search ? `${m}+search` : m; dead.add(k); report.exhausted.push(k); continue; }
+      if (!r.ok) { if (r.status === 404 || r.status === 400) dead.add(search ? `${m}+search` : m); continue; }
       const d = await r.json();
       return json(d.candidates[0].content.parts.map((p) => p.text || '').join(''));
     } catch (e) { report.errors.push(`${m}: ${String(e.message).slice(0, 80)}`); }
@@ -85,6 +85,15 @@ async function groq(prompt) {
   return null;
 }
 const allDead = () => GEMINI.every((m) => dead.has(m)) && GROQ.every((m) => dead.has(m));
+
+// Free public headlines (Google News RSS); used when search grounding has no free quota.
+async function headlines(market) {
+  const url = market === 'Egypt' ? 'https://news.google.com/rss?hl=ar&gl=EG&ceid=EG:ar' : 'https://news.google.com/rss?hl=en-AE&gl=AE&ceid=AE:en';
+  try {
+    const xml = await (await fetch(url, { signal: AbortSignal.timeout(20000) })).text();
+    return [...xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>/g)].map((m) => m[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim()).slice(0, 40);
+  } catch { return []; }
+}
 
 // ---------- shared ----------
 const norm = (s) => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2);
@@ -146,8 +155,14 @@ async function moderate() {
 async function trends() {
   for (const market of ['UAE', 'Egypt']) {
     if (timeLeft() < 120000) return;
-    const found = await gemini(`Search the web for what young adults in the ${market} are talking about this week (news, pop culture, football, prices, viral moments, events). Then write 6 two-option poll questions about those topics for Pulse, an anonymous polling app. ${GEN_RULES}
-Return ONLY a JSON array: [{"category":"<one of ${CATEGORIES.join(' | ')}>","q_en","a_en","b_en","q_ar","a_ar","b_ar","topic":"<the trend>"}].`, { search: true });
+    const ask = (source) => `${source}
+Write 6 two-option poll questions for Pulse, an anonymous polling app for young adults in the ${market}, about the topics people are talking about this week (pop culture, football, prices, viral moments, events; skip politics and tragedies). ${GEN_RULES}
+Return ONLY a JSON array: [{"category":"<one of ${CATEGORIES.join(' | ')}>","q_en","a_en","b_en","q_ar","a_ar","b_ar","topic":"<the trend>"}].`;
+    let found = await gemini(ask(`Search the web for what young adults in the ${market} are talking about this week.`), { search: true });
+    if (!Array.isArray(found)) {
+      const news = await headlines(market);
+      if (news.length) found = await gemini(ask(`This week's top headlines in the ${market}:\n- ${news.join('\n- ')}`));
+    }
     if (!Array.isArray(found)) continue;
     const keep = await reviewAndKeep(found);
     const expiresAt = new Date(Date.now() + 14 * 86400000).toISOString();
