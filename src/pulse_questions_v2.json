@@ -1,0 +1,1485 @@
+{
+  "meta": {
+    "version": "2.0",
+    "author": "Pulse Originals",
+    "note": "Generated with free-tier models, curated by Claude, 2026-10-27"
+  },
+  "questions": [
+    {
+      "category": "Money & Salary",
+      "question": "Who should pay on a first date?",
+      "option_a": "Split 50/50",
+      "option_b": "One person pays",
+      "question_ar": "مين المفروض يدفع في أول موعد؟",
+      "option_a_ar": "بالنص 50/50",
+      "option_b_ar": "طرف واحد"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Invest in gold or crypto?",
+      "option_a": "Gold",
+      "option_b": "Crypto",
+      "question_ar": "تستثمر في الذهب أم العملات الرقمية؟",
+      "option_a_ar": "ذهب",
+      "option_b_ar": "عملات"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Keep a secret stash of cash?",
+      "option_a": "Stash",
+      "option_b": "None",
+      "question_ar": "تحافظ على مخبأ سري للنقود؟",
+      "option_a_ar": "أحتفظ",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "If HR made a payroll error in your favor, would you report it?",
+      "option_a": "Report it",
+      "option_b": "Keep quiet",
+      "question_ar": "لو نزل لك راتب زيادة بالغلط، تبلغ؟",
+      "option_a_ar": "أبلغ الموارد",
+      "option_b_ar": "أسكت وآخذها"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Take a side gig on weekends?",
+      "option_a": "Side‑gig",
+      "option_b": "Rest",
+      "question_ar": "تعمل عمل جانبي في عطلة الأسبوع؟",
+      "option_a_ar": "عمل جانبي",
+      "option_b_ar": "راحة"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Would you date someone who earns significantly less than you?",
+      "option_a": "Doesn't matter",
+      "option_b": "Dealbreaker",
+      "question_ar": "ترتبط بشخص دخله أقل منك بكثير؟",
+      "option_a_ar": "عادي، ما يفرق",
+      "option_b_ar": "صعبة بصراحة"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Do your parents know your exact monthly salary?",
+      "option_a": "Yes, exact",
+      "option_b": "No or estimate",
+      "question_ar": "أهلك يعرفون كم راتبك الشهري بالضبط؟",
+      "option_a_ar": "يعرفون بالضبط",
+      "option_b_ar": "رقم تقريبي/لا"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Have you ever taken a sick day to do freelance work?",
+      "option_a": "Guilty",
+      "option_b": "Never",
+      "question_ar": "أخذت إجازة مرضية عشان تخلص شغل فريلانس؟",
+      "option_a_ar": "إي، سويتها",
+      "option_b_ar": "لا، أبداً"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Would you work for a micromanager if they doubled your pay?",
+      "option_a": "Worth the money",
+      "option_b": "Peace over money",
+      "question_ar": "تشتغل مع مدير يتدخل بكل شيء مقابل ضعف الراتب؟",
+      "option_a_ar": "يستاهل التعب",
+      "option_b_ar": "راحت بالي أهم"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Have you ever asked for a raise and been turned down?",
+      "option_a": "Yes, rejected",
+      "option_b": "Never rejected",
+      "question_ar": "طلبت زيادة راتب وانرفض طلبك قبل كذا؟",
+      "option_a_ar": "إي، انرفضت",
+      "option_b_ar": "لا، ما انرفضت"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Buying luxury brands on installment plans: smart or foolish?",
+      "option_a": "Smart move",
+      "option_b": "Bad idea",
+      "question_ar": "شراء ماركات بالأقساط: ذكاء أم ورطة؟",
+      "option_a_ar": "ذكاء ومرونة",
+      "option_b_ar": "ورطة مالية"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Would you move back home with parents to save money?",
+      "option_a": "Yes, to save",
+      "option_b": "No, freedom first",
+      "question_ar": "ترجع تعيش مع أهلك عشان توفر فلوس؟",
+      "option_a_ar": "إي، التوفير أهم",
+      "option_b_ar": "لا، استقلاليتي أهم"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Save for travel or emergency fund first?",
+      "option_a": "Travel",
+      "option_b": "Emergency",
+      "question_ar": "توفر للسفر أم للطوارئ أولًا؟",
+      "option_a_ar": "السفر",
+      "option_b_ar": "الطوارئ"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Ask for salary raise after 6 months?",
+      "option_a": "Ask",
+      "option_b": "Wait",
+      "question_ar": "تطلب زيادة بعد ٦ شهور؟",
+      "option_a_ar": "أطلب",
+      "option_b_ar": "أنتظر"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Do you spend over 30% of your salary on rent?",
+      "option_a": "Way more",
+      "option_b": "Under 30%",
+      "question_ar": "تدفع أكثر من 30% من راتبك على السكن؟",
+      "option_a_ar": "أكثر بكثير",
+      "option_b_ar": "أقل من 30%"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Have you ever hidden a big purchase from your partner or parents?",
+      "option_a": "Guilty",
+      "option_b": "Never",
+      "question_ar": "قد خبيت مشتريات غالية عن أهلك أو شريكك؟",
+      "option_a_ar": "إي، سويتها",
+      "option_b_ar": "ولا مرة"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Have you ever pretended to be broke to avoid a social outing?",
+      "option_a": "Yes, many times",
+      "option_b": "Never",
+      "question_ar": "قد ادعيت إنك مفلس عشان تتهرب من طلعة؟",
+      "option_a_ar": "إي، كذا مرة",
+      "option_b_ar": "لا، أعتذر بصراحة"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Is your monthly spending on dining & coffee out of control?",
+      "option_a": "Out of control",
+      "option_b": "Under control",
+      "question_ar": "مصاريف المطاعم والقهوة عندك خرجت عن السيطرة؟",
+      "option_a_ar": "خارجة عن السيطرة",
+      "option_b_ar": "تحت السيطرة"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Do you track all your expenses in an app or sheet?",
+      "option_a": "Every dirham/pound",
+      "option_b": "No tracking",
+      "question_ar": "تسجل كل قرش تصرفه في تطبيق أو إكسل؟",
+      "option_a_ar": "بالقرش والهللة",
+      "option_b_ar": "ماشية بالبركة"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Have you ever stayed in a toxic job purely for the salary?",
+      "option_a": "Yes, stayed",
+      "option_b": "No, left fast",
+      "question_ar": "استمريت ببيئة عمل سامة بس عشان الراتب؟",
+      "option_a_ar": "إي، اضطررت",
+      "option_b_ar": "طلعت بسرعة"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "Sharing salary details with close friends: good or bad?",
+      "option_a": "Good idea",
+      "option_b": "Bad idea",
+      "question_ar": "مشاركة تفاصيل الراتب مع أصحابك: صح ولا غلط؟",
+      "option_a_ar": "فكرة ممتازة",
+      "option_b_ar": "غلط وما أنصح"
+    },
+    {
+      "category": "Money & Salary",
+      "question": "When splitting a dinner, do you round up the total?",
+      "option_a": "Round up",
+      "option_b": "Exact",
+      "question_ar": "لما تقسموا الفاتورة، هل تقربوا المجموع؟",
+      "option_a_ar": "تقريب",
+      "option_b_ar": "دقة"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Do you want a big wedding?",
+      "option_a": "Huge celebration",
+      "option_b": "Intimate affair",
+      "question_ar": "هل تريد حفل زفاف كبير؟",
+      "option_a_ar": "احتفال ضخم",
+      "option_b_ar": "حفل صغير"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Ideal age to marry?",
+      "option_a": "Before 28",
+      "option_b": "After 28",
+      "question_ar": "العمر المثالي للزواج؟",
+      "option_a_ar": "قبل 28",
+      "option_b_ar": "بعد 28"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Who should choose the wedding date?",
+      "option_a": "Bride's side",
+      "option_b": "Groom's side",
+      "question_ar": "من يختار تاريخ الزواج؟",
+      "option_a_ar": "جانب العروس",
+      "option_b_ar": "جانب العريس"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Who should handle the dowry?",
+      "option_a": "Groom's side",
+      "option_b": "Bride's side",
+      "question_ar": "من يدفع المهر؟",
+      "option_a_ar": "جانب العريس",
+      "option_b_ar": "جانب العروس"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "First child: boy or girl?",
+      "option_a": "Boy",
+      "option_b": "Girl",
+      "question_ar": "الطفل الأول: ولد أم بنت؟",
+      "option_a_ar": "ولد",
+      "option_b_ar": "بنت"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Kids before 30?",
+      "option_a": "Definitely",
+      "option_b": "Maybe later",
+      "question_ar": "الأطفال قبل الثلاثين؟",
+      "option_a_ar": "بالتأكيد",
+      "option_b_ar": "ربما لاحقاً"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Accept help from in‑laws for childcare?",
+      "option_a": "Gladly",
+      "option_b": "Prefer alone",
+      "question_ar": "هل تقبل مساعدة أهل الزوج في رعاية الأطفال؟",
+      "option_a_ar": "بسرور",
+      "option_b_ar": "أفضّل وحدي"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Share chores equally?",
+      "option_a": "Absolutely",
+      "option_b": "Not always",
+      "question_ar": "تقسيم الأعمال المنزلية بالتساوي؟",
+      "option_a_ar": "بالتأكيد",
+      "option_b_ar": "ليس دائماً"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Prefer joint or separate vacations?",
+      "option_a": "Together always",
+      "option_b": "Solo trips",
+      "question_ar": "عطلات مشتركة أم منفصلة؟",
+      "option_a_ar": "معاً دائماً",
+      "option_b_ar": "رحلات منفردة"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Who decides the wedding venue?",
+      "option_a": "Bride's family",
+      "option_b": "Groom's family",
+      "question_ar": "من يختار مكان حفل الزفاف؟",
+      "option_a_ar": "عائلة العروس",
+      "option_b_ar": "عائلة العريس"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Live with parents after marriage?",
+      "option_a": "Yes, together",
+      "option_b": "No, own place",
+      "question_ar": "تعيش مع الوالدين بعد الزواج؟",
+      "option_a_ar": "نعم، معاً",
+      "option_b_ar": "لا، منزل خاص"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Share a bedroom with in‑laws?",
+      "option_a": "Sure",
+      "option_b": "Never",
+      "question_ar": "تشارك غرفة مع أهل الزوج؟",
+      "option_a_ar": "موافق",
+      "option_b_ar": "مستحيل"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Accept a job abroad after marriage?",
+      "option_a": "Yes, relocate",
+      "option_b": "No, stay local",
+      "question_ar": "تقبل عمل بالخارج بعد الزواج؟",
+      "option_a_ar": "نعم، الانتقال",
+      "option_b_ar": "لا، البقاء"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "Parent’s approval before dating?",
+      "option_a": "Essential",
+      "option_b": "Optional",
+      "question_ar": "موافقة الوالدين قبل المواعدة؟",
+      "option_a_ar": "ضرورية",
+      "option_b_ar": "اختيارية"
+    },
+    {
+      "category": "Family & Marriage",
+      "question": "First child timing?",
+      "option_a": "Within 2 years",
+      "option_b": "After 5 years",
+      "question_ar": "موعد أول طفل؟",
+      "option_a_ar": "خلال سنتين",
+      "option_b_ar": "بعد خمس سنوات"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you feel pressured to stay late for meetings?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تشعر بالضغط للبقاء حتى وقت متأخر للاجتماعات؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you think your boss reads your messages?",
+      "option_a": "Probably",
+      "option_b": "Unlikely",
+      "question_ar": "هل تعتقد أن مديرك يقرأ رسائلك؟",
+      "option_a_ar": "محتمل",
+      "option_b_ar": "غير محتمل"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you reply to work WhatsApp after midnight?",
+      "option_a": "Always",
+      "option_b": "Never",
+      "question_ar": "هل ترد على رسائل العمل بعد منتصف الليل؟",
+      "option_a_ar": "دائمًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you feel pressured to attend after‑hours team dinners?",
+      "option_a": "Always",
+      "option_b": "Rarely",
+      "question_ar": "هل تشعر بضغط لحضور عشاء الفريق بعد الدوام؟",
+      "option_a_ar": "دائمًا",
+      "option_b_ar": "نادرًا"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you ever work on weekends?",
+      "option_a": "Often",
+      "option_b": "Never",
+      "question_ar": "هل تعمل أحيانًا في عطلة الأسبوع؟",
+      "option_a_ar": "غالبًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you ever skip a meeting to avoid small talk?",
+      "option_a": "Often",
+      "option_b": "Never",
+      "question_ar": "هل تتغيب عن اجتماع لتجنب الأحاديث الجانبية؟",
+      "option_a_ar": "غالبًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you think work‑from‑home boosts productivity?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تعتقد أن العمل من المنزل يزيد الإنتاجية؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you ever compare salaries with peers?",
+      "option_a": "Often",
+      "option_b": "Never",
+      "question_ar": "هل تقارن راتبك مع زملائك؟",
+      "option_a_ar": "غالبًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you ever hide your true workload from your boss?",
+      "option_a": "Often",
+      "option_b": "Never",
+      "question_ar": "هل تخفي عبء عملك الحقيقي عن مديرك؟",
+      "option_a_ar": "غالبًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you prefer annual bonuses over monthly raises?",
+      "option_a": "Bonuses",
+      "option_b": "Raises",
+      "question_ar": "هل تفضل المكافآت السنوية على الزيادات الشهرية؟",
+      "option_a_ar": "مكافآت",
+      "option_b_ar": "زيادات"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you check work emails on vacation?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تفتح رسائل العمل أثناء الإجازة؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you think office gossip affects promotions?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تعتقد أن النميمة المكتبية تؤثر على الترقيات؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you ever hide your true salary from coworkers?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تخفي راتبك الحقيقي عن زملائك؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Gulf Work Life",
+      "question": "Do you ever use your personal WhatsApp for work tasks?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تستخدم واتسابك الشخصي لمهام العمل؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Expat Life",
+      "question": "Which city feels more like home?",
+      "option_a": "Dubai",
+      "option_b": "Cairo",
+      "question_ar": "أي مدينة تشعرها كالوطن أكثر؟",
+      "option_a_ar": "دبي",
+      "option_b_ar": "القاهرة"
+    },
+    {
+      "category": "Expat Life",
+      "question": "Which local festival do you enjoy more?",
+      "option_a": "National Day",
+      "option_b": "Sham El Nessim",
+      "question_ar": "أي مهرجان محلي تستمتع به أكثر؟",
+      "option_a_ar": "اليوم الوطني",
+      "option_b_ar": "شم النسيم"
+    },
+    {
+      "category": "Expat Life",
+      "question": "Spend holidays in UAE or Egypt?",
+      "option_a": "UAE",
+      "option_b": "Egypt",
+      "question_ar": "تقضي العطلات في الإمارات أم مصر؟",
+      "option_a_ar": "الإمارات",
+      "option_b_ar": "مصر"
+    },
+    {
+      "category": "Expat Life",
+      "question": "More attached to UAE or Egypt?",
+      "option_a": "UAE",
+      "option_b": "Egypt",
+      "question_ar": "أكثر ارتباطًا بالإمارات أم مصر؟",
+      "option_a_ar": "الإمارات",
+      "option_b_ar": "مصر"
+    },
+    {
+      "category": "Expat Life",
+      "question": "Which city’s nightlife excites you more?",
+      "option_a": "Dubai",
+      "option_b": "Cairo",
+      "question_ar": "أي سهر ليل في أي مدينة يثيرك أكثر؟",
+      "option_a_ar": "دبي",
+      "option_b_ar": "القاهرة"
+    },
+    {
+      "category": "Expat Life",
+      "question": "Do you feel more productive in the UAE or Egypt?",
+      "option_a": "UAE",
+      "option_b": "Egypt",
+      "question_ar": "هل تشعر بإنتاجية أعلى في الإمارات أم مصر؟",
+      "option_a_ar": "الإمارات",
+      "option_b_ar": "مصر"
+    },
+    {
+      "category": "Expat Life",
+      "question": "Which language feels easier for daily chats?",
+      "option_a": "Arabic",
+      "option_b": "English",
+      "question_ar": "أي لغة تشعرها أسهل للمحادثات اليومية؟",
+      "option_a_ar": "العربية",
+      "option_b_ar": "الإنجليزية"
+    },
+    {
+      "category": "Expat Life",
+      "question": "Do you feel more relaxed at home or abroad?",
+      "option_a": "Home",
+      "option_b": "Abroad",
+      "question_ar": "هل تشعر بمزيد من الاسترخاء في الوطن أم في الخارج؟",
+      "option_a_ar": "الوطن",
+      "option_b_ar": "الخارج"
+    },
+    {
+      "category": "Expat Life",
+      "question": "Do you feel more connected to family back home?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تشعر بارتباط أقوى مع عائلتك في الوطن؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Expat Life",
+      "question": "Friendship with locals feels:",
+      "option_a": "Easy",
+      "option_b": "Hard",
+      "question_ar": "الصداقة مع المحليين تشعرك بـ:",
+      "option_a_ar": "سهل",
+      "option_b_ar": "صعب"
+    },
+    {
+      "category": "Expat Life",
+      "question": "Do you miss the Nile view?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "تفتقد منظر النيل؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Expat Life",
+      "question": "Missing home-cooked meals?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "تشتاق للأكلات المنزلية؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Best late‑night snack?",
+      "option_a": "Shawarma",
+      "option_b": "Koshary",
+      "question_ar": "أحلى سناك للساعة المتأخرة؟",
+      "option_a_ar": "شاورما",
+      "option_b_ar": "كشري"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Favorite rice dish?",
+      "option_a": "Mandi",
+      "option_b": "Machboos",
+      "question_ar": "أحلى أكلة رز؟",
+      "option_a_ar": "مندي",
+      "option_b_ar": "مجبوس"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Best street‑food breakfast?",
+      "option_a": "Balaleet",
+      "option_b": "Foul medames",
+      "question_ar": "فطار الشارع المفضل؟",
+      "option_a_ar": "بلا ليت",
+      "option_b_ar": "فول مدمس"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Dessert after dinner?",
+      "option_a": "Kunafa",
+      "option_b": "Basbousa",
+      "question_ar": "حلو بعد العشاء؟",
+      "option_a_ar": "كنافة",
+      "option_b_ar": "بسبوسة"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Preferred spice level?",
+      "option_a": "Mild",
+      "option_b": "Extra hot",
+      "question_ar": "درجة حرارة التوابل؟",
+      "option_a_ar": "خفيفة",
+      "option_b_ar": "حارة جدًا"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Shawarma chicken or beef?",
+      "option_a": "Chicken",
+      "option_b": "Beef",
+      "question_ar": "شاورما دجاج ولا لحم؟",
+      "option_a_ar": "دجاج",
+      "option_b_ar": "لحم"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Late‑night shawarma run or pizza?",
+      "option_a": "Shawarma",
+      "option_b": "Pizza",
+      "question_ar": "جولة شاورما بالليل ولا بيتزا؟",
+      "option_a_ar": "شاورما",
+      "option_b_ar": "بيتزا"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Mandi: chicken or lamb?",
+      "option_a": "Chicken",
+      "option_b": "Lamb",
+      "question_ar": "مندي: دجاج أم لحم؟",
+      "option_a_ar": "دجاج",
+      "option_b_ar": "لحم"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Preferred coffee break?",
+      "option_a": "Karak",
+      "option_b": "Flat white",
+      "question_ar": "قهوة الصبح المفضلة؟",
+      "option_a_ar": "كرك",
+      "option_b_ar": "فلات وايت"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Best way to eat falafel?",
+      "option_a": "Sandwich",
+      "option_b": "Plate with tahini",
+      "question_ar": "طريقة أكل الفلافل؟",
+      "option_a_ar": "سندويتش",
+      "option_b_ar": "طبق مع طحينة"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Karak with milk or almond milk?",
+      "option_a": "Milk",
+      "option_b": "Almond milk",
+      "question_ar": "كرك بحليب ولا حليب لوز؟",
+      "option_a_ar": "حليب",
+      "option_b_ar": "حليب لوز"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Shawarma: garlic sauce or tahini?",
+      "option_a": "Garlic sauce",
+      "option_b": "Tahini",
+      "question_ar": "شاورما: صوص ثوم أم طحينة؟",
+      "option_a_ar": "صوص ثوم",
+      "option_b_ar": "طحينة"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Favorite fast‑food chain?",
+      "option_a": "KFC",
+      "option_b": "McDonald's",
+      "question_ar": "سلسلة الوجبات السريعة المفضلة؟",
+      "option_a_ar": "KFC",
+      "option_b_ar": "ماكدونالدز"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Karak with cardamom or saffron?",
+      "option_a": "Cardamom",
+      "option_b": "Saffron",
+      "question_ar": "كرك بالهيل ولا الزعفران؟",
+      "option_a_ar": "هيل",
+      "option_b_ar": "زعفران"
+    },
+    {
+      "category": "Food Wars",
+      "question": "Eat falafel with tahini or ketchup?",
+      "option_a": "Tahini",
+      "option_b": "Ketchup",
+      "question_ar": "فلافل بطحينة ولا كاتشب؟",
+      "option_a_ar": "طحينة",
+      "option_b_ar": "كاتشب"
+    },
+    {
+      "category": "Football",
+      "question": "Watch local league or Champions League?",
+      "option_a": "Local league",
+      "option_b": "Champions League",
+      "question_ar": "تشوف الدوري المحلي ولا دوري الأبطال؟",
+      "option_a_ar": "الدوري المحلي",
+      "option_b_ar": "دوري الأبطال"
+    },
+    {
+      "category": "Football",
+      "question": "Support local club or European giant?",
+      "option_a": "Local",
+      "option_b": "European",
+      "question_ar": "تدعم نادي محلي أم عملاق أوروبي؟",
+      "option_a_ar": "محلي",
+      "option_b_ar": "أوروبي"
+    },
+    {
+      "category": "Football",
+      "question": "Watch with friends or solo?",
+      "option_a": "Friends",
+      "option_b": "Solo",
+      "question_ar": "تشوف المباراة مع أصدقاء ولا لوحدك؟",
+      "option_a_ar": "مع أصدقاء",
+      "option_b_ar": "لوحدك"
+    },
+    {
+      "category": "Football",
+      "question": "Support a team for city pride or trophies?",
+      "option_a": "City pride",
+      "option_b": "Trophies",
+      "question_ar": "تدعم فريق عشان فخر المدينة ولا للبطولات؟",
+      "option_a_ar": "فخر المدينة",
+      "option_b_ar": "البطولات"
+    },
+    {
+      "category": "Football",
+      "question": "Watch matches in Arabic commentary or original?",
+      "option_a": "Arabic",
+      "option_b": "Original",
+      "question_ar": "تشوف المباراة بالتعليق العربي ولا الأصلي؟",
+      "option_a_ar": "العربي",
+      "option_b_ar": "الأصلي"
+    },
+    {
+      "category": "Football",
+      "question": "Watch matches on big screen or phone?",
+      "option_a": "Big screen",
+      "option_b": "Phone",
+      "question_ar": "تشوف المباراة على شاشة كبيرة ولا على الموبايل؟",
+      "option_a_ar": "شاشة كبيرة",
+      "option_b_ar": "موبايل"
+    },
+    {
+      "category": "Football",
+      "question": "Support a club because of history or style?",
+      "option_a": "History",
+      "option_b": "Style",
+      "question_ar": "تدعم نادي لتاريخه ولا لأسلوبه؟",
+      "option_a_ar": "التاريخ",
+      "option_b_ar": "الأسلوب"
+    },
+    {
+      "category": "Football",
+      "question": "Join a local fan meetup or watch alone at home?",
+      "option_a": "Meetup",
+      "option_b": "Alone",
+      "question_ar": "تحضر لقاء مشجعين محلي أم تشاهد وحدك في البيت؟",
+      "option_a_ar": "لقاء مشجعين",
+      "option_b_ar": "وحدك"
+    },
+    {
+      "category": "Football",
+      "question": "Buy tickets early or wait for last‑minute deals?",
+      "option_a": "Early",
+      "option_b": "Last‑minute",
+      "question_ar": "تشترى التذاكر مبكرًا أم تنتظر عروض اللحظة الأخيرة؟",
+      "option_a_ar": "مبكرًا",
+      "option_b_ar": "لحظة الأخيرة"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Iftar: home‑cooked or delivery?",
+      "option_a": "Home‑cooked",
+      "option_b": "Delivery",
+      "question_ar": "الإفطار: مطبوخ في البيت أم طلب توصيل؟",
+      "option_a_ar": "مطبوخ في البيت",
+      "option_b_ar": "طلب توصيل"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Eid gathering: family house or restaurant?",
+      "option_a": "Family House",
+      "option_b": "Restaurant",
+      "question_ar": "تجمع العيد: بيت العائلة أم مطعم؟",
+      "option_a_ar": "بيت العائلة",
+      "option_b_ar": "مطعم"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Eid outfit: traditional thobe/abaya or modern casual?",
+      "option_a": "Traditional",
+      "option_b": "Modern",
+      "question_ar": "زي العيد: ثوب/عباية تقليدية أم كاجوال حديث؟",
+      "option_a_ar": "تقليدي",
+      "option_b_ar": "حديث"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Eid greeting: card or WhatsApp voice?",
+      "option_a": "Card",
+      "option_b": "Voice Note",
+      "question_ar": "تحية العيد: بطاقة أم ملاحظة صوتية على واتساب؟",
+      "option_a_ar": "بطاقة",
+      "option_b_ar": "ملاحظة صوتية"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Eidiya: cash or gift?",
+      "option_a": "Cash",
+      "option_b": "Gift",
+      "question_ar": "العيدية: نقد أم هدية؟",
+      "option_a_ar": "نقد",
+      "option_b_ar": "هدية"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Iftar: early bite or wait till everyone arrives?",
+      "option_a": "Early bite",
+      "option_b": "Wait for all",
+      "question_ar": "الإفطار: أكل مبكر أم الانتظار حتى وصول الجميع؟",
+      "option_a_ar": "أكل مبكر",
+      "option_b_ar": "الانتظار حتى وصول الجميع"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Ramadan binge: binge‑watching series or reading books?",
+      "option_a": "Series",
+      "option_b": "Books",
+      "question_ar": "في رمضان: مشاهدة مسلسلات أم قراءة كتب؟",
+      "option_a_ar": "مسلسلات",
+      "option_b_ar": "كتب"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Ramadan night: Netflix binge or board games?",
+      "option_a": "Netflix",
+      "option_b": "Board Games",
+      "question_ar": "ليلة رمضان: مشاهدة نتفليكس أم ألعاب طاولة؟",
+      "option_a_ar": "نتفليكس",
+      "option_b_ar": "ألعاب طاولة"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Ramadan TV: drama series or reality shows?",
+      "option_a": "Drama",
+      "option_b": "Reality",
+      "question_ar": "تلفزيون رمضان: مسلسلات درامية أم برامج واقعية؟",
+      "option_a_ar": "دراما",
+      "option_b_ar": "واقعي"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Iftar with friends: weekly or occasional?",
+      "option_a": "Weekly",
+      "option_b": "Occasional",
+      "question_ar": "الإفطار مع الأصدقاء: أسبوعيًا أم بين الحين والآخر؟",
+      "option_a_ar": "أسبوعيًا",
+      "option_b_ar": "متقطع"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Iftar timing: right after sunset or 30 min later?",
+      "option_a": "Right After",
+      "option_b": "30 min Later",
+      "question_ar": "موعد الإفطار: فور الغروب أم بعد ٣٠ دقيقة؟",
+      "option_a_ar": "فور الغروب",
+      "option_b_ar": "بعد ٣٠ دقيقة"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Eid travel: weekend trip or stay home?",
+      "option_a": "Weekend trip",
+      "option_b": "Stay home",
+      "question_ar": "سفر العيد: رحلة نهاية أسبوع أم البقاء في البيت؟",
+      "option_a_ar": "رحلة نهاية أسبوع",
+      "option_b_ar": "البقاء في البيت"
+    },
+    {
+      "category": "Ramadan & Eid",
+      "question": "Ramadan binge: Turkish series or Korean drama?",
+      "option_a": "Turkish",
+      "option_b": "Korean",
+      "question_ar": "في رمضان: مسلسلات تركية أم دراما كورية؟",
+      "option_a_ar": "تركية",
+      "option_b_ar": "كورية"
+    },
+    {
+      "category": "Tech & AI",
+      "question": "Do you use AI for homework?",
+      "option_a": "All the time",
+      "option_b": "Never",
+      "question_ar": "هل تستخدم الذكاء الاصطناعي في الواجبات؟",
+      "option_a_ar": "دائمًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Tech & AI",
+      "question": "Do you prefer video calls over texting?",
+      "option_a": "Video",
+      "option_b": "Text",
+      "question_ar": "هل تفضّل المكالمات المرئية على الرسائل؟",
+      "option_a_ar": "فيديو",
+      "option_b_ar": "نص"
+    },
+    {
+      "category": "Tech & AI",
+      "question": "Do you read reviews before buying tech?",
+      "option_a": "Always",
+      "option_b": "Skip them",
+      "question_ar": "هل تقرأ المراجعات قبل شراء التقنية؟",
+      "option_a_ar": "دائمًا",
+      "option_b_ar": "أتخطاها"
+    },
+    {
+      "category": "Tech & AI",
+      "question": "Do you shop online for groceries?",
+      "option_a": "Often",
+      "option_b": "Never",
+      "question_ar": "هل تشتري البقالة عبر الإنترنت؟",
+      "option_a_ar": "غالبًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Tech & AI",
+      "question": "Do you trust social media ads?",
+      "option_a": "Somewhat",
+      "option_b": "Not at all",
+      "question_ar": "هل تثق بإعلانات السوشيال ميديا؟",
+      "option_a_ar": "إلى حد ما",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Tech & AI",
+      "question": "Do you set a daily screen‑time limit?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تحدد حدًا يوميًا لوقت الشاشة؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Tech & AI",
+      "question": "Do you share your location with friends?",
+      "option_a": "Often",
+      "option_b": "Never",
+      "question_ar": "هل تشارك موقعك مع الأصدقاء؟",
+      "option_a_ar": "غالبًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Tech & AI",
+      "question": "Do you use AI for résumé writing?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تستخدم الذكاء الاصطناعي لكتابة السيرة الذاتية؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Tech & AI",
+      "question": "Do you let AI pick your outfit?",
+      "option_a": "Yes",
+      "option_b": "Never",
+      "question_ar": "هل تسمح للذكاء الاصطناعي باختيار ملابسك؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Tech & AI",
+      "question": "Do you delete apps after a month?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تحذف التطبيقات بعد شهر؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Tech & AI",
+      "question": "Do you trust AI‑generated news?",
+      "option_a": "Somewhat",
+      "option_b": "Not at all",
+      "question_ar": "هل تثق بالأخبار التي يولدها الذكاء الاصطناعي؟",
+      "option_a_ar": "إلى حد ما",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Dating & Friendship",
+      "question": "If a friend posts a vague status, you:",
+      "option_a": "Ask directly",
+      "option_b": "Leave it",
+      "question_ar": "لو صديق نشر حالة غامضة، أنت:",
+      "option_a_ar": "تسأل مباشرة",
+      "option_b_ar": "تتركها"
+    },
+    {
+      "category": "Dating & Friendship",
+      "question": "How long before texting after a date?",
+      "option_a": "Same day",
+      "option_b": "Next day",
+      "question_ar": "كم من الوقت قبل الإرسال بعد موعد؟",
+      "option_a_ar": "نفس اليوم",
+      "option_b_ar": "اليوم التالي"
+    },
+    {
+      "category": "Dating & Friendship",
+      "question": "When a friend cancels plans, you:",
+      "option_a": "Reschedule",
+      "option_b": "Move on",
+      "question_ar": "لما صديق يلغى موعد، أنت:",
+      "option_a_ar": "نعيد تحديد",
+      "option_b_ar": "نمضي قدماً"
+    },
+    {
+      "category": "Dating & Friendship",
+      "question": "When a friend asks for advice, you:",
+      "option_a": "Give blunt truth",
+      "option_b": "Offer gentle hints",
+      "question_ar": "لما صديق يطلب نصيحة، أنت:",
+      "option_a_ar": "صريح مباشرة",
+      "option_b_ar": "نصائح لطيفة"
+    },
+    {
+      "category": "Dating & Friendship",
+      "question": "When a friend is moody, you:",
+      "option_a": "Give space",
+      "option_b": "Check in",
+      "question_ar": "لما صديق مزاجه سيء، أنت:",
+      "option_a_ar": "تعطي مساحة",
+      "option_b_ar": "تستفسر"
+    },
+    {
+      "category": "Dating & Friendship",
+      "question": "If the chat goes quiet, you:",
+      "option_a": "Send meme",
+      "option_b": "Wait",
+      "question_ar": "إذا سكت الدردشة، تفعل:",
+      "option_a_ar": "ترسل ميم",
+      "option_b_ar": "تنتظر"
+    },
+    {
+      "category": "Dating & Friendship",
+      "question": "When you meet a new group, you:",
+      "option_a": "Introduce self",
+      "option_b": "Observe",
+      "question_ar": "عند لقاء مجموعة جديدة، تفعل:",
+      "option_a_ar": "تقدم نفسك",
+      "option_b_ar": "تراقب"
+    },
+    {
+      "category": "City Rivalries",
+      "question": "Best city for a night market vibe?",
+      "option_a": "Dubai",
+      "option_b": "Cairo",
+      "question_ar": "أفضل مدينة لأجواء السوق الليلي؟",
+      "option_a_ar": "دبي",
+      "option_b_ar": "القاهرة"
+    },
+    {
+      "category": "City Rivalries",
+      "question": "Ideal spot for a sunset selfie: Corniche or Marina?",
+      "option_a": "Corniche",
+      "option_b": "Marina",
+      "question_ar": "المكان المثالي لسيلفي الغروب: الكورنيش أم المارينا؟",
+      "option_a_ar": "الكورنيش",
+      "option_b_ar": "المارينا"
+    },
+    {
+      "category": "City Rivalries",
+      "question": "Best beach for a sunset dip?",
+      "option_a": "Saadiyat",
+      "option_b": "Jumeirah",
+      "question_ar": "أحلى شاطئ لغروب الشمس؟",
+      "option_a_ar": "سعديات",
+      "option_b_ar": "جميرا"
+    },
+    {
+      "category": "City Rivalries",
+      "question": "Best rooftop view?",
+      "option_a": "Etihad Towers",
+      "option_b": "Burj Khalifa",
+      "question_ar": "أحلى إطلالة من السطح؟",
+      "option_a_ar": "أبراج الاتحاد",
+      "option_b_ar": "برج خليفة"
+    },
+    {
+      "category": "City Rivalries",
+      "question": "Preferred weekend getaway in Egypt?",
+      "option_a": "Siwa Oasis",
+      "option_b": "Hurghada",
+      "question_ar": "الوجهة المفضلة للويك إند في مصر؟",
+      "option_a_ar": "واحة سيوة",
+      "option_b_ar": "الغردقة"
+    },
+    {
+      "category": "City Rivalries",
+      "question": "Best weekend desert escape?",
+      "option_a": "Liwa Oasis",
+      "option_b": "White Desert",
+      "question_ar": "أفضل ملاذ صحرائي لعطلة نهاية الأسبوع؟",
+      "option_a_ar": "واحة ليوا",
+      "option_b_ar": "الصحراء البيضاء"
+    },
+    {
+      "category": "City Rivalries",
+      "question": "Preferred mall for a lazy Saturday?",
+      "option_a": "Yas Mall",
+      "option_b": "Mall of the Emirates",
+      "question_ar": "المول المفضل للسبت الكسلان؟",
+      "option_a_ar": "ياس مول",
+      "option_b_ar": "مول الإمارات"
+    },
+    {
+      "category": "City Rivalries",
+      "question": "Best city for night markets?",
+      "option_a": "Abu Dhabi",
+      "option_b": "Dubai",
+      "question_ar": "أنسب مدينة للأسواق الليلية؟",
+      "option_a_ar": "أبو ظبي",
+      "option_b_ar": "دبي"
+    },
+    {
+      "category": "City Rivalries",
+      "question": "Coffee break: local brew or chain?",
+      "option_a": "Local café",
+      "option_b": "Starbucks",
+      "question_ar": "قهوة الصبح: مقهى محلي ولا سلسلة؟",
+      "option_a_ar": "مقهى محلي",
+      "option_b_ar": "ستاربكس"
+    },
+    {
+      "category": "City Rivalries",
+      "question": "Best spot for a sunset selfie?",
+      "option_a": "Emirates Palace",
+      "option_b": "Cairo Tower",
+      "question_ar": "أحلى مكان لسيلفي الغروب؟",
+      "option_a_ar": "قصر الإمارات",
+      "option_b_ar": "برج القاهرة"
+    },
+    {
+      "category": "City Rivalries",
+      "question": "Best local dessert to end a night?",
+      "option_a": "Luqaimat",
+      "option_b": "Basbousa",
+      "question_ar": "أحلى حلوى لتختتم الليلة؟",
+      "option_a_ar": "لقيمات",
+      "option_b_ar": "بسبوسة"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you ever scroll Instagram while pretending to work?",
+      "option_a": "All the time",
+      "option_b": "Never",
+      "question_ar": "هل تتصفح إنستغرام وأنت تتظاهر بالعمل؟",
+      "option_a_ar": "دائمًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you ever pretend to understand a meme?",
+      "option_a": "All the time",
+      "option_b": "Never",
+      "question_ar": "هل تتظاهر بفهم ميم؟",
+      "option_a_ar": "دائمًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you ever pretend to be on a diet while eating dessert?",
+      "option_a": "All the time",
+      "option_b": "Never",
+      "question_ar": "هل تتظاهر باتباع حمية وأنت تأكل حلوى؟",
+      "option_a_ar": "دائمًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you ever pretend to be sick to skip work?",
+      "option_a": "Sometimes",
+      "option_b": "Never",
+      "question_ar": "هل تتظاهر بالمرض لتفادي العمل؟",
+      "option_a_ar": "أحيانًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you ever pretend to like a gift?",
+      "option_a": "Often",
+      "option_b": "Never",
+      "question_ar": "هل تتظاهر بإعجابك بهدية؟",
+      "option_a_ar": "غالبًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you ever skip a workout and blame the traffic?",
+      "option_a": "Often",
+      "option_b": "Never",
+      "question_ar": "هل تتغيب عن التمارين وتلوم الزحام؟",
+      "option_a_ar": "غالبًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you pretend to be interested in a hobby to fit in?",
+      "option_a": "Sometimes",
+      "option_b": "Never",
+      "question_ar": "هل تتظاهر بالاهتمام بهواية لتندمج؟",
+      "option_a_ar": "أحيانًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you use the “wifi is slow” excuse to avoid video calls?",
+      "option_a": "Often",
+      "option_b": "Never",
+      "question_ar": "هل تستخدم عذر بطء الواي‑فاي لتفادي مكالمات الفيديو؟",
+      "option_a_ar": "غالبًا",
+      "option_b_ar": "أبدًا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Skip a family dinner for a video game?",
+      "option_a": "Yes, often",
+      "option_b": "Never",
+      "question_ar": "تتغيب عن عشاء عائلي للعب فيديو جيم؟",
+      "option_a_ar": "نعم، كثيراً",
+      "option_b_ar": "أبداً"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Use “phone battery low” to end chats?",
+      "option_a": "Often",
+      "option_b": "Never",
+      "question_ar": "تستعمل “بطارية الهاتف منخفضة” لإنهاء الدردشات؟",
+      "option_a_ar": "غالباً",
+      "option_b_ar": "أبداً"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Pretend to love a song you actually hate?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "تتظاهر بحب أغنية تكرهها فعلاً؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you secretly check your ex’s social media?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تتفقد حسابات شريكك السابق سرًا؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you hide your true favorite TV show?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تخفي برنامجك التلفزيوني المفضل؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you ever binge‑shop online at midnight?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تتسوق عبر الإنترنت في منتصف الليل؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you keep old love letters tucked away?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "هل تحتفظ برسائل حب قديمة مخبأة؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Do you ever eat a whole cake secretly?",
+      "option_a": "Guilty",
+      "option_b": "Never",
+      "question_ar": "هل أكلت كعكة كاملة سراً؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Use “phone dead” excuse to dodge calls?",
+      "option_a": "Often",
+      "option_b": "Never",
+      "question_ar": "تستعمل عذر “الهاتف ميت” لتجنب المكالمات؟",
+      "option_a_ar": "غالباً",
+      "option_b_ar": "أبداً"
+    },
+    {
+      "category": "Guilty Confessions",
+      "question": "Skip a family outing for a sale?",
+      "option_a": "Yes",
+      "option_b": "No",
+      "question_ar": "تتفادى الخروج العائلي من أجل تخفيضات؟",
+      "option_a_ar": "نعم",
+      "option_b_ar": "لا"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Only eat shawarma or only eat koshary?",
+      "option_a": "Shawarma",
+      "option_b": "Koshary",
+      "question_ar": "تكتفي بالشاورما بس ولا بالكشري بس؟",
+      "option_a_ar": "الشاورما",
+      "option_b_ar": "الكشري"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Live without dates or without falafel?",
+      "option_a": "Dates",
+      "option_b": "Falafel",
+      "question_ar": "تستغنى عن التمر ولا عن الفلافل؟",
+      "option_a_ar": "التمر",
+      "option_b_ar": "الفلافل"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Take a desert safari or a Nile cruise?",
+      "option_a": "Desert safari",
+      "option_b": "Nile cruise",
+      "question_ar": "تروح في سفاري صحراء ولا في رحلة نهرية على النيل؟",
+      "option_a_ar": "سفاري صحراء",
+      "option_b_ar": "رحلة نهرية"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Ride a camel to work or a tuk‑tuk?",
+      "option_a": "Camel",
+      "option_b": "Tuk‑tuk",
+      "question_ar": "تستقل جمل للدوام ولا توك‑توك؟",
+      "option_a_ar": "جمل",
+      "option_b_ar": "توكتوك"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Never eat baklava again or never eat kunafa again?",
+      "option_a": "Baklava",
+      "option_b": "Kunafa",
+      "question_ar": "تستغنى عن البقلاوة ولا عن الكنافة؟",
+      "option_a_ar": "بقلاوة",
+      "option_b_ar": "كنافة"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Never watch Emirati movies or never watch Egyptian series?",
+      "option_a": "Emirati movies",
+      "option_b": "Egyptian series",
+      "question_ar": "تستغنى عن الأفلام الإماراتية ولا المسلسلات المصرية؟",
+      "option_a_ar": "الأفلام الإماراتية",
+      "option_b_ar": "المسلسلات المصرية"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Only drink karak tea or only drink hibiscus (karkade)?",
+      "option_a": "Karak tea",
+      "option_b": "Karkade",
+      "question_ar": "تشرب شاي الكرك بس ولا الكركديه بس؟",
+      "option_a_ar": "شاي الكرك",
+      "option_b_ar": "الكركديه"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Live in a high‑rise tower or a low‑rise villa?",
+      "option_a": "High‑rise tower",
+      "option_b": "Low‑rise villa",
+      "question_ar": "تعيش في برج عالي ولا في فيلا منخفضة؟",
+      "option_a_ar": "برج عالي",
+      "option_b_ar": "فيلا منخفضة"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Have a rooftop pool or a private desert camp?",
+      "option_a": "Rooftop pool",
+      "option_b": "Desert camp",
+      "question_ar": "تفضّل مسبح على السطح ولا مخيم صحراوي خاص؟",
+      "option_a_ar": "مسبح السطح",
+      "option_b_ar": "مخيم صحراوي"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Never use Uber in UAE or never use Careem in Egypt?",
+      "option_a": "No Uber",
+      "option_b": "No Careem",
+      "question_ar": "تستغنى عن أوبر في الإمارات ولا عن كريم في مصر؟",
+      "option_a_ar": "بدون أوبر",
+      "option_b_ar": "بدون كريم"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Use Instagram reels or TikTok videos?",
+      "option_a": "IG reels",
+      "option_b": "TikTok",
+      "question_ar": "تتابع ريلز إنستجرام ولا فيديوهات تيك توك؟",
+      "option_a_ar": "ريلز إنستجرام",
+      "option_b_ar": "تيك توك"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Only use Metro in Dubai or only use Metro in Cairo?",
+      "option_a": "Dubai Metro",
+      "option_b": "Cairo Metro",
+      "question_ar": "تستعمل مترو دبي بس ولا مترو القاهرة بس؟",
+      "option_a_ar": "مترو دبي",
+      "option_b_ar": "مترو القاهرة"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Get stuck in traffic on Sheikh Zayed Rd or on Al‑Mokattam St?",
+      "option_a": "Sheikh Zayed",
+      "option_b": "Al‑Mokattam",
+      "question_ar": "تتقفل في زحمة شارع الشيخ زايد ولا شارع المقطم؟",
+      "option_a_ar": "الشيخ زايد",
+      "option_b_ar": "المقطم"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Pay for parking in Dubai or pay tolls on the 6th of October Bridge?",
+      "option_a": "Dubai parking",
+      "option_b": "6th Oct toll",
+      "question_ar": "تدفع رسوم موقف في دبي ولا رسوم جسر ٦ أكتوبر؟",
+      "option_a_ar": "موقف دبي",
+      "option_b_ar": "جسر ٦ أكتوبر"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Skip Friday brunch or skip Saturday night out?",
+      "option_a": "Friday brunch",
+      "option_b": "Saturday night",
+      "question_ar": "تفوّض فطور الجمعة ولا سهرة السبت؟",
+      "option_a_ar": "فطور الجمعة",
+      "option_b_ar": "سهرة السبت"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Live near the beach or near the desert?",
+      "option_a": "Beachside",
+      "option_b": "Desertside",
+      "question_ar": "تعيش جنب البحر ولا جنب الصحراء؟",
+      "option_a_ar": "قرب البحر",
+      "option_b_ar": "قرب الصحراء"
+    },
+    {
+      "category": "Would You Rather",
+      "question": "Shop at Spinneys or Carrefour for groceries?",
+      "option_a": "Spinneys",
+      "option_b": "Carrefour",
+      "question_ar": "تشتري من سبينيس ولا كارفور؟",
+      "option_a_ar": "سبينيس",
+      "option_b_ar": "كارفور"
+    }
+  ]
+}
