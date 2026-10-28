@@ -55,6 +55,7 @@ await env.withSecurityRulesDisabled(async ctx => {
   const seedQs = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/pulse_seed_questions.json'), 'utf8')).questions.slice(0, 15);
   await setDoc(doc(ctx.firestore(), 'ops', 'questionIndex'), { items: seedQs.map(q => ({ id: `seed_${q.id}`, t: q.question, o: [q.option_a, q.option_b] })) });
 });
+await env.withSecurityRulesDisabled(async ctx => { await setDoc(doc(ctx.firestore(), 'ops', 'questionOfDay'), { id: 'seed_2', date: '2026-10-28' }); });
 const DUP_SEED = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/pulse_seed_questions.json'), 'utf8')).questions[3];
 
 async function makeAdmin(username) {
@@ -95,7 +96,7 @@ const credits = async page => Number(await page.locator('svg.lucide-coins + span
 const toast = (page, text) => page.getByText(text, { exact: false }).first().waitFor({ timeout: 10000 });
 
 async function signup(bot, username, age, gender, country) {
-  await step(bot, 'open app', p => p.goto(APP, { waitUntil: 'networkidle' }));
+  await step(bot, 'open app', p => p.goto(APP, { waitUntil: 'domcontentloaded' }));
   await step(bot, 'sign up', async p => {
     await p.getByText("Don't have an account? Sign Up").click();
     await p.getByPlaceholder('Enter your handle...').fill(username);
@@ -134,7 +135,31 @@ await step(a, 'credit balance increased', async p => {
   if (after !== creditsBefore + 1) throw new Error(`credits ${creditsBefore} -> ${after} even after reload, expected +1`);
 });
 
+await step(a, 'question of the day banner opens the question', async p => {
+  await p.locator('[data-testid="qotd"]').click();
+  await p.locator('[data-testid="question-overlay"]').waitFor({ timeout: 8000 });
+  await p.getByRole('button', { name: 'Close' }).click();
+});
+await step(a, 'share buttons shown after voting', async p => {
+  if (!(await p.locator('[data-testid="share-row"]').count())) {
+    await p.locator('h3 + div button').first().click();
+    await toast(p, 'Vote recorded anonymously');
+  }
+  await p.locator('[data-testid="share-row"]').first().waitFor({ timeout: 8000 });
+  const wa = await p.locator('[data-testid="share-row"] a').first().getAttribute('href');
+  if (!wa?.startsWith('https://wa.me/?text=') || !decodeURIComponent(wa).includes('/q/')) throw new Error(`bad WhatsApp link: ${wa}`);
+  if (!/ref=[A-Z0-9]{6}/.test(decodeURIComponent(wa))) throw new Error('share link carries no referral code');
+  const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 10000 }), p.getByRole('button', { name: /My pick/ }).first().click()]);
+  const file = path.join(OUT, 'my-pick.png'); await dl.saveAs(file);
+  if (fs.statSync(file).size < 20000) throw new Error('"My pick" image is suspiciously small');
+});
 await step(a, 'unlock demographics: -3 credits, small groups stay hidden', async p => {
+  // Vote on whichever card is in front first: the feed may have moved on.
+  if (!(await p.getByRole('button', { name: /Unlock — 3 Credits/ }).count())) {
+    await p.locator('h3 + div button').first().click();
+    await toast(p, 'Vote recorded anonymously');
+    await p.waitForTimeout(800);
+  }
   const before = await credits(p);
   await p.getByRole('button', { name: /Unlock — 3 Credits/ }).first().click();
   const shown = await p.getByText('25-34').first().waitFor({ timeout: 5000 }).then(() => true).catch(() => false);
@@ -288,6 +313,41 @@ await step(a, 'final leaderboard shown, no individual answers', async p => {
   if (!/Final Leaderboard/i.test(body)) throw new Error('no final leaderboard');
   if (new RegExp(`bob${run}[^\\n]{0,40}(picked|answered|chose)`, 'i').test(body)) throw new Error('ANONYMITY: another player\'s answer is shown');
 });
+
+// 8. A friend opens a shared link: sees the question, signs up, answers it; referral recorded
+{
+  let refCode = '';
+  await env.withSecurityRulesDisabled(async ctx => {
+    const { getDoc } = await import('firebase/firestore');
+    const m = await getDoc(doc(ctx.firestore(), 'usernames', `alice${run}`.toLowerCase()));
+    refCode = (await getDoc(doc(ctx.firestore(), 'users', m.data().uid))).data().referralCode || '';
+  });
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => consoleErrors.push({ bot: 'carol', text: `CRASH: ${String(e.message).slice(0, 300)}` }));
+  const carol = { name: 'carol', page };
+  await step(carol, 'shared link shows the question before sign-up', async p => {
+    if (!refCode) throw new Error('alice has no referral code');
+    await p.goto(`${APP}/q/seed_5?ref=${refCode}`, { waitUntil: 'domcontentloaded' });
+    await p.locator('[data-testid="shared-teaser"]').waitFor({ timeout: 15000 });
+    await p.getByRole('button', { name: 'Create Account' }).waitFor({ timeout: 5000 });
+  });
+  await step(carol, 'after sign-up the shared question opens, referral recorded', async p => {
+    await p.getByPlaceholder('Enter your handle...').fill(`carol${run}`);
+    await p.getByPlaceholder('Min 6 characters...').fill('botpass123');
+    const sel = p.locator('select');
+    await sel.nth(0).selectOption('25-34'); await sel.nth(1).selectOption('Female'); await sel.nth(2).selectOption('Egypt');
+    await p.getByRole('button', { name: 'Create Account' }).click();
+    await p.locator('[data-testid="question-overlay"]').waitFor({ timeout: 15000 });
+    await p.getByText('Referral code redeemed', { exact: false }).first().waitFor({ timeout: 15000 });
+    let found = false;
+    await env.withSecurityRulesDisabled(async c => {
+      const { getDocs, collection } = await import('firebase/firestore');
+      found = (await getDocs(collection(c.firestore(), 'referrals'))).size > 0;
+    });
+    if (!found) throw new Error('no referral record written');
+  });
+}
 
 // 7. Arabic: a phone set to Arabic gets the Arabic, right-to-left interface
 {
