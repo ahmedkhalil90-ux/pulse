@@ -68,6 +68,17 @@ import {
 } from './lib/credits';
 import { addVoteToResults } from './lib/votes';
 import { orderFeed } from './lib/feedOrder';
+import { findSimilar, type IndexItem } from './lib/similar';
+
+// Live questions for the duplicate check, written nightly by the ranking job
+// (ops/questionIndex). Loaded once per session.
+let questionIndexCache: Promise<IndexItem[]> | null = null;
+function loadQuestionIndex(): Promise<IndexItem[]> {
+  questionIndexCache ??= getDoc(doc(db, 'ops', 'questionIndex'))
+    .then((s) => (s.exists() ? (s.data().items as IndexItem[]) : []))
+    .catch(() => []);
+  return questionIndexCache;
+}
 import { ModerationQueue } from './components/ModerationQueue';
 
 // A fixed list, so demographic buckets do not fragment ("UAE" vs "uae" vs
@@ -452,6 +463,15 @@ function PulseApp() {
       </AnimatePresence>
     </div>
   );
+}
+
+/** The question a submission was merged into, answerable in place. */
+function OriginalQuestion({ id }: { id: string }) {
+  const [q, setQ] = useState<Question | null>(null);
+  useEffect(() => {
+    getDoc(doc(db, 'questions', id)).then((snap) => snap.exists() && setQ({ id: snap.id, ...snap.data() } as Question)).catch(() => {});
+  }, [id]);
+  return q ? <QuestionCard question={q} /> : null;
 }
 
 function LanguageToggle() {
@@ -1482,6 +1502,27 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
   const [opt2, setOpt2] = useState('');
   const [category, setCategory] = useState('Lifestyle');
   const [loading, setLoading] = useState(false);
+  const [similarQ, setSimilarQ] = useState<(IndexItem & { score: number }) | null>(null);
+  const [dupChoice, setDupChoice] = useState<'none' | 'answer' | 'different'>('none');
+  const [existing, setExisting] = useState<Question | null>(null);
+
+  // Duplicate check as the user types (public questions only).
+  useEffect(() => {
+    if (groupId || text.trim().length < 12) { setSimilarQ(null); return; }
+    const timer = setTimeout(async () => {
+      const match = findSimilar(text, [opt1, opt2], await loadQuestionIndex(), 0.5);
+      setSimilarQ((prev) => (prev?.id === match?.id ? prev : match));
+      if (match?.id !== similarQ?.id) { setDupChoice('none'); setExisting(null); }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [text, opt1, opt2, groupId]);
+
+  const answerExisting = async () => {
+    if (!similarQ) return;
+    setDupChoice('answer');
+    const snap = await getDoc(doc(db, 'questions', similarQ.id));
+    if (snap.exists()) setExisting({ id: snap.id, ...snap.data() } as Question);
+  };
 
   const categories = [
     'Lifestyle & Daily Habits',
@@ -1521,6 +1562,7 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
           groupId: groupId || null,
           createdAt: new Date().toISOString(),
           status,
+          ...(similarQ ? { possibleDuplicateOf: similarQ.id } : {}),
           flags: 0,
           random: Math.random(),
           boostCount: 0
@@ -1582,6 +1624,21 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
               className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-white/20 h-24 resize-none"
             />
           </div>
+
+          {similarQ && dupChoice !== 'different' && (
+            <div className="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-4 space-y-3" data-testid="duplicate-panel">
+              <p className="text-xs font-bold uppercase tracking-widest text-indigo-300">{t("Someone already asked this")}</p>
+              <p className="font-bold leading-tight">{similarQ.t}</p>
+              {dupChoice === 'answer' && existing ? (
+                <QuestionCard question={existing} />
+              ) : (
+                <div className="flex gap-2">
+                  <Button onClick={answerExisting} className="flex-1">{t("Answer it")}</Button>
+                  <Button variant="outline" onClick={() => setDupChoice('different')} className="flex-1">{t("Mine is different")}</Button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Category")}</label>
@@ -2394,12 +2451,16 @@ function MyQuestionsView() {
                     <span className="text-[10px] font-bold uppercase tracking-widest text-yellow-500">
                       {q.status === 'pending'
                         ? t("Held for review — not visible yet")
-                        : t("Rejected — not visible")}
+                        : q.status === 'duplicate'
+                          ? t("Merged with an existing question — answer it below")
+                          : t("Rejected — not visible")}
                     </span>
                   </div>
                 )}
                 {/* Boost is pointless on a question nobody can see. */}
-                <QuestionCard question={q} showBoost={q.status === 'live'} revisitMode={true} />
+                {q.status === 'duplicate' && (q as Question & { duplicateOf?: string }).duplicateOf
+                  ? <OriginalQuestion id={(q as Question & { duplicateOf?: string }).duplicateOf!} />
+                  : <QuestionCard question={q} showBoost={q.status === 'live'} revisitMode={true} />}
               </div>
             ))
           )}

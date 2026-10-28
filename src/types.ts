@@ -15,7 +15,7 @@ export type UserProfile = {
   referredBy?: string;
 };
 
-export type QuestionStatus = 'pending' | 'live' | 'rejected';
+export type QuestionStatus = 'pending' | 'live' | 'rejected' | 'duplicate' | 'retired' | 'pool';
 
 export type Question = {
   id: string;
