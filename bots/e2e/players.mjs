@@ -273,6 +273,26 @@ await step(a, 'final leaderboard shown, no individual answers', async p => {
   if (new RegExp(`bob${run}[^\\n]{0,40}(picked|answered|chose)`, 'i').test(body)) throw new Error('ANONYMITY: another player\'s answer is shown');
 });
 
+// 7. Arabic: a phone set to Arabic gets the Arabic, right-to-left interface
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'ar-AE' });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => consoleErrors.push({ bot: 'arabic', text: `CRASH: ${String(e.message).slice(0, 300)}` }));
+  const bot = { name: 'arabic', page };
+  await step(bot, 'Arabic interface, right-to-left', async p => {
+    await p.goto(APP, { waitUntil: 'domcontentloaded' });
+    await p.getByRole('button', { name: 'تسجيل الدخول' }).waitFor({ timeout: 15000 });
+    const dir = await p.evaluate(() => document.documentElement.dir);
+    if (dir !== 'rtl') throw new Error(`dir is ${dir}, expected rtl`);
+  });
+  await step(bot, 'switch to English and back', async p => {
+    await p.getByRole('button', { name: 'English' }).click();
+    await p.getByRole('button', { name: 'Sign In' }).waitFor({ timeout: 15000 });
+    await p.getByRole('button', { name: 'العربية' }).click();
+    await p.getByRole('button', { name: 'تسجيل الدخول' }).waitFor({ timeout: 15000 });
+  });
+}
+
 await browser.close();
 await env.cleanup();
 
