@@ -3,6 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
+  Flame,
+  Image as ImageIcon,
+  MessageCircle,
+  Share2,
   Users, 
   Gamepad2, 
   User, 
@@ -69,6 +73,7 @@ import {
 import { addVoteToResults } from './lib/votes';
 import { orderFeed } from './lib/feedOrder';
 import { findSimilar, type IndexItem } from './lib/similar';
+import { questionUrl, shareText, whatsappUrl, shareLink, pickCard, sharePick } from './lib/share';
 
 // Live questions for the duplicate check, written nightly by the ranking job
 // (ops/questionIndex). Loaded once per session.
@@ -204,12 +209,45 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 // --- Main App ---
 
+const REF_KEY = 'pulse.ref';
+const sharedIdFromPath = () => {
+  const m = window.location.pathname.match(/^\/q\/([^/?#]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+};
+
 function PulseApp() {
-  const { user, loading, signUp, signIn, signOut, updateProfile } = useAuth();
+  const { user, loading, signUp, signIn, signOut, updateProfile, redeemReferral } = useAuth();
+  const [sharedId, setSharedId] = useState<string | null>(sharedIdFromPath);
+  const [sharedPreview, setSharedPreview] = useState<string | null>(null);
+
+  // A shared link: remember the sharer's referral code through sign-up.
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get('ref');
+    if (ref) { try { localStorage.setItem(REF_KEY, ref.toUpperCase()); } catch { /* ignore */ } }
+    if (sharedId) {
+      getDoc(doc(db, 'questions', sharedId)).then((snap) => snap.exists() && setSharedPreview(snap.data().text)).catch(() => {});
+    }
+  }, []);
+
+  // Redeem it once the account exists (once only; never your own code).
+  useEffect(() => {
+    if (!user) return;
+    let ref: string | null = null;
+    try { ref = localStorage.getItem(REF_KEY); } catch { /* ignore */ }
+    if (!ref) return;
+    try { localStorage.removeItem(REF_KEY); } catch { /* ignore */ }
+    if (user.referredBy || user.referralCode === ref) return;
+    redeemReferral(ref).catch(() => {});
+  }, [user?.uid]);
+
+  const closeShared = () => {
+    setSharedId(null);
+    window.history.replaceState(null, '', '/');
+  };
   const [activeTab, setActiveTab] = useState<'feed' | 'groups' | 'game' | 'my-questions' | 'profile'>('feed');
   const [showSignup, setShowSignup] = useState(false);
   const [showCreate, setShowCreate] = useState<{ open: boolean, groupId?: string }>({ open: false });
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>(() => (sharedIdFromPath() ? 'signup' : 'signin'));
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [demographics, setDemographics] = useState({ ageRange: '', gender: '', country: '' });
@@ -355,6 +393,13 @@ function PulseApp() {
                   {authMode === 'signin' ? t("Welcome Back") : t("Join Pulse")}
                 </h2>
                 <p className="text-zinc-500">{t("Radical anonymity. Pure honesty.")}</p>
+                {sharedPreview && (
+                  <div className="mt-4 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-left space-y-1" data-testid="shared-teaser">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-300">{t("A friend sent you a question")}</p>
+                    <p className="font-bold">{sharedPreview}</p>
+                    <p className="text-xs text-zinc-400">{t("Sign up to answer it and see what everyone picked.")}</p>
+                  </div>
+                )}
                 <LanguageToggle />
               </div>
               
@@ -452,6 +497,10 @@ function PulseApp() {
         )}
       </AnimatePresence>
 
+      {user && sharedId && (
+        <QuestionOverlay id={sharedId} label={t("A friend shared this question")} onClose={closeShared} />
+      )}
+
       {/* Create Question Modal */}
       <AnimatePresence>
         {showCreate.open && (
@@ -461,6 +510,98 @@ function PulseApp() {
           />
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/** Share a question: native share sheet, WhatsApp, or a "my pick" story image. */
+function ShareRow({ question, results, pick }: { question: Question; results: QuestionResult | null; pick: number | null }) {
+  const { user } = useAuth();
+  const country = user?.demographics?.country;
+  const url = questionUrl(question.id, user?.referralCode);
+  const text = shareText(question, country);
+  const share = async () => {
+    const r = await shareLink(text, url);
+    if (r === 'copied') toast.success(t("Link copied"));
+  };
+  const myPick = async () => {
+    if (pick === null || pick < 0 || !results) return;
+    const c = results.counts || {};
+    const total = (c['0'] || 0) + (c['1'] || 0);
+    const pct = total ? Math.round(((c[String(pick)] || 0) / total) * 100) : 100;
+    const blob = await pickCard(qText(question, country), qOptions(question, country)[pick], pct, url);
+    const r = await sharePick(blob, text, url);
+    if (r === 'downloaded') toast.success(t("Image saved: post it to your story"));
+  };
+  return (
+    <div className="flex gap-2" data-testid="share-row">
+      <Button variant="outline" onClick={share} className="flex-1 h-11 text-sm">
+        <Share2 className="w-4 h-4" /> {t("Share")}
+      </Button>
+      <a href={whatsappUrl(text, url)} target="_blank" rel="noopener noreferrer"
+         className="flex-1 h-11 text-sm rounded-xl border border-green-500/30 text-green-400 flex items-center justify-center gap-2 hover:bg-green-500/10">
+        <MessageCircle className="w-4 h-4" /> WhatsApp
+      </a>
+      {pick !== null && pick >= 0 && results && (
+        <Button variant="outline" onClick={myPick} className="flex-1 h-11 text-sm">
+          <ImageIcon className="w-4 h-4" /> {t("My pick")}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** Daily featured question, picked by the daily bot (ops/questionOfDay). */
+function QuestionOfTheDay({ answeredIds }: { answeredIds: Set<string> }) {
+  const { user } = useAuth();
+  const [q, setQ] = useState<Question | null>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    getDoc(doc(db, 'ops', 'questionOfDay'))
+      .then(async (s) => {
+        if (!s.exists()) return;
+        const qs = await getDoc(doc(db, 'questions', s.data().id));
+        if (qs.exists() && qs.data().status === 'live') setQ({ id: qs.id, ...qs.data() } as Question);
+      })
+      .catch(() => {});
+  }, []);
+  if (!q) return null;
+  const done = answeredIds.has(q.id);
+  return (
+    <>
+      <button onClick={() => setOpen(true)} data-testid="qotd"
+        className="w-full text-left rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 flex items-center gap-3 hover:bg-orange-500/15">
+        <Flame className="w-5 h-5 text-orange-400 shrink-0" />
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-orange-300">{t("Question of the day")}</p>
+          <p className="font-bold truncate">{qText(q, user?.demographics?.country)}</p>
+        </div>
+        <span className="ml-auto text-xs text-orange-300 shrink-0">{done ? t("See results") : t("Answer")}</span>
+      </button>
+      {open && <QuestionOverlay id={q.id} label={t("Question of the day")} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+/** A single question opened from a shared link or the Question of the Day. */
+function QuestionOverlay({ id, label, onClose }: { id: string; label: string; onClose: () => void }) {
+  const [q, setQ] = useState<Question | null>(null);
+  const [missing, setMissing] = useState(false);
+  useEffect(() => {
+    getDoc(doc(db, 'questions', id))
+      .then((snap) => (snap.exists() && ['live', 'retired'].includes(snap.data().status) ? setQ({ id: snap.id, ...snap.data() } as Question) : setMissing(true)))
+      .catch(() => setMissing(true));
+  }, [id]);
+  return (
+    <div className="fixed inset-0 z-40 bg-black/90 backdrop-blur-sm overflow-y-auto p-4" data-testid="question-overlay">
+      <div className="max-w-md mx-auto space-y-4 py-8">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-widest text-indigo-300">{label}</span>
+          <button onClick={onClose} className="text-zinc-400 hover:text-white text-sm">{t("Close")}</button>
+        </div>
+        {q && <QuestionCard question={q} />}
+        {missing && <p className="text-zinc-400 text-center py-10">{t("This question is no longer available.")}</p>}
+      </div>
     </div>
   );
 }
@@ -726,6 +867,7 @@ function Feed() {
 
   return (
     <div className="space-y-6">
+      {!revisitMode && <QuestionOfTheDay answeredIds={answeredIds} />}
       {revisitMode && (
         <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded-2xl px-4 py-2">
           <div className="flex items-center gap-2">
@@ -1361,6 +1503,10 @@ function QuestionCard({
             <ShieldCheck className="w-3 h-3" />
             <span>{t("Your answer is anonymous. Aggregated data only.")}</span>
           </div>
+
+          {question.isPublic && (
+            <ShareRow question={question} results={results} pick={currentAnswerIndex} />
+          )}
 
           {onNext && (
             <button
