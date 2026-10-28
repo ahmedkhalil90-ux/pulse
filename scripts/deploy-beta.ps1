@@ -1,7 +1,10 @@
 # Pulse beta deploy: migrations -> rules -> backfill -> build -> hosting.
 # Run from C:\pulse in PowerShell:  powershell -ExecutionPolicy Bypass -File scripts\deploy-beta.ps1
 # Every live step shows a dry run first and waits for you to type YES.
-$ErrorActionPreference = 'Stop'
+# 'Continue', not 'Stop': Firebase and npx print progress on stderr, which
+# Windows PowerShell treats as a terminating error under 'Stop'. Each step is
+# checked by its exit code instead.
+$ErrorActionPreference = 'Continue'
 $project = 'pulse-app-66d7a'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 
@@ -11,7 +14,7 @@ function Confirm-Step($msg) {
 }
 function Run($cmd) {
   Write-Host "> $cmd" -ForegroundColor DarkGray
-  Invoke-Expression $cmd
+  cmd /c "$cmd 2>&1"
   if ($LASTEXITCODE -ne 0) { Write-Host "FAILED: $cmd" -ForegroundColor Red; exit 1 }
 }
 
@@ -20,8 +23,8 @@ Run 'git pull --ff-only'
 Run 'npm ci --no-audit --no-fund --loglevel=error'
 
 Write-Host '2/6 Checking Firebase login' -ForegroundColor Cyan
-firebase projects:list *> $null
-if ($LASTEXITCODE -ne 0) { Run 'firebase login' }
+cmd /c "firebase projects:list >nul 2>&1"
+if ($LASTEXITCODE -ne 0) { firebase login }
 
 Write-Host '3/6 Admin sign-in for the migrations (your Pulse admin account)' -ForegroundColor Cyan
 $env:PULSE_USERNAME = Read-Host 'Pulse admin username'
