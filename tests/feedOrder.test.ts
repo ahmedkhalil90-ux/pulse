@@ -14,7 +14,7 @@ describe('feed ordering', () => {
   it('a new user sees only the best-ranked questions first', () => {
     const feed = orderFeed(all, 0);
     expect(feed.slice(0, NEW_USER_ANSWERS).every((x) => x.rankTier === 'top')).toBe(true);
-    expect(feed[0].id).toBe('top0');
+    expect(feed[0].rankTier).toBe('top');
   });
 
   it('a regular user gets ~70% proven, ~20% exploring, ~10% low per 30 cards', () => {
@@ -38,5 +38,37 @@ describe('feed ordering', () => {
   it('unranked questions are treated as exploring', () => {
     const feed = orderFeed([q('new', undefined as any), ...tops.slice(0, 5)], 100);
     expect(feed.map((x) => x.id)).toContain('new');
+  });
+});
+
+import { categoryInterest } from '../src/lib/feedOrder';
+
+describe('personal feed order', () => {
+  const pool = Array.from({ length: 60 }, (_, i) =>
+    q(`q${i}`, 'exploring', 0.5, { category: ['Food Wars', 'Football', 'Money & Salary'][i % 3], random: i / 60 }));
+
+  it('two users get different sequences', () => {
+    const a = orderFeed(pool, 100, { uid: 'alice', day: '2026-10-29' }).slice(0, 10).map((x) => x.id);
+    const b = orderFeed(pool, 100, { uid: 'bob', day: '2026-10-29' }).slice(0, 10).map((x) => x.id);
+    expect(a).not.toEqual(b);
+  });
+
+  it('one user gets the same order all day, and a fresh one the next day', () => {
+    const d1 = orderFeed(pool, 100, { uid: 'alice', day: '2026-10-29' }).map((x) => x.id);
+    expect(orderFeed(pool, 100, { uid: 'alice', day: '2026-10-29' }).map((x) => x.id)).toEqual(d1);
+    expect(orderFeed(pool, 100, { uid: 'alice', day: '2026-10-30' }).map((x) => x.id)).not.toEqual(d1);
+  });
+
+  it('categories a user answers rise, categories they skip sink', () => {
+    const interest = categoryInterest(Array(12).fill('Football'), Array(12).fill('Money & Salary'));
+    const feed = orderFeed(pool, 100, { uid: 'fan', interest }).slice(0, 15);
+    const count = (c: string) => feed.filter((x) => x.category === c).length;
+    expect(count('Football')).toBeGreaterThan(count('Money & Salary'));
+  });
+
+  it('Egyptian trend questions go to Egyptian users first', () => {
+    const mixed = [...pool, q('eg1', 'exploring', 0.5, { source: 'trend-egypt' }), q('ae1', 'exploring', 0.5, { source: 'trend-uae' })];
+    const eg = orderFeed(mixed, 100, { uid: 'u1', country: 'Egypt' }).map((x) => x.id);
+    expect(eg.indexOf('eg1')).toBeLessThan(eg.indexOf('ae1'));
   });
 });
