@@ -49,17 +49,25 @@ async function main() {
     rows.push({ id: d.id, ...s, prev: q, expired: !!q.expiresAt && q.expiresAt < now });
   }
 
-  const judged = rows.filter((r) => r.n >= JUDGE_AT && !r.expired).sort((a, b) => a.rank - b.rank);
+  const judged = rows.filter((r) => r.n >= JUDGE_AT).sort((a, b) => a.rank - b.rank);
   const cut = (p: number) => Math.floor(judged.length * p);
   const retire = new Set(judged.slice(0, cut(RETIRE_PCT)).map((r) => r.id));
   const low = new Set(judged.slice(0, cut(LOW_PCT)).map((r) => r.id));
   const top = new Set(judged.slice(judged.length - cut(TOP_PCT)).map((r) => r.id));
 
-  const stats = { live: rows.length, top: 0, normal: 0, low: 0, exploring: 0, retired: 0, expired: 0, promoted: 0, changed: 0 };
+  const stats = { live: rows.length, top: 0, normal: 0, low: 0, exploring: 0, retired: 0, expired: 0, evergreen: 0, promoted: 0, changed: 0 };
   let batch = db.batch(), ops = 0;
   const flush = async () => { if (ops && !DRY) await batch.commit(); batch = db.batch(); ops = 0; };
   for (const r of rows) {
     const ref = db.doc(`questions/${r.id}`);
+    // A trend that reached the top tier has proven itself beyond its moment:
+    // keep it as a permanent question instead of expiring it.
+    if (r.expired && top.has(r.id)) {
+      stats.evergreen++; stats.top++; stats.changed++;
+      batch.update(ref, { expiresAt: FieldValue.delete(), evergreen: true, rank: Number(r.rank.toFixed(4)), rankN: r.n, rankTier: 'top', rankUpdatedAt: now });
+      if (++ops >= 400) await flush();
+      continue;
+    }
     if (r.expired || retire.has(r.id)) {
       r.expired ? stats.expired++ : stats.retired++;
       batch.update(ref, { status: 'retired', retiredAt: now, retireReason: r.expired ? 'trend expired' : 'bottom 5% by rank' });
@@ -84,6 +92,12 @@ async function main() {
     }
   }
   const poolLeft = (await db.collection('questions').where('status', '==', 'pool').count().get()).data().count;
+
+  // Compact index of live questions for the app's duplicate check at
+  // submission time: one document read instead of hundreds.
+  const index = (await db.collection('questions').where('status', '==', 'live').where('isPublic', '==', true).select('text', 'options').get())
+    .docs.map((d) => ({ id: d.id, t: d.data().text, o: d.data().options }));
+  if (!DRY) await db.doc('ops/questionIndex').set({ items: index, updatedAt: now });
 
   const report = { when: now, dryRun: DRY, ...stats, poolLeft, best: judged.slice(-5).reverse().map((r) => r.prev.text), worst: judged.slice(0, 5).map((r) => r.prev.text) };
   console.log(JSON.stringify(report, null, 1));
