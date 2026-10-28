@@ -1,9 +1,7 @@
 /**
  * One-off backfill for the `usernames` and `referralCodes` lookup collections.
  *
- * Usage (PowerShell):
- *   $env:PULSE_USERNAME = "yourhandle"
- *   $env:PULSE_PASSWORD = "yourpassword"
+ * Usage (PowerShell), with the service key at .secrets/service-account.json:
  *   npx tsx scripts/backfill-lookups.ts
  *
  * Add --dry-run to report what would be written without writing anything.
@@ -34,38 +32,19 @@
  * passed, and a mapping that already points at the right uid is never
  * rewritten.
  */
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  getFirestore,
-  setDoc,
-} from 'firebase/firestore';
-import firebaseConfig from '../firebase-applet-config.json';
+import { adminDb, collection, doc, getDoc, getDocs, setDoc, updateDoc } from './lib/adminDb';
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const FORCE = process.argv.includes('--force');
 
-const username = process.env.PULSE_USERNAME;
-const password = process.env.PULSE_PASSWORD;
 
-if (!username || !password) {
-  console.error('Set PULSE_USERNAME and PULSE_PASSWORD in the environment.');
-  process.exit(1);
-}
 
 type Row = { uid: string; username?: string; referralCode?: string };
 
 async function main() {
-  const app = initializeApp(firebaseConfig as Record<string, string>);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+  const db = adminDb();
 
-  await signInWithEmailAndPassword(auth, `${username!.toLowerCase()}@pulse.app`, password!);
-  console.log(`Signed in as ${username}.${DRY_RUN ? ' DRY RUN — nothing will be written.' : ''}`);
+  console.log(DRY_RUN ? 'DRY RUN — nothing will be written.' : 'LIVE RUN.');
 
   const snapshot = await getDocs(collection(db, 'users'));
   console.log(`Read ${snapshot.size} user documents.`);

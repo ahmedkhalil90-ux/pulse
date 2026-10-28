@@ -9,3 +9,6 @@ coverage/
 users.json
 bots/e2e/out/
 bots/out-vitest.log
+
+# Service-account keys: credentials, never commit
+.secrets/

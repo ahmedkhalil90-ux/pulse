@@ -2,9 +2,7 @@
  * One-off migration: groups.members array -> groups/{id}/members/{uid}
  * subcollection, plus a memberCount field.
  *
- * Usage (PowerShell):
- *   $env:PULSE_USERNAME = "yourhandle"
- *   $env:PULSE_PASSWORD = "yourpassword"
+ * Usage (PowerShell), with the service key at .secrets/service-account.json:
  *   npx tsx scripts/migrate-group-members.ts --dry-run
  *   npx tsx scripts/migrate-group-members.ts
  *
@@ -22,35 +20,15 @@
  * Idempotent: a membership document that already exists is left alone, and
  * memberCount is recomputed from the array each time.
  */
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  getFirestore,
-  setDoc,
-  updateDoc,
-} from 'firebase/firestore';
-import firebaseConfig from '../firebase-applet-config.json';
+import { adminDb, collection, doc, getDoc, getDocs, setDoc, updateDoc } from './lib/adminDb';
 
 const DRY_RUN = process.argv.includes('--dry-run');
-const username = process.env.PULSE_USERNAME;
-const password = process.env.PULSE_PASSWORD;
 
-if (!username || !password) {
-  console.error('Set PULSE_USERNAME and PULSE_PASSWORD in the environment.');
-  process.exit(1);
-}
 
 async function main() {
-  const app = initializeApp(firebaseConfig as Record<string, string>);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+  const db = adminDb();
 
-  await signInWithEmailAndPassword(auth, `${username!.toLowerCase()}@pulse.app`, password!);
-  console.log(`Signed in as ${username}.${DRY_RUN ? ' DRY RUN — nothing will be written.' : ''}`);
+  console.log(DRY_RUN ? 'DRY RUN — nothing will be written.' : 'LIVE RUN.');
 
   const groups = await getDocs(collection(db, 'groups'));
   console.log(`Found ${groups.size} groups.`);
