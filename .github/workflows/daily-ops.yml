@@ -1,0 +1,66 @@
+name: Daily ops
+
+# 02:10 Dubai daily: AI bot (moderate, trends, dialects, generate), then ranking.
+# Every 8 hours: moderation only, so user questions don't wait a day.
+on:
+  schedule:
+    - cron: '10 22 * * *'
+    - cron: '40 6,14 * * *'
+  workflow_dispatch:
+    inputs:
+      tasks:
+        description: 'AI tasks (moderate,trends,dialects,generate)'
+        default: 'moderate,trends,dialects,generate'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: daily-ops
+  cancel-in-progress: false
+
+jobs:
+  ops:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      HAS_SECRETS: ${{ secrets.FIREBASE_SA_KEY != '' && secrets.GEMINI_API_KEY != '' && secrets.GROQ_API_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Secrets present?
+        if: env.HAS_SECRETS != 'true'
+        run: echo "::error::Add FIREBASE_SA_KEY, GEMINI_API_KEY and GROQ_API_KEY in Settings > Secrets > Actions" && exit 1
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - name: Write service key
+        run: printf '%s' "$KEY" > "$RUNNER_TEMP/sa.json"
+        env: { KEY: '${{ secrets.FIREBASE_SA_KEY }}' }
+
+      - name: AI bot
+        env:
+          PULSE_SA_KEY: ${{ runner.temp }}/sa.json
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          TASKS: ${{ github.event.schedule == '40 6,14 * * *' && 'moderate' || inputs.tasks || 'moderate,trends,dialects,generate' }}
+          MAX_MINUTES: ${{ github.event.schedule == '40 6,14 * * *' && '3' || '14' }}
+        run: node scripts/ops/ai-daily.mjs
+
+      - name: Rank questions
+        if: github.event.schedule != '40 6,14 * * *'
+        env: { PULSE_SA_KEY: '${{ runner.temp }}/sa.json' }
+        run: npx tsx scripts/ops/rank.ts
+
+      - name: Post report to the "Pulse daily bot" issue
+        if: always() && github.event.schedule != '40 6,14 * * *'
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          [ -f daily-report.md ] || echo "Daily bot did not produce a report; see the run log." > daily-report.md
+          if [ -f rank-report.json ]; then
+            node -e "const r=require('./rank-report.json');console.log('\n**Ranking:** '+r.live+' live, '+r.top+' top, '+r.normal+' normal, '+r.low+' low, '+r.exploring+' exploring, '+r.retired+' retired, '+r.expired+' expired trends, '+r.promoted+' promoted from a pool of '+r.poolLeft+'\n\n**Best:** '+r.best.join(' / ')+'\n\n**Weakest:** '+r.worst.join(' / '))" >> daily-report.md
+          fi
+          n=$(gh issue list --state open --search 'in:title "Pulse daily bot"' --json number -q '.[0].number')
+          if [ -z "$n" ]; then gh issue create --title "Pulse daily bot" --body-file daily-report.md; else gh issue comment "$n" --body-file daily-report.md; fi
+      - if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
