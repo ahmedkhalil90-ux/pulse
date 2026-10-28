@@ -116,7 +116,7 @@ describe('credit changes use atomic increments', () => {
     expect(await credits()).toBe(2 * CREDIT_VALUES.ANSWER);
   });
 
-  it('awards both sides of a referral in one commit', async () => {
+  it('credits the new user and records the referral in one commit', async () => {
     await seed(0);
     await setDoc(doc(db, 'users', REFERRER), {
       username: REFERRER,
@@ -124,10 +124,13 @@ describe('credit changes use atomic increments', () => {
       credits: 7,
     });
 
-    await awardReferral(db, UID, REFERRER);
+    await awardReferral(db, UID, REFERRER, 'abc123');
 
     expect(await credits()).toBe(CREDIT_VALUES.REFERRAL);
-    expect(await credits(REFERRER)).toBe(7 + CREDIT_VALUES.REFERRAL);
+    const rec = (await getDoc(doc(db, 'referrals', UID))).data();
+    expect(rec).toMatchObject({ code: 'ABC123', referrerUid: REFERRER });
+    // The referrer is credited server-side by scripts/ops/referrals.mjs.
+    expect(await credits(REFERRER)).toBe(7);
   });
 });
 

@@ -143,14 +143,21 @@ export async function awardReferral(
   db: Firestore,
   newUserUid: string,
   referrerUid: string,
+  code: string,
 ): Promise<void> {
+  // The new user's +15 and the referral record land together. The referrer's
+  // +15 is credited by the scheduled job (scripts/ops/referrals.mjs): rules
+  // rightly refuse any client write to another user's credits, which is why
+  // the old two-sided batch failed for everyone.
   const batch = writeBatch(db);
   batch.update(doc(db, 'users', newUserUid), {
     credits: increment(CREDIT_VALUES.REFERRAL),
     referredBy: referrerUid,
   });
-  batch.update(doc(db, 'users', referrerUid), {
-    credits: increment(CREDIT_VALUES.REFERRAL),
+  batch.set(doc(db, 'referrals', newUserUid), {
+    code: code.toUpperCase(),
+    referrerUid,
+    createdAt: new Date().toISOString(),
   });
   await batch.commit();
 }

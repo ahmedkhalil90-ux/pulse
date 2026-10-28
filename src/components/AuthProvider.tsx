@@ -420,8 +420,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const referrerUid = codeSnap.data().uid as string;
       if (!referrerUid) throw new Error('Invalid referral code.');
 
-      await awardReferral(db, user.uid, referrerUid);
-      toast.success(t("Referral code redeemed! +15 Credits awarded to both of you."));
+      await awardReferral(db, user.uid, referrerUid, code);
+      toast.success(t("Referral code redeemed! +15 Credits for you, and your friend gets theirs shortly."));
     } catch (error: any) {
       toast.error(error.message || 'Failed to redeem referral code.');
       throw error;
