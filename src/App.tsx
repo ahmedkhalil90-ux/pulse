@@ -71,7 +71,7 @@ import {
   unlockDemographics,
 } from './lib/credits';
 import { addVoteToResults } from './lib/votes';
-import { orderFeed } from './lib/feedOrder';
+import { orderFeed, categoryInterest } from './lib/feedOrder';
 import { findSimilar, type IndexItem } from './lib/similar';
 import { questionUrl, shareText, whatsappUrl, shareLink, pickCard, sharePick } from './lib/share';
 
@@ -663,6 +663,10 @@ function Feed() {
   const [revisitFilters, setRevisitFilters] = useState<any>(null);
   const [answeredIds, setAnsweredIds] = useState<Set<string>>(new Set());
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
+  // The deck must not be built before the user's history has arrived, or it
+  // includes everything they already answered (found by a returning user).
+  const [historyReady, setHistoryReady] = useState({ answers: false, skips: false });
+  const ready = historyReady.answers && historyReady.skips;
   const { user } = useAuth();
 
   useEffect(() => {
@@ -670,14 +674,18 @@ function Feed() {
     
     const unsubAnswers = onSnapshot(query(collection(db, 'user_answers'), where('userId', '==', user.uid)), (s) => {
       setAnsweredIds(new Set(s.docs.map(d => d.data().questionId)));
+      setHistoryReady((r) => (r.answers ? r : { ...r, answers: true }));
     }, (error) => {
       console.error('Error listening to answers:', error);
+      setHistoryReady((r) => ({ ...r, answers: true }));
     });
 
     const unsubSkips = onSnapshot(query(collection(db, 'skipped_questions'), where('userId', '==', user.uid)), (s) => {
       setSkippedIds(new Set(s.docs.map(d => d.data().questionId)));
+      setHistoryReady((r) => (r.skips ? r : { ...r, skips: true }));
     }, (error) => {
       console.error('Error listening to skips:', error);
+      setHistoryReady((r) => ({ ...r, skips: true }));
     });
 
     return () => {
@@ -784,12 +792,19 @@ function Feed() {
       const questionsSnapshot = await getDocs(q);
       let qs = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question));
       
+      // What this user likes, from the categories they answered vs skipped.
+      const catOf = new Map(qs.map((x) => [x.id, x.category]));
+      const interest = categoryInterest(
+        [...answeredIds].map((id) => catOf.get(id)).filter(Boolean) as string[],
+        [...skippedIds].map((id) => catOf.get(id)).filter(Boolean) as string[],
+      );
+
       // Filter using the real-time sets
       qs = qs.filter(q => !answeredIds.has(q.id) && !skippedIds.has(q.id));
       
       // Ranked order: best first for new users, then a proven/exploring/wildcard
       // mix. Ranks come from the nightly ranking job. See src/lib/feedOrder.ts.
-      qs = orderFeed(qs, answeredIds.size);
+      qs = orderFeed(qs, answeredIds.size, { uid: user!.uid, country: user?.demographics?.country, interest });
       
       setQuestions(qs);
       if (isInitial) {
@@ -804,8 +819,9 @@ function Feed() {
   };
 
   useEffect(() => {
+    if (!ready) return;
     loadQuestions(true);
-  }, [selectedCategory, user?.uid, revisitMode, revisitFilters]);
+  }, [selectedCategory, user?.uid, revisitMode, revisitFilters, ready]);
 
   const handleNext = async (isAnswered: boolean = false) => {
     if (!user) return;
