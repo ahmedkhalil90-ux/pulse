@@ -96,7 +96,7 @@ async function signup(bot, username, age, gender, country) {
     const selects = p.locator('select');
     await selects.nth(0).selectOption(age);
     await selects.nth(1).selectOption(gender);
-    await p.getByPlaceholder('e.g. USA, UK, Canada').fill(country);
+    await selects.nth(2).selectOption(country);
     await p.getByRole('button', { name: 'Create Account' }).click();
     await toast(p, 'Welcome to Pulse');
   });

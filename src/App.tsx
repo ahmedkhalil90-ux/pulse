@@ -68,6 +68,10 @@ import {
 import { addVoteToResults } from './lib/votes';
 import { ModerationQueue } from './components/ModerationQueue';
 
+// A fixed list, so demographic buckets do not fragment ("UAE" vs "uae" vs
+// "Emirates") and can actually reach the 10-response display threshold.
+const COUNTRIES = ['UAE', 'Egypt', 'Saudi Arabia', 'Kuwait', 'Qatar', 'Bahrain', 'Oman', 'Jordan', 'Lebanon', 'Other'];
+
 // Mirrors the hardcoded UID in firestore.rules isAdmin().
 const HARDCODED_ADMIN_UID = '7zNbw98m9jZYy8uTan7dqwolBud2';
 import { Question, QuestionResult, UserProfile, Group, UserAnswer } from './types';
@@ -396,11 +400,14 @@ function PulseApp() {
                     
                     <div className="space-y-1">
                       <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Country</label>
-                      <Input 
-                        value={demographics.country} 
-                        onChange={(e) => setDemographics({...demographics, country: e.target.value})} 
-                        placeholder="e.g. USA, UK, Canada" 
-                      />
+                      <select
+                        value={demographics.country}
+                        onChange={(e) => setDemographics({...demographics, country: e.target.value})}
+                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none"
+                      >
+                        <option value="">Select...</option>
+                        {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
                     </div>
                   </>
                 )}
