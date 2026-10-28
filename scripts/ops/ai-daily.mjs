@@ -135,8 +135,49 @@ async function reviewAndKeep(items) {
 }
 
 // ---------- 1. moderate user questions ----------
+// Same scoring as src/lib/similar.ts (kept in step by tests/similar.test.ts on the app side).
+const STOP = new Set(('do does did you your youre would rather the and for with are is was what which who how have has ever more than think thought '
+  + 'about prefer better like any one this that its into from will can should could when where why there their them they get got '
+  + 'each every some much many very really just still also '
+  + 'هل انت أنت ولا او أو في على من الى إلى عن مع اللي ايه إيه كده ام أم').split(' '));
+const stem = (w) => /^[a-z]+$/.test(w) ? w.replace(/(ly|ing|ed|es|s)$/, '') : w;
+const toks = (x) => (x || '').toLowerCase().replace(/[\u060c\u061b\u061f\u066a-\u066d\u06d4]/g, ' ').replace(/[^a-z0-9\u0600-\u06ff\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w)).map(stem);
+const optKey = (o) => (o || []).map((x) => toks(x).join(' ')).filter(Boolean).sort().join('|');
+const simScore = (a, b) => Math.min(1, jac(toks(a.text), toks(b.text)) + (optKey(a.options) && optKey(a.options) === optKey(b.options) ? 0.25 : 0));
+
+/** Mark pending questions that repeat an existing one; returns those that remain. */
+async function dedupePending(docs) {
+  const existing = (await db.collection('questions').where('status', 'in', ['live', 'pool']).select('text', 'options').get())
+    .docs.map((d) => ({ id: d.id, ...d.data() }));
+  const unsure = [], remain = [];
+  for (const d of docs) {
+    const q = d.data();
+    let best = null;
+    for (const e of existing) { const sc = simScore(q, e); if (!best || sc > best.sc) best = { e, sc }; }
+    if (q.possibleDuplicateOf) { const e = existing.find((x) => x.id === q.possibleDuplicateOf); if (e && (!best || best.e.id !== e.id)) best = { e, sc: Math.max(simScore(q, e), 0.4) }; }
+    if (best && best.sc >= 0.6) await markDuplicate(d, best.e.id);
+    else if (best && best.sc >= 0.35) unsure.push({ d, e: best.e });
+    else remain.push(d);
+  }
+  // Borderline: ask a model whether people would answer them the same way.
+  for (let i = 0; i < unsure.length; i += 20) {
+    const batch = unsure.slice(i, i + 20);
+    const res = await gemini(`For each pair, are these two poll questions effectively the same question (would people answer both the same way)? Wording, order and language may differ.
+${JSON.stringify(batch.map((u, j) => ({ i: j, a: `${u.d.data().text} [${u.d.data().options?.join(' / ')}]`, b: `${u.e.text} [${u.e.options?.join(' / ')}]` })))}
+Return {"same":[<indexes of pairs that are the same question>]}.`);
+    const same = new Set(res?.same ?? []);
+    for (const [j, u] of batch.entries()) same.has(j) ? await markDuplicate(u.d, u.e.id) : remain.push(u.d);
+  }
+  return remain;
+}
+async function markDuplicate(d, originalId) {
+  await d.ref.update({ status: 'duplicate', duplicateOf: originalId, moderatedAt: new Date().toISOString(), moderatedBy: 'ai-daily' });
+  report.moderated.duplicates = (report.moderated.duplicates ?? 0) + 1;
+}
+
 async function moderate() {
-  const pending = await db.collection('questions').where('status', '==', 'pending').limit(100).get();
+  const pendingSnap = await db.collection('questions').where('status', '==', 'pending').limit(100).get();
+  const pending = { docs: await dedupePending(pendingSnap.docs) };
   for (let i = 0; i < pending.docs.length && timeLeft() > 60000; i += 20) {
     const docs = pending.docs.slice(i, i + 20);
     const items = docs.map((d, j) => ({ i: j, q: d.data().text, a: d.data().options?.[0], b: d.data().options?.[1] }));
@@ -220,7 +261,7 @@ for (const [name, fn] of Object.entries({ moderate, trends, dialects, generate }
 }
 report.when = new Date().toISOString();
 const md = [`### Pulse daily bot, ${report.when.slice(0, 10)}`,
-  `- Moderation: ${report.moderated.approved} approved, ${report.moderated.rejected} rejected, ${report.moderated.held} left for you`,
+  `- Moderation: ${report.moderated.approved} approved, ${report.moderated.rejected} rejected, ${report.moderated.duplicates ?? 0} merged as duplicates, ${report.moderated.held} left for you`,
   `- Trend questions added: ${report.trends}`, `- Dialect versions added: ${report.dialects}`,
   `- New questions: ${report.generated} drafted, ${report.pooled} passed review into the pool`,
   `- Model calls: ${Object.entries(report.calls).map(([m, n]) => `${m} ${n}`).join(', ') || 'none'}`,
