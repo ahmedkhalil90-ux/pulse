@@ -67,6 +67,7 @@ import {
   unlockDemographics,
 } from './lib/credits';
 import { addVoteToResults } from './lib/votes';
+import { orderFeed } from './lib/feedOrder';
 import { ModerationQueue } from './components/ModerationQueue';
 
 // A fixed list, so demographic buckets do not fragment ("UAE" vs "uae" vs
@@ -625,8 +626,9 @@ function Feed() {
       // Filter using the real-time sets
       qs = qs.filter(q => !answeredIds.has(q.id) && !skippedIds.has(q.id));
       
-      // Sort by boostCount then random field
-      qs.sort((a, b) => (b.boostCount || 0) - (a.boostCount || 0) || (a.random || 0) - (b.random || 0));
+      // Ranked order: best first for new users, then a proven/exploring/wildcard
+      // mix. Ranks come from the nightly ranking job. See src/lib/feedOrder.ts.
+      qs = orderFeed(qs, answeredIds.size);
       
       setQuestions(qs);
       if (isInitial) {
@@ -1218,11 +1220,11 @@ function QuestionCard({
       </div>
 
       <h3 className="text-2xl font-bold leading-tight tracking-tight">
-        {qText(question)}
+        {qText(question, user?.demographics?.country)}
       </h3>
 
       <div className="space-y-3">
-        {qOptions(question).map((opt, i) => (
+        {qOptions(question, user?.demographics?.country).map((opt, i) => (
           <button
             key={i}
             disabled={answered || voting}
