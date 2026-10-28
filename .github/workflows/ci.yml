@@ -68,3 +68,23 @@ jobs:
             bots/e2e/out/
             bots/out-vitest.log
           if-no-files-found: ignore
+
+  # Publish the web app when main is green: tests and bots must pass first.
+  # Approved by Ahmed on 2026-10-28. Rules are not deployed here.
+  deploy:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency: { group: deploy-hosting, cancel-in-progress: true }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - name: Publish to Firebase Hosting
+        env: { KEY: '${{ secrets.FIREBASE_SA_KEY }}' }
+        run: |
+          printf '%s' "$KEY" > "$RUNNER_TEMP/sa.json"
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" node scripts/deploy-api.mjs hosting
+          rm -f "$RUNNER_TEMP/sa.json"
