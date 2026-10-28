@@ -14,6 +14,7 @@ import { userAnswersCases } from '../cases/userAnswers.cases';
 import { usersRoleCases } from '../cases/usersRole.cases';
 import { usersLookupCases } from '../cases/usersLookup.cases';
 import { opsCases } from '../cases/ops.cases';
+import { referralsCases } from '../cases/referrals.cases';
 
 /**
  * The single source of truth for every rules case. Both the real suite and the
@@ -28,6 +29,7 @@ export const SUITES: Array<[string, Case[]]> = [
   ['isMigrating() via users/{oldUid}', migrationCases],
   ['user_answers/{answerId}', userAnswersCases],
   ['ops/{docId}', opsCases],
+  ['referrals/{refereeUid}', referralsCases],
   ['admin identity', adminIdentityCases],
   ['skips and unlocks', skipsAndUnlocksCases],
   ['games/{gameId} reads', gamesCases],

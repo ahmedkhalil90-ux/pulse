@@ -971,8 +971,38 @@ export const MUTATIONS: Mutation[] = [
     label: 'ops: every operational document becomes readable',
     edits: [
       {
-        find: "      allow get: if isAuthenticated() && docId == 'questionIndex';",
+        find: "      allow get: if isAuthenticated() && docId in ['questionIndex', 'questionOfDay'];",
         replace: '      allow get: if isAuthenticated();',
+      },
+    ],
+  },
+  {
+    id: 'M83',
+    label: 'referrals: the referrer is not checked against the code holder',
+    edits: [
+      {
+        find: '                    && request.resource.data.referrerUid ==\n                         get(/databases/$(database)/documents/referralCodes/$(request.resource.data.code)).data.uid;',
+        replace: '                    ;',
+      },
+    ],
+  },
+  {
+    id: 'M84',
+    label: 'referrals: a user may refer themselves',
+    edits: [
+      {
+        find: '                    && request.resource.data.referrerUid != request.auth.uid\n',
+        replace: '',
+      },
+    ],
+  },
+  {
+    id: 'M85',
+    label: 'referrals: a referral may be recorded for someone else',
+    edits: [
+      {
+        find: "      allow create: if isOwner(refereeUid)\n                    && request.resource.data.keys().hasOnly(['code', 'referrerUid', 'createdAt'])",
+        replace: "      allow create: if isAuthenticated()\n                    && request.resource.data.keys().hasOnly(['code', 'referrerUid', 'createdAt'])",
       },
     ],
   },

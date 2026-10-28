@@ -27,6 +27,13 @@ export const opsCases: Case[] = [
     run: (db) => getDoc(doc(db, 'ops', 'questionIndex')),
   },
   {
+    name: 'a signed-in user can read the question of the day',
+    expect: 'allow',
+    as: PLAIN,
+    seed: async (ctx) => { await setDoc(doc(ctx.firestore(), 'ops', 'questionOfDay'), { id: 'q1' }); },
+    run: (db) => getDoc(doc(db, 'ops', 'questionOfDay')),
+  },
+  {
     name: 'other operational documents are not readable',
     expect: 'deny',
     killedBy: 'M82',

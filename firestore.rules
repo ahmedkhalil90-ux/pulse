@@ -291,7 +291,7 @@ service cloud.firestore {
     // Only the question index is readable: the app checks new submissions
     // against it for duplicates. It holds live public question text only.
     match /ops/{docId} {
-      allow get: if isAuthenticated() && docId == 'questionIndex';
+      allow get: if isAuthenticated() && docId in ['questionIndex', 'questionOfDay'];
       allow list, write: if false;
     }
 
@@ -384,6 +384,20 @@ service cloud.firestore {
                         && request.resource.data.uid == request.auth.uid
                         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.referralCode == code);
       // A code, once claimed, is never reassigned by its holder.
+      allow update, delete: if isAdmin();
+    }
+
+    // A referral, recorded by the new user. The referrer's +15 is credited by
+    // the scheduled job (Admin SDK): no client may change another user's
+    // credits. One per user, created once, naming the real holder of the code,
+    // never yourself. Readable only by the new user.
+    match /referrals/{refereeUid} {
+      allow get: if isOwner(refereeUid) || isAdmin();
+      allow create: if isOwner(refereeUid)
+                    && request.resource.data.keys().hasOnly(['code', 'referrerUid', 'createdAt'])
+                    && request.resource.data.referrerUid != request.auth.uid
+                    && request.resource.data.referrerUid ==
+                         get(/databases/$(database)/documents/referralCodes/$(request.resource.data.code)).data.uid;
       allow update, delete: if isAdmin();
     }
 
