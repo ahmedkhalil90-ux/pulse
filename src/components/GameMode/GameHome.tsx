@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Gamepad2, Timer, Clock, ArrowRight, History, Plus, UserPlus } from 'lucide-react';
@@ -162,7 +163,7 @@ export function GameHome({ onSelectGame }: { onSelectGame: (game: Game) => void 
 
       const snapshot = await getDocs(q);
       if (snapshot.empty) {
-        toast.error('Game not found or already started.');
+        toast.error(t("Game not found or already started."));
         return;
       }
 
@@ -180,7 +181,7 @@ export function GameHome({ onSelectGame }: { onSelectGame: (game: Game) => void 
       });
 
       onSelectGame({ id: gameDoc.id, ...gameData, players: [...gameData.players, user.uid] } as Game);
-      toast.success('Joined the game!');
+      toast.success(t("Joined the game!"));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'games');
     } finally {
@@ -191,8 +192,8 @@ export function GameHome({ onSelectGame }: { onSelectGame: (game: Game) => void 
   return (
     <div className="space-y-8 pb-10">
       <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tighter">Game Mode</h2>
-        <p className="text-zinc-500">Challenge your squad and test your mind-reading skills.</p>
+        <h2 className="text-3xl font-bold tracking-tighter">{t("Game Mode")}</h2>
+        <p className="text-zinc-500">{t("Challenge your squad and test your mind-reading skills.")}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
@@ -206,11 +207,11 @@ export function GameHome({ onSelectGame }: { onSelectGame: (game: Game) => void 
             <Timer className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-xl font-bold">Play Live</h3>
-            <p className="text-zinc-500 text-sm">Everyone online together. Answer in real-time and see results instantly.</p>
+            <h3 className="text-xl font-bold">{t("Play Live")}</h3>
+            <p className="text-zinc-500 text-sm">{t("Everyone online together. Answer in real-time and see results instantly.")}</p>
           </div>
           <div className="flex items-center gap-2 text-white font-bold text-sm group-hover:gap-3 transition-all">
-            Start Live Game <ArrowRight className="w-4 h-4" />
+            {t("Start Live Game")} <ArrowRight className="w-4 h-4" />
           </div>
         </motion.button>
 
@@ -224,11 +225,11 @@ export function GameHome({ onSelectGame }: { onSelectGame: (game: Game) => void 
             <Clock className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-xl font-bold">Play Async</h3>
-            <p className="text-zinc-500 text-sm">Play at your own pace. Results revealed when everyone is done or time runs out.</p>
+            <h3 className="text-xl font-bold">{t("Play Async")}</h3>
+            <p className="text-zinc-500 text-sm">{t("Play at your own pace. Results revealed when everyone is done or time runs out.")}</p>
           </div>
           <div className="flex items-center gap-2 text-zinc-400 font-bold text-sm group-hover:text-white transition-all">
-            Start Async Game <ArrowRight className="w-4 h-4" />
+            {t("Start Async Game")} <ArrowRight className="w-4 h-4" />
           </div>
         </motion.button>
       </div>
@@ -236,13 +237,13 @@ export function GameHome({ onSelectGame }: { onSelectGame: (game: Game) => void 
       <div className="bg-zinc-900/30 border border-white/5 p-6 rounded-3xl space-y-4">
         <div className="flex items-center gap-3">
           <UserPlus className="w-5 h-5 text-zinc-500" />
-          <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">Join a Game</h3>
+          <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">{t("Join a Game")}</h3>
         </div>
         <div className="flex gap-2">
           <Input 
             value={joinCode} 
             onChange={(e) => setJoinCode(e.target.value.toUpperCase())} 
-            placeholder="ENTER 6-CHAR CODE"
+            placeholder={t("ENTER 6-CHAR CODE")}
             maxLength={6}
             className="text-center font-mono tracking-widest text-xl"
           />
@@ -252,7 +253,7 @@ export function GameHome({ onSelectGame }: { onSelectGame: (game: Game) => void 
             disabled={joinCode.length < 6}
             className="px-8"
           >
-            Join
+            {t("Join")}
           </Button>
         </div>
       </div>
@@ -261,7 +262,7 @@ export function GameHome({ onSelectGame }: { onSelectGame: (game: Game) => void 
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <History className="w-5 h-5 text-zinc-500" />
-            <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">My Games</h3>
+            <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">{t("My Games")}</h3>
           </div>
           <div className="space-y-3">
             {myGames.map(game => (
@@ -285,7 +286,7 @@ export function GameHome({ onSelectGame }: { onSelectGame: (game: Game) => void 
                       </span>
                     </div>
                     <div className="text-xs text-zinc-500">
-                      {game.players.length} Players • {new Date(game.createdAt).toLocaleDateString()}
+                      {game.players.length} {t("Players •")} {new Date(game.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                 </div>

@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Gamepad2, Timer, Clock, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -168,10 +169,9 @@ export function GamePlay({ game, questionId }: { game: Game, questionId: string 
   if (!loading && unavailable) {
     return (
       <div className="text-center py-20 space-y-4">
-        <h2 className="text-2xl font-bold">This question couldn't be loaded</h2>
+        <h2 className="text-2xl font-bold">{t("This question couldn't be loaded")}</h2>
         <p className="text-zinc-500 max-w-sm mx-auto">
-          It may have been removed. Ask the host to move on to the next
-          question — the rest of the game is unaffected.
+          {t("It may have been removed. Ask the host to move on to the next question — the rest of the game is unaffected.")}
         </p>
       </div>
     );
@@ -190,7 +190,7 @@ export function GamePlay({ game, questionId }: { game: Game, questionId: string 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-zinc-500">
           <Gamepad2 className="w-4 h-4" />
-          <span className="text-xs font-bold uppercase tracking-widest">Question {game.questions.indexOf(questionId) + 1} / {game.questions.length}</span>
+          <span className="text-xs font-bold uppercase tracking-widest">{t("Question")} {game.questions.indexOf(questionId) + 1} / {game.questions.length}</span>
         </div>
         {game.type === 'live' ? (
           <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${timeLeft < 5 ? 'border-red-500/50 text-red-500 animate-pulse' : 'border-white/10 text-zinc-400'}`}>
@@ -202,7 +202,7 @@ export function GamePlay({ game, questionId }: { game: Game, questionId: string 
             <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 text-zinc-400">
               <Clock className="w-4 h-4" />
               <span className="text-sm font-bold tabular-nums">
-                {Math.max(0, Math.floor((new Date(game.deadline).getTime() - Date.now()) / (1000 * 60 * 60)))}h remaining
+                {Math.max(0, Math.floor((new Date(game.deadline).getTime() - Date.now()) / (1000 * 60 * 60)))}{'h remaining'}
               </span>
             </div>
           )
@@ -220,7 +220,7 @@ export function GamePlay({ game, questionId }: { game: Game, questionId: string 
           >
             <div className="space-y-4">
               <h2 className="text-3xl font-bold tracking-tighter leading-tight">{question.text}</h2>
-              <p className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Step 1: Answer Honestly</p>
+              <p className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">{t("Step 1: Answer Honestly")}</p>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
@@ -251,8 +251,8 @@ export function GamePlay({ game, questionId }: { game: Game, questionId: string 
             className="space-y-8"
           >
             <div className="space-y-4">
-              <h2 className="text-3xl font-bold tracking-tighter leading-tight">Who do you think the MAJORITY of the group will pick?</h2>
-              <p className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Step 2: Predict the Group</p>
+              <h2 className="text-3xl font-bold tracking-tighter leading-tight">{t("Who do you think the MAJORITY of the group will pick?")}</h2>
+              <p className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">{t("Step 2: Predict the Group")}</p>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
@@ -267,7 +267,7 @@ export function GamePlay({ game, questionId }: { game: Game, questionId: string 
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
                       <span className="text-xl font-bold">{opt}</span>
-                      <p className="text-xs text-zinc-500">Predict Option {i === 0 ? 'A' : 'B'}</p>
+                      <p className="text-xs text-zinc-500">{t("Predict Option")} {i === 0 ? 'A' : 'B'}</p>
                     </div>
                     <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center group-hover:bg-white/10 transition-all">
                       <ArrowRight className="w-5 h-5 text-zinc-500 group-hover:text-white transition-all" />
@@ -282,7 +282,7 @@ export function GamePlay({ game, questionId }: { game: Game, questionId: string 
 
       <div className="bg-zinc-900/20 border border-white/5 p-4 rounded-2xl flex items-center gap-3">
         <AlertCircle className="w-4 h-4 text-zinc-600" />
-        <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Individual answers are never revealed. Only percentage splits are shown.</p>
+        <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">{t("Individual answers are never revealed. Only percentage splits are shown.")}</p>
       </div>
     </div>
   );

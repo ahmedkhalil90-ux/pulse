@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, ArrowRight, User, Timer, Clock, CheckCircle2, XCircle } from 'lucide-react';
@@ -150,7 +151,7 @@ export function GameResults({ game, questionId }: { game: Game, questionId: stri
               revealed only on the final results screen. */}
           {game.type === 'async' && game.deadline && (
             <div className="flex items-center gap-1 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
-              <Clock className="w-3 h-3" /> {Math.max(0, Math.floor((new Date(game.deadline).getTime() - Date.now()) / (1000 * 60 * 60)))}h remaining
+              <Clock className="w-3 h-3" /> {Math.max(0, Math.floor((new Date(game.deadline).getTime() - Date.now()) / (1000 * 60 * 60)))}{'h remaining'}
             </div>
           )}
         </div>
@@ -178,25 +179,25 @@ export function GameResults({ game, questionId }: { game: Game, questionId: stri
 
       {is5050 ? (
         <div className="bg-blue-500/10 border border-blue-500/20 p-6 rounded-3xl text-center space-y-2">
-          <h3 className="text-2xl font-bold text-blue-400">Perfectly Divided 🎯</h3>
-          <p className="text-blue-500/70 text-sm">The group is split exactly 50/50! No points awarded for this question.</p>
+          <h3 className="text-2xl font-bold text-blue-400">{t("Perfectly Divided 🎯")}</h3>
+          <p className="text-blue-500/70 text-sm">{t("The group is split exactly 50/50! No points awarded for this question.")}</p>
         </div>
       ) : (
         <div className={`p-6 rounded-3xl text-center space-y-2 border ${isCorrect ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
           <div className="flex items-center justify-center gap-3">
             {isCorrect ? <CheckCircle2 className="w-6 h-6 text-green-500" /> : <XCircle className="w-6 h-6 text-red-500" />}
             <h3 className={`text-2xl font-bold ${isCorrect ? 'text-green-400' : 'text-red-400'}`}>
-              {isCorrect ? 'Correct Prediction!' : 'Wrong Prediction'}
+              {isCorrect ? t("Correct Prediction!") : t("Wrong Prediction")}
             </h3>
           </div>
           <p className={`${isCorrect ? 'text-green-500/70' : 'text-red-500/70'} text-sm`}>
-            {isCorrect ? 'You read the room perfectly. +1 Point' : 'The group went the other way. 0 Points'}
+            {isCorrect ? t("You read the room perfectly. +1 Point") : t("The group went the other way. 0 Points")}
           </p>
         </div>
       )}
 
       <div className="space-y-4">
-        <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">Leaderboard</h3>
+        <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">{t("Leaderboard")}</h3>
         <div className="space-y-2">
           {leaderboard.map((p, i) => (
             <div key={p.uid} className={`flex items-center justify-between p-4 rounded-2xl border ${p.uid === user?.uid ? 'bg-white/5 border-white/10' : 'bg-zinc-900/30 border-white/5'}`}>
@@ -216,13 +217,13 @@ export function GameResults({ game, questionId }: { game: Game, questionId: stri
           loading={movingNext}
           className="w-full h-14 text-lg"
         >
-          {game.currentQuestionIndex === game.questions.length - 1 ? 'Finish Game' : 'Next Question'} <ArrowRight className="w-5 h-5" />
+          {game.currentQuestionIndex === game.questions.length - 1 ? t("Finish Game") : t("Next Question")} <ArrowRight className="w-5 h-5" />
         </Button>
       )}
 
       {!isHost && (
         <div className="text-center py-4">
-          <p className="text-zinc-500 animate-pulse">Waiting for host to continue...</p>
+          <p className="text-zinc-500 animate-pulse">{t("Waiting for host to continue...")}</p>
         </div>
       )}
     </div>

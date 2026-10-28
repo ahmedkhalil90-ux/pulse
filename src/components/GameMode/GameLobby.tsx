@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Users, Copy, Play, ArrowLeft, Clock, Timer, Trash2 } from 'lucide-react';
@@ -88,7 +89,7 @@ export function GameLobby({ game }: { game: Game }) {
 
   const copyCode = () => {
     navigator.clipboard.writeText(game.inviteCode);
-    toast.success('Code copied to clipboard!');
+    toast.success(t("Code copied to clipboard!"));
   };
 
   const startGame = async () => {
@@ -100,7 +101,7 @@ export function GameLobby({ game }: { game: Game }) {
         : null;
 
       await startGameTransition(db, game.id, user!.uid, { deadline, questionsPerPlayer });
-      toast.success('Game started! Time to submit questions.');
+      toast.success(t("Game started! Time to submit questions."));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'games');
     } finally {
@@ -115,13 +116,13 @@ export function GameLobby({ game }: { game: Game }) {
         // If host leaves, delete the game? Or just leave?
         // Prompt says host can share code. If host leaves, game is dead.
         await deleteDoc(doc(db, 'games', game.id));
-        toast.info('Game cancelled by host.');
+        toast.info(t("Game cancelled by host."));
       } else {
         const newPlayers = game.players.filter(p => p !== user?.uid);
         await updateDoc(doc(db, 'games', game.id), {
           players: newPlayers
         });
-        toast.info('Left the game.');
+        toast.info(t("Left the game."));
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'games');
@@ -132,21 +133,21 @@ export function GameLobby({ game }: { game: Game }) {
     <div className="space-y-8 pb-10">
       <div className="flex items-center justify-between">
         <button onClick={leaveGame} className="text-zinc-500 hover:text-white transition-colors flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" /> {isHost ? 'Cancel Game' : 'Leave Lobby'}
+          <ArrowLeft className="w-4 h-4" /> {isHost ? t("Cancel Game") : t("Leave Lobby")}
         </button>
         <div className="flex items-center gap-2 text-zinc-500">
           {game.type === 'live' ? <Timer className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-          <span className="text-xs font-bold uppercase tracking-widest">{game.type} Mode</span>
+          <span className="text-xs font-bold uppercase tracking-widest">{game.type} {t("Mode")}</span>
         </div>
       </div>
 
       <div className="text-center space-y-4">
-        <h2 className="text-4xl font-bold tracking-tighter">Waiting Lobby</h2>
+        <h2 className="text-4xl font-bold tracking-tighter">{t("Waiting Lobby")}</h2>
         <div className="bg-zinc-900/50 border border-white/5 p-8 rounded-3xl space-y-4 inline-block mx-auto min-w-[200px]">
-          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Share this code</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">{t("Share this code")}</p>
           <div className="text-5xl font-mono font-bold tracking-[0.2em] text-white">{game.inviteCode}</div>
           <Button variant="secondary" onClick={copyCode} className="w-full">
-            <Copy className="w-4 h-4" /> Copy Code
+            <Copy className="w-4 h-4" /> {t("Copy Code")}
           </Button>
         </div>
       </div>
@@ -155,10 +156,10 @@ export function GameLobby({ game }: { game: Game }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Users className="w-5 h-5 text-zinc-500" />
-            <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">Players ({players.length})</h3>
+            <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">{t("Players (")}{players.length})</h3>
           </div>
           {players.length < 2 && (
-            <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">Min 2 players required</span>
+            <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">{t("Min 2 players required")}</span>
           )}
         </div>
         
@@ -175,7 +176,7 @@ export function GameLobby({ game }: { game: Game }) {
                   {p.username.charAt(0).toUpperCase()}
                 </div>
                 <span className="font-bold truncate">{p.username}</span>
-                {p.uid === game.hostUid && <span className="text-[8px] bg-white/10 px-1.5 py-0.5 rounded text-zinc-400 uppercase">Host</span>}
+                {p.uid === game.hostUid && <span className="text-[8px] bg-white/10 px-1.5 py-0.5 rounded text-zinc-400 uppercase">{t("Host")}</span>}
               </motion.div>
             ))}
           </AnimatePresence>
@@ -185,7 +186,7 @@ export function GameLobby({ game }: { game: Game }) {
       {isHost && (
         <div className="space-y-6 bg-zinc-900/30 border border-white/5 p-6 rounded-3xl">
           <div className="space-y-4">
-            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Questions per player</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">{t("Questions per player")}</label>
             <div className="flex gap-2">
               {[2, 3, 4, 5, 10].map(n => (
                 <button
@@ -201,7 +202,7 @@ export function GameLobby({ game }: { game: Game }) {
 
           {game.type === 'async' && (
             <div className="space-y-4">
-              <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Game Deadline</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">{t("Game Deadline")}</label>
               <div className="flex gap-2">
                 {[24, 48, 72].map(h => (
                   <button
@@ -222,14 +223,14 @@ export function GameLobby({ game }: { game: Game }) {
             disabled={players.length < 2}
             className="w-full h-14 text-lg"
           >
-            <Play className="w-5 h-5 fill-current" /> Start Game
+            <Play className="w-5 h-5 fill-current" /> {t("Start Game")}
           </Button>
         </div>
       )}
 
       {!isHost && (
         <div className="text-center py-4">
-          <p className="text-zinc-500 animate-pulse">Waiting for host to start...</p>
+          <p className="text-zinc-500 animate-pulse">{t("Waiting for host to start...")}</p>
         </div>
       )}
     </div>

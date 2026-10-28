@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthProvider';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
@@ -112,11 +113,11 @@ export function GameView() {
         // User finished all questions, wait for others or deadline
         return (
           <div className="text-center py-20 space-y-4">
-            <h2 className="text-2xl font-bold">All caught up!</h2>
-            <p className="text-zinc-500">Waiting for other players or the deadline to reveal results.</p>
+            <h2 className="text-2xl font-bold">{t("All caught up!")}</h2>
+            <p className="text-zinc-500">{t("Waiting for other players or the deadline to reveal results.")}</p>
             {activeGame.deadline && (
               <p className="text-sm text-zinc-400">
-                Deadline: {new Date(activeGame.deadline).toLocaleString()}
+                {t("Deadline:")} {new Date(activeGame.deadline).toLocaleString()}
               </p>
             )}
           </div>

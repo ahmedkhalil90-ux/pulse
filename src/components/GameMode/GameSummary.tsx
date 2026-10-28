@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, ArrowRight, User, Timer, Clock, CheckCircle2, XCircle, LayoutGrid, RotateCcw } from 'lucide-react';
@@ -130,7 +131,7 @@ export function GameSummary({ game }: { game: Game }) {
       };
 
       await addDoc(collection(db, 'games'), gameData);
-      toast.success('New game created with same players!');
+      toast.success(t("New game created with same players!"));
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'games');
     } finally {
@@ -169,15 +170,15 @@ export function GameSummary({ game }: { game: Game }) {
         <div className="w-20 h-20 bg-yellow-500/20 text-yellow-500 rounded-full flex items-center justify-center mx-auto">
           <Trophy className="w-10 h-10" />
         </div>
-        <h2 className="text-4xl font-bold tracking-tighter">Game Over</h2>
-        <p className="text-zinc-500">Here's how everyone read the room.</p>
+        <h2 className="text-4xl font-bold tracking-tighter">{t("Game Over")}</h2>
+        <p className="text-zinc-500">{t("Here's how everyone read the room.")}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
         <div className="bg-zinc-900/50 border border-white/5 p-6 rounded-3xl space-y-4">
           <div className="flex items-center gap-3">
             <Trophy className="w-5 h-5 text-yellow-500" />
-            <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">🏆 Best Mind Reader</h3>
+            <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">{t("🏆 Best Mind Reader")}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             {winners.map(w => (
@@ -192,7 +193,7 @@ export function GameSummary({ game }: { game: Game }) {
           <div className="bg-blue-500/10 border border-blue-500/20 p-6 rounded-3xl space-y-4">
             <div className="flex items-center gap-3">
               <span className="text-xl">🎯</span>
-              <h3 className="font-bold uppercase tracking-widest text-xs text-blue-400">Perfectly Divided Questions</h3>
+              <h3 className="font-bold uppercase tracking-widest text-xs text-blue-400">{t("Perfectly Divided Questions")}</h3>
             </div>
             <div className="space-y-2">
               {perfectlyDivided.map(q => (
@@ -206,7 +207,7 @@ export function GameSummary({ game }: { game: Game }) {
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">Final Leaderboard</h3>
+        <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">{t("Final Leaderboard")}</h3>
         <div className="space-y-2">
           {leaderboard.map((p, i) => (
             <motion.div 
@@ -227,7 +228,7 @@ export function GameSummary({ game }: { game: Game }) {
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">Question Summary</h3>
+        <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">{t("Question Summary")}</h3>
         <div className="space-y-4">
           {questions.map(q => {
             const counts = [0, 0];
@@ -242,8 +243,8 @@ export function GameSummary({ game }: { game: Game }) {
             return (
               <div key={q.id} className="bg-zinc-900/30 border border-white/5 p-6 rounded-3xl space-y-4">
                 <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-600">
-                  <span>By {authors[q.id] ?? 'a player'}</span>
-                  <span>{total} Votes</span>
+                  <span>{t("By")} {authors[q.id] ?? t("a player")}</span>
+                  <span>{total} {t("Votes")}</span>
                 </div>
                 <h4 className="font-bold text-lg leading-tight">{q.text}</h4>
                 <div className="flex gap-2">
@@ -267,7 +268,7 @@ export function GameSummary({ game }: { game: Game }) {
         loading={restarting}
         className="w-full h-14 text-lg"
       >
-        <RotateCcw className="w-5 h-5" /> Play Again
+        <RotateCcw className="w-5 h-5" /> {t("Play Again")}
       </Button>
     </div>
   );

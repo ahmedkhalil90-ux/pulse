@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, Check, X } from 'lucide-react';
@@ -76,7 +77,7 @@ export function ModerationQueue() {
   return (
     <div className="space-y-4">
       <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 ml-1 flex items-center gap-2">
-        <ShieldCheck className="w-3 h-3" /> Moderation Queue
+        <ShieldCheck className="w-3 h-3" /> {t("Moderation Queue")}
         {pending.length > 0 && (
           <span className="bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded-full text-[10px]">
             {pending.length}
@@ -86,7 +87,7 @@ export function ModerationQueue() {
 
       {pending.length === 0 ? (
         <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 text-center">
-          <p className="text-sm text-zinc-500">Nothing held for review.</p>
+          <p className="text-sm text-zinc-500">{t("Nothing held for review.")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -118,14 +119,14 @@ export function ModerationQueue() {
                     disabled={busyId === q.id}
                     className="flex-1 bg-white text-black rounded-2xl py-2.5 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
                   >
-                    <Check className="w-4 h-4" /> Approve
+                    <Check className="w-4 h-4" /> {t("Approve")}
                   </button>
                   <button
                     onClick={() => decide(q, 'rejected')}
                     disabled={busyId === q.id}
                     className="flex-1 border border-zinc-700 text-zinc-300 rounded-2xl py-2.5 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
                   >
-                    <X className="w-4 h-4" /> Reject
+                    <X className="w-4 h-4" /> {t("Reject")}
                   </button>
                 </div>
               </motion.div>

@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Check, ArrowRight, MessageSquare, Trash2 } from 'lucide-react';
@@ -94,7 +95,7 @@ export function QuestionSubmission({ game }: { game: Game }) {
 
   const addQuestion = () => {
     if (!currentText.trim() || !currentOptions[0].trim() || !currentOptions[1].trim()) {
-      toast.error('Please fill in the question and both options.');
+      toast.error(t("Please fill in the question and both options."));
       return;
     }
     setQuestions([...questions, { text: currentText, options: [...currentOptions] as [string, string] }]);
@@ -140,7 +141,7 @@ export function QuestionSubmission({ game }: { game: Game }) {
 
       await batch.commit();
       setSubmitted(true);
-      toast.success('Questions submitted!');
+      toast.success(t("Questions submitted!"));
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'game_questions');
     } finally {
@@ -155,13 +156,13 @@ export function QuestionSubmission({ game }: { game: Game }) {
           <Check className="w-10 h-10" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-3xl font-bold tracking-tighter">Ready!</h2>
-          <p className="text-zinc-500">Waiting for other players to submit their questions.</p>
+          <h2 className="text-3xl font-bold tracking-tighter">{t("Ready!")}</h2>
+          <p className="text-zinc-500">{t("Waiting for other players to submit their questions.")}</p>
         </div>
         <div className="bg-zinc-900/50 border border-white/5 p-6 rounded-3xl space-y-4 max-w-xs mx-auto">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-zinc-500">Status</span>
-            <span className="text-green-500 font-bold uppercase tracking-widest text-[10px]">Submitted</span>
+            <span className="text-zinc-500">{t("Status")}</span>
+            <span className="text-green-500 font-bold uppercase tracking-widest text-[10px]">{t("Submitted")}</span>
           </div>
           <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
             <motion.div 
@@ -178,38 +179,38 @@ export function QuestionSubmission({ game }: { game: Game }) {
   return (
     <div className="space-y-8 pb-10">
       <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tighter">Submit Questions</h2>
-        <p className="text-zinc-500">Create {questionsNeeded} questions for this game. Be creative!</p>
+        <h2 className="text-3xl font-bold tracking-tighter">{t("Submit Questions")}</h2>
+        <p className="text-zinc-500">{t("Create")} {questionsNeeded} {t("questions for this game. Be creative!")}</p>
       </div>
 
       <div className="space-y-6">
         <div className="bg-zinc-900/50 border border-white/5 p-6 rounded-3xl space-y-6">
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Question ({currentText.length}/100)</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">{t("Question (")}{currentText.length}/100)</label>
             <Input 
               value={currentText} 
               onChange={(e) => setCurrentText(e.target.value)} 
-              placeholder="e.g. Is a hotdog a sandwich?"
+              placeholder={t("e.g. Is a hotdog a sandwich?")}
               maxLength={100}
             />
           </div>
 
           <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Option A ({currentOptions[0].length}/40)</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">{t("Option A (")}{currentOptions[0].length}/40)</label>
               <Input 
                 value={currentOptions[0]} 
                 onChange={(e) => setCurrentOptions([e.target.value, currentOptions[1]])} 
-                placeholder="Yes"
+                placeholder={t("Yes")}
                 maxLength={40}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Option B ({currentOptions[1].length}/40)</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">{t("Option B (")}{currentOptions[1].length}/40)</label>
               <Input 
                 value={currentOptions[1]} 
                 onChange={(e) => setCurrentOptions([currentOptions[0], e.target.value])} 
-                placeholder="No"
+                placeholder={t("No")}
                 maxLength={40}
               />
             </div>
@@ -221,13 +222,13 @@ export function QuestionSubmission({ game }: { game: Game }) {
             className="w-full"
             disabled={questionsRemaining === 0}
           >
-            <Plus className="w-4 h-4" /> Add Question
+            <Plus className="w-4 h-4" /> {t("Add Question")}
           </Button>
         </div>
 
         {questions.length > 0 && (
           <div className="space-y-4">
-            <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">Your Questions ({questions.length}/{questionsNeeded})</h3>
+            <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500">{t("Your Questions (")}{questions.length}/{questionsNeeded})</h3>
             <div className="space-y-3">
               {questions.map((q, i) => (
                 <div key={i} className="bg-zinc-900/30 border border-white/5 p-4 rounded-2xl flex items-center justify-between">
@@ -250,7 +251,7 @@ export function QuestionSubmission({ game }: { game: Game }) {
           disabled={questions.length < questionsNeeded}
           className="w-full h-14 text-lg"
         >
-          Submit All Questions <ArrowRight className="w-5 h-5" />
+          {t("Submit All Questions")} <ArrowRight className="w-5 h-5" />
         </Button>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { t, qText, qOptions, lang, setLang } from './lib/i18n';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -177,9 +178,9 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
         <div className="min-h-screen bg-black flex items-center justify-center p-6 text-center">
           <div className="space-y-4">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-            <h2 className="text-2xl font-bold">App Error</h2>
+            <h2 className="text-2xl font-bold">{t("App Error")}</h2>
             <p className="text-zinc-500 max-w-xs mx-auto">{errorMessage}</p>
-            <Button onClick={() => window.location.reload()}>Reload App</Button>
+            <Button onClick={() => window.location.reload()}>{t("Reload App")}</Button>
           </div>
         </div>
       );
@@ -232,17 +233,17 @@ function PulseApp() {
   }
 
   const handleSignup = async () => {
-    if (!username.trim()) return toast.error('Please enter a username');
-    if (password.length < 6) return toast.error('Password must be at least 6 characters');
+    if (!username.trim()) return toast.error(t("Please enter a username"));
+    if (password.length < 6) return toast.error(t("Password must be at least 6 characters"));
     if (!demographics.ageRange || !demographics.gender || !demographics.country) {
-      return toast.error('Please complete your profile details');
+      return toast.error(t("Please complete your profile details"));
     }
     
     setIsProcessing(true);
     try {
       await signUp(username, password, demographics);
       setShowSignup(false);
-      toast.success('Welcome to Pulse!');
+      toast.success(t("Welcome to Pulse!"));
     } catch (e: any) {
       toast.error(e.message || 'Signup failed. Try again.');
     } finally {
@@ -251,14 +252,14 @@ function PulseApp() {
   };
 
   const handleSignin = async () => {
-    if (!username.trim()) return toast.error('Please enter your username');
-    if (!password) return toast.error('Please enter your password');
+    if (!username.trim()) return toast.error(t("Please enter your username"));
+    if (!password) return toast.error(t("Please enter your password"));
     
     setIsProcessing(true);
     try {
       await signIn(username, password);
       setShowSignup(false);
-      toast.success('Welcome back!');
+      toast.success(t("Welcome back!"));
     } catch (e: any) {
       toast.error(e.message || 'Sign in failed.');
     } finally {
@@ -276,7 +277,7 @@ function PulseApp() {
           <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
             <TrendingUp className="text-black w-5 h-5" />
           </div>
-          <h1 className="text-xl font-bold tracking-tighter">PULSE</h1>
+          <h1 className="text-xl font-bold tracking-tighter">{t("PULSE")}</h1>
         </div>
         
         <div className="flex items-center gap-4">
@@ -285,7 +286,7 @@ function PulseApp() {
               <Coins className="w-4 h-4 text-yellow-500" />
               <span className="text-sm font-bold">{user.credits}</span>
               <div className="hidden sm:block w-px h-3 bg-zinc-800" />
-              <span className="hidden sm:block text-[10px] uppercase tracking-widest font-semibold text-zinc-500">Credits</span>
+              <span className="hidden sm:block text-[10px] uppercase tracking-widest font-semibold text-zinc-500">{t("Credits")}</span>
             </div>
           )}
           {user && (
@@ -293,7 +294,7 @@ function PulseApp() {
               onClick={() => setActiveTab('profile')}
               className={cn(
                 "w-10 h-10 rounded-full flex items-center justify-center border transition-all",
-                activeTab === 'profile' ? "bg-white border-white text-black" : "bg-zinc-900 border-white/5 text-zinc-400 hover:text-white"
+                activeTab === 'profile' ? 'bg-white border-white text-black' : 'bg-zinc-900 border-white/5 text-zinc-400 hover:text-white'
               )}
             >
               <User className="w-5 h-5" />
@@ -313,8 +314,8 @@ function PulseApp() {
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-md border-t border-white/5 px-6 py-4 flex items-center justify-between max-w-md mx-auto">
-        <NavButton active={activeTab === 'feed'} onClick={() => setActiveTab('feed')} icon={<Globe />} label="Feed" />
-        <NavButton active={activeTab === 'my-questions'} onClick={() => setActiveTab('my-questions')} icon={<LayoutGrid />} label="My Qs" />
+        <NavButton active={activeTab === 'feed'} onClick={() => setActiveTab('feed')} icon={<Globe />} label={t("Feed")} />
+        <NavButton active={activeTab === 'my-questions'} onClick={() => setActiveTab('my-questions')} icon={<LayoutGrid />} label={t("My Qs")} />
         <div className="relative -top-6">
           <button 
             onClick={() => setShowCreate({ open: true })}
@@ -323,8 +324,8 @@ function PulseApp() {
             <Plus className="w-8 h-8" />
           </button>
         </div>
-        <NavButton active={activeTab === 'groups'} onClick={() => setActiveTab('groups')} icon={<Users />} label="Groups" />
-        <NavButton active={activeTab === 'game'} onClick={() => setActiveTab('game')} icon={<Gamepad2 />} label="Games" />
+        <NavButton active={activeTab === 'groups'} onClick={() => setActiveTab('groups')} icon={<Users />} label={t("Groups")} />
+        <NavButton active={activeTab === 'game'} onClick={() => setActiveTab('game')} icon={<Gamepad2 />} label={t("Games")} />
       </nav>
 
       {/* Signup/Signin Modal */}
@@ -339,28 +340,29 @@ function PulseApp() {
             <div className="w-full max-w-sm space-y-8 py-10">
               <div className="space-y-2 text-center">
                 <h2 className="text-4xl font-bold tracking-tighter">
-                  {authMode === 'signin' ? 'Welcome Back' : 'Join Pulse'}
+                  {authMode === 'signin' ? t("Welcome Back") : t("Join Pulse")}
                 </h2>
-                <p className="text-zinc-500">Radical anonymity. Pure honesty.</p>
+                <p className="text-zinc-500">{t("Radical anonymity. Pure honesty.")}</p>
+                <LanguageToggle />
               </div>
               
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Username</label>
+                  <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Username")}</label>
                   <Input 
                     value={username} 
                     onChange={(e) => setUsername(e.target.value)} 
-                    placeholder="Enter your handle..." 
+                    placeholder={t("Enter your handle...")} 
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Password</label>
+                  <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Password")}</label>
                   <Input 
                     type="password"
                     value={password} 
                     onChange={(e) => setPassword(e.target.value)} 
-                    placeholder="Min 6 characters..." 
+                    placeholder={t("Min 6 characters...")} 
                   />
                 </div>
                 
@@ -368,13 +370,13 @@ function PulseApp() {
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Age Range</label>
+                        <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Age Range")}</label>
                         <select 
                           value={demographics.ageRange}
                           onChange={(e) => setDemographics({...demographics, ageRange: e.target.value})}
                           className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none"
                         >
-                          <option value="">Select...</option>
+                          <option value="">{t("Select...")}</option>
                           <option value="13-17">13-17</option>
                           <option value="18-24">18-24</option>
                           <option value="25-34">25-34</option>
@@ -383,29 +385,29 @@ function PulseApp() {
                         </select>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Gender</label>
+                        <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Gender")}</label>
                         <select 
                           value={demographics.gender}
                           onChange={(e) => setDemographics({...demographics, gender: e.target.value})}
                           className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none"
                         >
-                          <option value="">Select...</option>
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                          <option value="Non-binary">Non-binary</option>
-                          <option value="Other">Other</option>
+                          <option value="">{t("Select...")}</option>
+                          <option value="Male">{t("Male")}</option>
+                          <option value="Female">{t("Female")}</option>
+                          <option value="Non-binary">{t("Non-binary")}</option>
+                          <option value="Other">{t("Other")}</option>
                         </select>
                       </div>
                     </div>
                     
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Country</label>
+                      <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Country")}</label>
                       <select
                         value={demographics.country}
                         onChange={(e) => setDemographics({...demographics, country: e.target.value})}
                         className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none"
                       >
-                        <option value="">Select...</option>
+                        <option value="">{t("Select...")}</option>
                         {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
@@ -419,19 +421,19 @@ function PulseApp() {
                   loading={isProcessing} 
                   className="w-full h-14 text-lg"
                 >
-                  {authMode === 'signin' ? 'Sign In' : 'Create Account'}
+                  {authMode === 'signin' ? t("Sign In") : t("Create Account")}
                 </Button>
                 
                 <button 
                   onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
                   className="w-full text-zinc-500 text-sm hover:text-white transition-colors"
                 >
-                  {authMode === 'signin' ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+                  {authMode === 'signin' ? t("Don't have an account? Sign Up") : t("Already have an account? Sign In")}
                 </button>
               </div>
               
               <p className="text-[10px] text-center text-zinc-600 px-8">
-                Your data is encrypted and never shared. Pulse is built on trust and anonymity.
+                {t("Your data is encrypted and never shared. Pulse is built on trust and anonymity.")}
               </p>
             </div>
           </motion.div>
@@ -447,6 +449,27 @@ function PulseApp() {
           />
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function LanguageToggle() {
+  const opts: Array<['en' | 'ar', string]> = [['en', 'English'], ['ar', 'العربية']];
+  return (
+    <div className="flex justify-center gap-2 pt-2" role="group" aria-label="Language">
+      {opts.map(([code, label]) => (
+        <button
+          key={code}
+          onClick={() => code !== lang && setLang(code)}
+          aria-pressed={lang === code}
+          className={cn(
+            'px-4 py-1.5 rounded-full text-sm border transition-colors',
+            lang === code ? 'bg-white text-black border-white' : 'border-zinc-800 text-zinc-400 hover:text-white'
+          )}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -633,7 +656,7 @@ function Feed() {
           questionId: questions[currentIndex].id,
           skippedAt: new Date().toISOString()
         });
-        toast.info('Question skipped. You can find it in your history later.');
+        toast.info(t("Question skipped. You can find it in your history later."));
         
         // Remove from local state to prevent "return back" in same session
         const newQuestions = questions.filter((_, i) => i !== currentIndex);
@@ -685,7 +708,7 @@ function Feed() {
         <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded-2xl px-4 py-2">
           <div className="flex items-center gap-2">
             <RotateCcw className="w-4 h-4 text-indigo-400" />
-            <span className="text-xs font-bold uppercase tracking-widest text-indigo-400">Revisit Mode</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-indigo-400">{t("Revisit Mode")}</span>
           </div>
           <button 
             onClick={() => {
@@ -695,7 +718,7 @@ function Feed() {
             }}
             className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white"
           >
-            Exit
+            {t("Exit")}
           </button>
         </div>
       )}
@@ -723,7 +746,7 @@ function Feed() {
       {questions.length === 0 ? (
         <div className="text-center py-20 space-y-4">
           <LayoutGrid className="w-12 h-12 text-zinc-800 mx-auto" />
-          <p className="text-zinc-500">No questions in this category yet.</p>
+          <p className="text-zinc-500">{t("No questions in this category yet.")}</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -742,7 +765,7 @@ function Feed() {
                   key={i}
                   className={cn(
                     "h-1 rounded-full transition-all",
-                    i === currentIndex ? "w-8 bg-white" : "w-2 bg-zinc-800"
+                    i === currentIndex ? 'w-8 bg-white' : 'w-2 bg-zinc-800'
                   )}
                 />
               ))}
@@ -835,13 +858,13 @@ function AllCaughtUpScreen({ onClose, onRevisit }: { onClose: () => void, onRevi
           <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto border border-indigo-500/20 mb-4">
             <PartyPopper className="w-10 h-10 text-indigo-400" />
           </div>
-          <h2 className="text-3xl font-bold tracking-tighter">You're all caught up!</h2>
-          <p className="text-zinc-500">You've answered everything in your feed. 🎉</p>
+          <h2 className="text-3xl font-bold tracking-tighter">{t("You're all caught up!")}</h2>
+          <p className="text-zinc-500">{t("You've answered everything in your feed. 🎉")}</p>
         </div>
 
         <div className="space-y-6">
           <div className="space-y-3">
-            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Your Answer Type</label>
+            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Your Answer Type")}</label>
             <div className="flex gap-2">
               {['Minority', 'Majority', 'Both'].map(type => (
                 <button
@@ -849,7 +872,7 @@ function AllCaughtUpScreen({ onClose, onRevisit }: { onClose: () => void, onRevi
                   onClick={() => setAnswerType(type)}
                   className={cn(
                     "flex-1 py-2 rounded-xl text-xs font-bold border transition-all",
-                    answerType === type ? "bg-white text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5"
+                    answerType === type ? 'bg-white text-black border-white' : 'bg-zinc-900 text-zinc-500 border-white/5'
                   )}
                 >
                   {type}
@@ -859,7 +882,7 @@ function AllCaughtUpScreen({ onClose, onRevisit }: { onClose: () => void, onRevi
           </div>
 
           <div className="space-y-3">
-            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Categories</label>
+            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Categories")}</label>
             <div className="flex flex-wrap gap-2">
               {categories.map(cat => (
                 <button
@@ -867,7 +890,7 @@ function AllCaughtUpScreen({ onClose, onRevisit }: { onClose: () => void, onRevi
                   onClick={() => handleCategoryToggle(cat)}
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all",
-                    selectedCategories.includes(cat) ? "bg-indigo-500 text-white border-indigo-500" : "bg-zinc-900 text-zinc-500 border-white/5"
+                    selectedCategories.includes(cat) ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-zinc-900 text-zinc-500 border-white/5'
                   )}
                 >
                   {cat}
@@ -877,7 +900,7 @@ function AllCaughtUpScreen({ onClose, onRevisit }: { onClose: () => void, onRevi
           </div>
 
           <div className="space-y-3">
-            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Time Since Answered</label>
+            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Time Since Answered")}</label>
             <div className="flex gap-2">
               {['3+ months ago', '6+ months ago', 'Any time'].map(time => (
                 <button
@@ -885,7 +908,7 @@ function AllCaughtUpScreen({ onClose, onRevisit }: { onClose: () => void, onRevi
                   onClick={() => setTimeRange(time)}
                   className={cn(
                     "flex-1 py-2 rounded-xl text-[10px] font-bold border transition-all",
-                    timeRange === time ? "bg-white text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5"
+                    timeRange === time ? 'bg-white text-black border-white' : 'bg-zinc-900 text-zinc-500 border-white/5'
                   )}
                 >
                   {time}
@@ -900,13 +923,13 @@ function AllCaughtUpScreen({ onClose, onRevisit }: { onClose: () => void, onRevi
             onClick={() => onRevisit({ answerType, categories: selectedCategories, timeRange })}
             className="w-full h-14 rounded-2xl text-lg font-bold bg-indigo-500 hover:bg-indigo-400"
           >
-            Revisit Questions
+            {t("Revisit Questions")}
           </Button>
           <button 
             onClick={onClose}
             className="w-full py-2 text-sm font-bold text-zinc-500 hover:text-zinc-300"
           >
-            Not now
+            {t("Not now")}
           </button>
         </div>
       </div>
@@ -1041,9 +1064,9 @@ function QuestionCard({
         // 3. Award credit
         await awardAnswerCredit(db, user.uid);
 
-        toast.success('Vote recorded anonymously! +1 Credit');
+        toast.success(t("Vote recorded anonymously! +1 Credit"));
       } else {
-        toast.success('Answer updated!');
+        toast.success(t("Answer updated!"));
       }
 
       if (onAnswer) onAnswer();
@@ -1054,7 +1077,7 @@ function QuestionCard({
         setAnswered(false);
       }
       // The listener will eventually sync the results back
-      toast.error('Failed to record vote. Please try again.');
+      toast.error(t("Failed to record vote. Please try again."));
     } finally {
       setVoting(false);
     }
@@ -1070,7 +1093,7 @@ function QuestionCard({
       // stale credits value on this client cannot overdraw the account and a
       // failed impressions write cannot leave the user charged for nothing.
       await boostQuestion(db, user.uid, question.id);
-      toast.success('Question boosted! +100 impressions');
+      toast.success(t("Question boosted! +100 impressions"));
       setShowBoostConfirm(false);
     } catch (error) {
       if (error instanceof InsufficientCreditsError) {
@@ -1106,7 +1129,7 @@ function QuestionCard({
   const handleFlag = async (reason: 'unclear' | 'inappropriate') => {
     if (!user) return;
     if (question.authorUid === user.uid) {
-      toast.error("You can't flag your own question.");
+      toast.error(t("You can't flag your own question."));
       setShowFlagConfirm(false);
       return;
     }
@@ -1149,11 +1172,11 @@ function QuestionCard({
         <div className="flex items-center gap-2 text-zinc-500">
           {question.isPublic ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
           <span className="text-[10px] font-bold uppercase tracking-widest">
-            {question.isPublic ? (question.category || 'Public Poll') : 'Private Group'}
+            {question.isPublic ? (question.category || t("Public Poll")) : t("Private Group")}
           </span>
           {revisitMode && (
             <span className="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-400 text-[8px] font-black rounded uppercase tracking-widest border border-indigo-500/20">
-              Revisit
+              {t("Revisit")}
             </span>
           )}
         </div>
@@ -1164,7 +1187,7 @@ function QuestionCard({
               className="flex items-center gap-1.5 px-3 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 rounded-full transition-colors border border-indigo-500/20"
             >
               <Zap className="w-3 h-3 text-indigo-400" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">Boost</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">{t("Boost")}</span>
             </button>
           )}
           <motion.div 
@@ -1173,12 +1196,12 @@ function QuestionCard({
             animate={{ scale: 1, color: '#52525b' }}
             className="text-[10px] font-bold uppercase tracking-widest tabular-nums"
           >
-            {totalVotes} Votes
+            {totalVotes} {t("Votes")}
           </motion.div>
           <button 
             onClick={() => setShowFlagConfirm(true)}
             className="p-1.5 text-zinc-700 hover:text-red-500 transition-colors"
-            title="Flag Question"
+            title={t("Flag Question")}
           >
             <Flag className="w-4 h-4" />
           </button>
@@ -1187,7 +1210,7 @@ function QuestionCard({
               onClick={onNext}
               className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white transition-colors border border-white/5 px-2 py-1 rounded-full bg-white/5"
             >
-              Skip
+              {t("Skip")}
               <ChevronRight className="w-3 h-3" />
             </button>
           )}
@@ -1195,11 +1218,11 @@ function QuestionCard({
       </div>
 
       <h3 className="text-2xl font-bold leading-tight tracking-tight">
-        {question.text}
+        {qText(question)}
       </h3>
 
       <div className="space-y-3">
-        {question.options.map((opt, i) => (
+        {qOptions(question).map((opt, i) => (
           <button
             key={i}
             disabled={answered || voting}
@@ -1233,7 +1256,7 @@ function QuestionCard({
                 </span>
                 {answered && revisitMode && previousAnswer && (previousAnswer.answerIndex === i || previousAnswer.optionIndex === i) && (
                   <span className="text-[8px] font-black uppercase tracking-widest text-indigo-400 mt-0.5">
-                    Previously
+                    {t("Previously")}
                   </span>
                 )}
               </div>
@@ -1248,7 +1271,7 @@ function QuestionCard({
                       (i === 0 ? p1 - previousAnswer.option0PercentAtTime : p2 - previousAnswer.option1PercentAtTime) > 0 ? "text-green-500" : "text-red-500"
                     )}>
                       {(i === 0 ? p1 - previousAnswer.option0PercentAtTime : p2 - previousAnswer.option1PercentAtTime) > 0 ? '+' : ''}
-                      {i === 0 ? p1 - previousAnswer.option0PercentAtTime : p2 - previousAnswer.option1PercentAtTime}% shift
+                      {i === 0 ? p1 - previousAnswer.option0PercentAtTime : p2 - previousAnswer.option1PercentAtTime}{t("% shift")}
                     </span>
                   )}
                 </div>
@@ -1269,7 +1292,7 @@ function QuestionCard({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-zinc-400">
                   <TrendingUp className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-widest">Insights</span>
+                  <span className="text-xs font-bold uppercase tracking-widest">{t("Insights")}</span>
                 </div>
                 {!demographicsUnlocked && (
                   <button 
@@ -1279,7 +1302,7 @@ function QuestionCard({
                   >
                     <Lock className="w-3 h-3 text-zinc-500" />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                      {isUnlocking ? 'Unlocking...' : 'Unlock — 3 Credits'}
+                      {isUnlocking ? t("Unlocking...") : t("Unlock — 3 Credits")}
                     </span>
                   </button>
                 )}
@@ -1288,33 +1311,33 @@ function QuestionCard({
               <div className="grid grid-cols-1 gap-4 relative">
                 {!demographicsUnlocked && (
                   <div className="absolute inset-0 bg-zinc-900/60 backdrop-blur-md z-10 rounded-2xl flex flex-col items-center justify-center p-4 text-center">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2">Detailed Breakdown Locked</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2">{t("Detailed Breakdown Locked")}</p>
                     <button 
                       onClick={handleUnlockDemographics}
                       className="text-[10px] font-bold uppercase tracking-widest text-white underline decoration-white/20 underline-offset-4"
                     >
-                      Use 3 credits to unlock
+                      {t("Use 3 credits to unlock")}
                     </button>
                   </div>
                 )}
-                <div className={cn("space-y-4", !demographicsUnlocked && "opacity-20 grayscale pointer-events-none")}>
-                  <DemographicBreakdown label="Age Range" data={results?.demographics?.ageRange} />
-                  <DemographicBreakdown label="Gender" data={results?.demographics?.gender} />
-                  {demographicsUnlocked && <DemographicBreakdown label="Country" data={results?.demographics?.country} />}
+                <div className={cn("space-y-4", !demographicsUnlocked && 'opacity-20 grayscale pointer-events-none')}>
+                  <DemographicBreakdown label={t("Age Range")} data={results?.demographics?.ageRange} />
+                  <DemographicBreakdown label={t("Gender")} data={results?.demographics?.gender} />
+                  {demographicsUnlocked && <DemographicBreakdown label={t("Country")} data={results?.demographics?.country} />}
                 </div>
               </div>
             </>
           ) : (
             <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-4 text-center space-y-2">
               <Lock className="w-4 h-4 text-zinc-700 mx-auto" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Insufficient data to protect anonymity</p>
-              <p className="text-[10px] text-zinc-600">Requires {question.isPublic ? '10+' : '5+'} responses to reveal detailed insights.</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">{t("Insufficient data to protect anonymity")}</p>
+              <p className="text-[10px] text-zinc-600">{t("Requires")} {question.isPublic ? '10+' : '5+'} {'responses to reveal detailed insights.'}</p>
             </div>
           )}
           
           <div className="flex items-center gap-2 text-[10px] text-zinc-600 font-medium">
             <ShieldCheck className="w-3 h-3" />
-            <span>Your answer is anonymous. Aggregated data only.</span>
+            <span>{t("Your answer is anonymous. Aggregated data only.")}</span>
           </div>
 
           {onNext && (
@@ -1324,11 +1347,11 @@ function QuestionCard({
               className={cn(
                 "w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] mt-4",
                 isLast 
-                  ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" 
-                  : "bg-white text-black hover:bg-zinc-200"
+                  ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' 
+                  : 'bg-white text-black hover:bg-zinc-200'
               )}
             >
-              <span>{isLast ? "End of Feed" : "Next Question"}</span>
+              <span>{isLast ? t("End of Feed") : t("Next Question")}</span>
               {!isLast && <ChevronRight className="w-5 h-5" />}
             </button>
           )}
@@ -1347,9 +1370,9 @@ function QuestionCard({
               <Flag className="w-8 h-8 text-red-500" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-xl font-bold">Flag Question?</h3>
+              <h3 className="text-xl font-bold">{t("Flag Question?")}</h3>
               <p className="text-zinc-500 text-sm max-w-[240px] mx-auto">
-                Why are you flagging this question? It will be hidden from your feed.
+                {t("Why are you flagging this question? It will be hidden from your feed.")}
               </p>
             </div>
             <div className="flex flex-col gap-2 w-full max-w-[240px] mx-auto">
@@ -1357,21 +1380,21 @@ function QuestionCard({
                 onClick={() => handleFlag('unclear')}
                 className="w-full px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-sm font-bold hover:bg-white/10 transition-all text-left flex items-center justify-between group"
               >
-                <span>Unclear question</span>
+                <span>{t("Unclear question")}</span>
                 <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
               <button
                 onClick={() => handleFlag('inappropriate')}
                 className="w-full px-6 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm font-bold hover:bg-red-500/20 transition-all text-left flex items-center justify-between group text-red-400"
               >
-                <span>Inappropriate question</span>
+                <span>{t("Inappropriate question")}</span>
                 <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
               <button
                 onClick={() => setShowFlagConfirm(false)}
                 className="w-full px-6 py-3 rounded-xl text-xs font-bold text-zinc-500 hover:text-white transition-all"
               >
-                Cancel
+                {t("Cancel")}
               </button>
             </div>
           </div>
@@ -1394,20 +1417,20 @@ function QuestionCard({
                 <Zap className="w-8 h-8 text-indigo-400" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-bold">Boost Question?</h3>
+                <h3 className="text-xl font-bold">{t("Boost Question?")}</h3>
                 <p className="text-zinc-500 text-sm">
-                  Show your question to 100 additional users for 10 credits.
+                  {t("Show your question to 100 additional users for 10 credits.")}
                 </p>
               </div>
               <div className="space-y-3">
                 <Button onClick={handleBoost} className="w-full bg-indigo-500 hover:bg-indigo-400 text-white">
-                  Confirm Boost
+                  {t("Confirm Boost")}
                 </Button>
                 <button 
                   onClick={() => setShowBoostConfirm(false)}
                   className="w-full py-3 text-sm font-bold text-zinc-500 hover:text-zinc-300"
                 >
-                  Cancel
+                  {t("Cancel")}
                 </button>
               </div>
             </motion.div>
@@ -1441,7 +1464,7 @@ function DemographicBreakdown({ label, data }: { label: string, data?: any }) {
           );
         })}
         {Object.values(data).every((c: any) => (c['0'] || 0) + (c['1'] || 0) < 10) && (
-          <p className="text-[10px] text-zinc-700 italic">Insufficient data for breakdown</p>
+          <p className="text-[10px] text-zinc-700 italic">{t("Insufficient data for breakdown")}</p>
         )}
       </div>
     </div>
@@ -1470,11 +1493,11 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
 
   const handlePublish = async () => {
     if (!user) return;
-    if (!text.trim() || !opt1.trim() || !opt2.trim()) return toast.error('Fill all fields');
+    if (!text.trim() || !opt1.trim() || !opt2.trim()) return toast.error(t("Fill all fields"));
     
     // Group and public questions are now free
     if (!groupId) {
-      if (!user.isVerified) return toast.error('Phone verification required to post');
+      if (!user.isVerified) return toast.error(t("Phone verification required to post"));
     }
 
     setLoading(true);
@@ -1503,19 +1526,19 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
       } catch (error) {
         // Do not fall through to a success toast — the question was not saved.
         handleFirestoreError(error, OperationType.CREATE, 'questions');
-        toast.error('Could not save your question. Please try again.');
+        toast.error(t("Could not save your question. Please try again."));
         setLoading(false);
         return;
       }
 
       if (status === 'pending') {
-        toast.success('Submitted! Your question goes live once it passes review.', { duration: 6000 });
+        toast.success(t("Submitted! Your question goes live once it passes review."), { duration: 6000 });
       } else {
-        toast.success('Group question live!');
+        toast.success(t("Group question live!"));
       }
       onClose();
     } catch (e) {
-      toast.error('Failed to publish');
+      toast.error(t("Failed to publish"));
     } finally {
       setLoading(false);
     }
@@ -1540,26 +1563,26 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
             id="back-button"
           >
             <ChevronLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">Back</span>
+            <span className="text-sm font-medium">{t("Back")}</span>
           </button>
-          <h2 className="text-xl font-bold tracking-tighter">New Question</h2>
+          <h2 className="text-xl font-bold tracking-tighter">{t("New Question")}</h2>
           <div className="w-16" /> {/* Spacer to balance the layout */}
         </div>
 
         <div className="space-y-6">
           <div className="space-y-2">
-            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">The Question</label>
+            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("The Question")}</label>
             <textarea 
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="What's on your mind?"
+              placeholder={t("What's on your mind?")}
               maxLength={100}
               className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-white/20 h-24 resize-none"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Category</label>
+            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Category")}</label>
             <select 
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -1573,12 +1596,12 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
 
           <div className="space-y-4">
             <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Option A</label>
-              <Input value={opt1} onChange={(e) => setOpt1(e.target.value)} placeholder="First choice..." maxLength={40} />
+              <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Option A")}</label>
+              <Input value={opt1} onChange={(e) => setOpt1(e.target.value)} placeholder={t("First choice...")} maxLength={40} />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Option B</label>
-              <Input value={opt2} onChange={(e) => setOpt2(e.target.value)} placeholder="Second choice..." maxLength={40} />
+              <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Option B")}</label>
+              <Input value={opt2} onChange={(e) => setOpt2(e.target.value)} placeholder={t("Second choice...")} maxLength={40} />
             </div>
           </div>
         </div>
@@ -1587,16 +1610,16 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-2 text-zinc-500">
               <Globe className="w-4 h-4" />
-              <span className="text-xs font-medium">Posting to {groupId ? 'Group' : 'Public Feed'}</span>
+              <span className="text-xs font-medium">{t("Posting to")} {groupId ? t("Group") : t("Public Feed")}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-green-500">Free</span>
+              <span className="text-xs font-medium text-green-500">{t("Free")}</span>
             </div>
           </div>
           
           <div className="flex items-center gap-2 text-zinc-500 px-2">
             <ShieldCheck className="w-4 h-4" />
-            <span className="text-xs font-medium">Reviewed before going live</span>
+            <span className="text-xs font-medium">{t("Reviewed before going live")}</span>
           </div>
           <div className="flex gap-3">
             <button 
@@ -1604,10 +1627,10 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
               className="flex-1 h-14 rounded-2xl border border-zinc-800 font-bold hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-white"
               id="cancel-button"
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <Button onClick={handlePublish} loading={loading} className="flex-[2] h-14 text-lg">
-              Publish
+              {t("Publish")}
             </Button>
           </div>
         </div>
@@ -1657,7 +1680,7 @@ function GroupsView() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold tracking-tighter">Private Groups</h2>
+        <h2 className="text-xl font-bold tracking-tighter">{t("Private Groups")}</h2>
         <div className="flex gap-2">
           <button 
             onClick={() => setShowJoin(true)}
@@ -1682,12 +1705,12 @@ function GroupsView() {
         <div className="text-center py-20 space-y-4 bg-zinc-900/30 border border-white/5 rounded-[2rem]">
           <Users className="w-12 h-12 text-zinc-800 mx-auto" />
           <div className="space-y-1">
-            <h3 className="font-bold">No Groups Yet</h3>
-            <p className="text-zinc-500 text-sm px-8">Create a private circle or join one with an invite code.</p>
+            <h3 className="font-bold">{t("No Groups Yet")}</h3>
+            <p className="text-zinc-500 text-sm px-8">{t("Create a private circle or join one with an invite code.")}</p>
           </div>
           <div className="flex gap-2 justify-center pt-4">
-            <Button variant="outline" onClick={() => setShowJoin(true)}>Join Group</Button>
-            <Button onClick={() => setShowCreate(true)}>Create Group</Button>
+            <Button variant="outline" onClick={() => setShowJoin(true)}>{t("Join Group")}</Button>
+            <Button onClick={() => setShowCreate(true)}>{t("Create Group")}</Button>
           </div>
         </div>
       ) : (
@@ -1702,7 +1725,7 @@ function GroupsView() {
                 <h3 className="font-bold text-lg">{group.name}</h3>
                 <div className="flex items-center gap-2 text-zinc-500 text-xs">
                   <Users className="w-3 h-3" />
-                  <span>{group.memberCount} Members</span>
+                  <span>{group.memberCount} {t("Members")}</span>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-zinc-700" />
@@ -1775,7 +1798,7 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
   const handleLeave = async () => {
     if (!user) return;
     if (group.adminUid === user.uid) {
-      toast.error('Admins cannot leave. Delete the group instead.');
+      toast.error(t("Admins cannot leave. Delete the group instead."));
       return;
     }
 
@@ -1783,7 +1806,7 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
       await updateDoc(doc(db, 'groups', group.id), {
         members: arrayRemove(user.uid)
       });
-      toast.success('Left group');
+      toast.success(t("Left group"));
       onBack();
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `groups/${group.id}`);
@@ -1805,7 +1828,7 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
       batch.delete(doc(db, 'groups', group.id));
       
       await batch.commit();
-      toast.success('Group deleted');
+      toast.success(t("Group deleted"));
       onBack();
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `groups/${group.id}`);
@@ -1814,7 +1837,7 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
 
   const copyInviteCode = () => {
     navigator.clipboard.writeText(group.inviteCode);
-    toast.success('Invite code copied!');
+    toast.success(t("Invite code copied!"));
   };
 
   return (
@@ -1853,20 +1876,20 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
                 <Trash2 className="w-8 h-8 text-red-500" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-bold">Delete Group?</h3>
+                <h3 className="text-xl font-bold">{t("Delete Group?")}</h3>
                 <p className="text-zinc-500 text-sm">
-                  This will permanently delete "{group.name}" and all its questions.
+                  {t("This will permanently delete \"")}{group.name}{t("\" and all its questions.")}
                 </p>
               </div>
               <div className="space-y-3">
                 <Button onClick={handleDelete} className="w-full bg-red-500 hover:bg-red-400 text-white">
-                  Delete Group
+                  {t("Delete Group")}
                 </Button>
                 <button 
                   onClick={() => setShowDeleteConfirm(false)}
                   className="w-full py-3 text-sm font-bold text-zinc-500 hover:text-zinc-300"
                 >
-                  Cancel
+                  {t("Cancel")}
                 </button>
               </div>
             </motion.div>
@@ -1883,7 +1906,7 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
         <div className="flex gap-2">
           <div className="flex-1 bg-zinc-900/50 border border-white/5 rounded-2xl p-4 flex items-center justify-between">
             <div className="space-y-0.5">
-              <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">Invite Code</span>
+              <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">{t("Invite Code")}</span>
               <p className="font-mono font-bold text-lg tracking-wider">{group.inviteCode}</p>
             </div>
             <button onClick={copyInviteCode} className="p-2 hover:bg-white/5 rounded-lg transition-colors text-zinc-400">
@@ -1894,7 +1917,7 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
             "bg-zinc-900/50 border rounded-2xl p-4 flex flex-col justify-center items-center min-w-[80px]",
             group.memberCount < 5 ? "border-amber-500/20" : "border-white/5"
           )}>
-            <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">Members</span>
+            <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">{t("Members")}</span>
             <p className="font-bold text-lg">{group.memberCount}</p>
           </div>
         </div>
@@ -1903,9 +1926,9 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
           <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 flex items-start gap-3">
             <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="text-xs font-bold text-amber-500 uppercase tracking-widest">Low Member Count</p>
+              <p className="text-xs font-bold text-amber-500 uppercase tracking-widest">{t("Low Member Count")}</p>
               <p className="text-[10px] text-amber-500/60 leading-relaxed">
-                Groups need at least 5 members to reveal detailed insights. Invite more people to unlock demographics!
+                {t("Groups need at least 5 members to reveal detailed insights. Invite more people to unlock demographics!")}
               </p>
             </div>
           </div>
@@ -1917,19 +1940,19 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
           onClick={() => setActiveTab('feed')}
           className={cn(
             "flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all",
-            activeTab === 'feed' ? "bg-white text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"
+            activeTab === 'feed' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-zinc-300'
           )}
         >
-          Feed
+          {t("Feed")}
         </button>
         <button
           onClick={() => setActiveTab('members')}
           className={cn(
             "flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all",
-            activeTab === 'members' ? "bg-white text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"
+            activeTab === 'members' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-zinc-300'
           )}
         >
-          Members
+          {t("Members")}
         </button>
       </div>
 
@@ -1940,7 +1963,7 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
             className="w-full py-6 border-2 border-dashed border-zinc-800 rounded-3xl text-zinc-500 hover:border-zinc-700 hover:text-zinc-400 transition-all flex items-center justify-center gap-2"
           >
             <Plus className="w-5 h-5" />
-            <span className="font-bold text-sm uppercase tracking-widest">Ask the Group</span>
+            <span className="font-bold text-sm uppercase tracking-widest">{t("Ask the Group")}</span>
           </button>
 
           {loading ? (
@@ -1950,7 +1973,7 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
           ) : questions.length === 0 ? (
             <div className="text-center py-20 text-zinc-500">
               <Plus className="w-12 h-12 mx-auto mb-4 opacity-20" />
-              <p>No questions in this group yet.</p>
+              <p>{t("No questions in this group yet.")}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -1969,7 +1992,7 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
                         questionId: q.id,
                         skippedAt: new Date().toISOString()
                       });
-                      toast.info('Question skipped');
+                      toast.info(t("Question skipped"));
                     }}
                   />
                 ))}
@@ -1980,7 +2003,7 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
                   className="w-full py-6 border-2 border-dashed border-zinc-800 rounded-3xl text-zinc-500 hover:border-zinc-700 hover:text-zinc-400 transition-all flex items-center justify-center gap-2"
                 >
                   <RotateCcw className="w-5 h-5" />
-                  <span className="font-bold text-sm uppercase tracking-widest">Show Answered & Skipped</span>
+                  <span className="font-bold text-sm uppercase tracking-widest">{t("Show Answered & Skipped")}</span>
                 </button>
               )}
               
@@ -1989,7 +2012,7 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
                   onClick={() => setRevisitMode(false)}
                   className="w-full py-4 text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-white transition-colors"
                 >
-                  Hide Answered & Skipped
+                  {t("Hide Answered & Skipped")}
                 </button>
               )}
             </div>
@@ -1999,9 +2022,9 @@ function GroupHome({ group, onBack }: { group: Group, onBack: () => void }) {
         <div className="bg-zinc-900/30 border border-white/5 rounded-3xl p-10 text-center space-y-4">
           <ShieldCheck className="w-12 h-12 text-zinc-800 mx-auto" />
           <div className="space-y-1">
-            <h3 className="font-bold text-lg">Anonymity First</h3>
+            <h3 className="font-bold text-lg">{t("Anonymity First")}</h3>
             <p className="text-zinc-500 text-sm">
-              We only show the total member count ({group.memberCount}). Individual usernames are hidden to ensure everyone feels safe sharing their true pulse.
+              {t("We only show the total member count (")}{group.memberCount}{t("). Individual usernames are hidden to ensure everyone feels safe sharing their true pulse.")}
             </p>
           </div>
         </div>
@@ -2027,8 +2050,8 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void, onCreat
 
   const handleCreate = async () => {
     if (!user) return;
-    if (!name.trim()) return toast.error('Group name is required');
-    if (name.length > 50) return toast.error('Name too long (max 50)');
+    if (!name.trim()) return toast.error(t("Group name is required"));
+    if (name.length > 50) return toast.error(t("Name too long (max 50)"));
 
     setLoading(true);
     try {
@@ -2043,7 +2066,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void, onCreat
       };
 
       const docRef = await addDoc(collection(db, 'groups'), groupData);
-      toast.success('Group created!');
+      toast.success(t("Group created!"));
       onCreated({ id: docRef.id, ...groupData } as Group);
       onClose();
     } catch (error) {
@@ -2069,28 +2092,28 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void, onCreat
           <button onClick={onClose} className="p-2 -ml-2 hover:bg-white/5 rounded-xl transition-colors text-zinc-400">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h2 className="text-xl font-bold tracking-tighter">Create Group</h2>
+          <h2 className="text-xl font-bold tracking-tighter">{t("Create Group")}</h2>
           <div className="w-10" />
         </div>
 
         <div className="space-y-6">
           <div className="space-y-2">
-            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Group Name</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. The Inner Circle" maxLength={50} />
+            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Group Name")}</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("e.g. The Inner Circle")} maxLength={50} />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">Description (Optional)</label>
+            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Description (Optional)")}</label>
             <textarea 
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What's this group about?"
+              placeholder={t("What's this group about?")}
               className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-white/20 h-24 resize-none"
             />
           </div>
         </div>
 
         <Button onClick={handleCreate} loading={loading} className="w-full h-14 rounded-2xl font-bold text-lg">
-          Create Group
+          {t("Create Group")}
         </Button>
       </motion.div>
     </motion.div>
@@ -2104,7 +2127,7 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
 
   const handleJoin = async () => {
     if (!user) return;
-    if (code.length !== 6) return toast.error('Enter a 6-character code');
+    if (code.length !== 6) return toast.error(t("Enter a 6-character code"));
 
     setLoading(true);
     try {
@@ -2112,7 +2135,7 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
       const snapshot = await getDocs(q);
 
       if (snapshot.empty) {
-        toast.error('Invalid invite code');
+        toast.error(t("Invalid invite code"));
         setLoading(false);
         return;
       }
@@ -2124,7 +2147,7 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
         doc(db, 'groups', groupDoc.id, 'members', user.uid)
       );
       if (alreadyMember.exists()) {
-        toast.error('You are already a member');
+        toast.error(t("You are already a member"));
         onJoined({ id: groupDoc.id, ...groupData });
         onClose();
         return;
@@ -2155,7 +2178,7 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
       // The join is several writes now, so a failure partway must say
       // something specific -- the generic message from handleFirestoreError
       // would not tell the user to check the code.
-      toast.error('Could not join that group. Check the code and try again.');
+      toast.error(t("Could not join that group. Check the code and try again."));
       handleFirestoreError(error, OperationType.UPDATE, 'groups');
     } finally {
       setLoading(false);
@@ -2178,17 +2201,17 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
           <button onClick={onClose} className="p-2 -ml-2 hover:bg-white/5 rounded-xl transition-colors text-zinc-400">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h2 className="text-xl font-bold tracking-tighter">Join Group</h2>
+          <h2 className="text-xl font-bold tracking-tighter">{t("Join Group")}</h2>
           <div className="w-10" />
         </div>
 
         <div className="space-y-6">
           <div className="space-y-2 text-center">
-            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">Invite Code</label>
+            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">{t("Invite Code")}</label>
             <input 
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="XXXXXX"
+              placeholder={t("XXXXXX")}
               maxLength={6}
               className="w-full bg-transparent text-5xl font-mono font-bold text-center tracking-[0.5em] focus:outline-none placeholder:text-zinc-800"
             />
@@ -2196,7 +2219,7 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
         </div>
 
         <Button onClick={handleJoin} loading={loading} className="w-full h-14 rounded-2xl font-bold text-lg">
-          Join Group
+          {t("Join Group")}
         </Button>
       </motion.div>
     </motion.div>
@@ -2328,28 +2351,28 @@ function MyQuestionsView() {
           onClick={() => setActiveTab('asked')}
           className={cn(
             "flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all",
-            activeTab === 'asked' ? "bg-white text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"
+            activeTab === 'asked' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-zinc-300'
           )}
         >
-          My Asked
+          {t("My Asked")}
         </button>
         <button
           onClick={() => setActiveTab('answered')}
           className={cn(
             "flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all",
-            activeTab === 'answered' ? "bg-white text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"
+            activeTab === 'answered' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-zinc-300'
           )}
         >
-          Answered
+          {t("Answered")}
         </button>
         <button
           onClick={() => setActiveTab('skipped')}
           className={cn(
             "flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all",
-            activeTab === 'skipped' ? "bg-white text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"
+            activeTab === 'skipped' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-zinc-300'
           )}
         >
-          Skipped
+          {t("Skipped")}
         </button>
       </div>
 
@@ -2358,7 +2381,7 @@ function MyQuestionsView() {
           {askedQuestions.length === 0 ? (
             <div className="text-center py-20 text-zinc-500">
               <Plus className="w-12 h-12 mx-auto mb-4 opacity-20" />
-              <p>You haven't asked any questions yet.</p>
+              <p>{t("You haven't asked any questions yet.")}</p>
             </div>
           ) : (
             askedQuestions.map(q => (
@@ -2368,8 +2391,8 @@ function MyQuestionsView() {
                     <AlertCircle className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-yellow-500">
                       {q.status === 'pending'
-                        ? 'Held for review — not visible yet'
-                        : 'Rejected — not visible'}
+                        ? t("Held for review — not visible yet")
+                        : t("Rejected — not visible")}
                     </span>
                   </div>
                 )}
@@ -2387,9 +2410,9 @@ function MyQuestionsView() {
                 <Lock className="w-8 h-8 text-zinc-600" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-bold">Unlock History</h3>
+                <h3 className="text-xl font-bold">{t("Unlock History")}</h3>
                 <p className="text-zinc-500 text-sm max-w-[240px] mx-auto">
-                  View all questions you've answered and track your impact.
+                  {t("View all questions you've answered and track your impact.")}
                 </p>
               </div>
               
@@ -2397,7 +2420,7 @@ function MyQuestionsView() {
                 onClick={() => setUnlockedAnswered(true)}
                 className="bg-white text-black px-8 py-3 rounded-2xl font-bold text-sm hover:scale-105 active:scale-95 transition-all"
               >
-                View Answer History
+                {t("View Answer History")}
               </button>
             </div>
           ) : (
@@ -2405,7 +2428,7 @@ function MyQuestionsView() {
               {answeredQuestions.length === 0 ? (
                 <div className="text-center py-20 text-zinc-500">
                   <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                  <p>No answered questions found.</p>
+                  <p>{t("No answered questions found.")}</p>
                 </div>
               ) : (
                 answeredQuestions.map(q => <QuestionCard key={q.id} question={q} revisitMode={true} />)
@@ -2418,7 +2441,7 @@ function MyQuestionsView() {
           {skippedQuestions.length === 0 ? (
             <div className="text-center py-20 text-zinc-500">
               <ChevronRight className="w-12 h-12 mx-auto mb-4 opacity-20" />
-              <p>No skipped questions yet.</p>
+              <p>{t("No skipped questions yet.")}</p>
             </div>
           ) : (
             skippedQuestions.map(q => <QuestionCard key={q.id} question={q} revisitMode={true} />)
@@ -2442,7 +2465,7 @@ function ProfileView() {
     setTimeout(() => {
       updateProfile({ isVerified: true });
       setVerifying(false);
-      toast.success('Phone verified! You can now post questions.');
+      toast.success(t("Phone verified! You can now post questions."));
     }, 2000);
   };
 
@@ -2462,7 +2485,7 @@ function ProfileView() {
   const copyMyCode = () => {
     if (user?.referralCode) {
       navigator.clipboard.writeText(user.referralCode);
-      toast.success('Your referral code copied!');
+      toast.success(t("Your referral code copied!"));
     }
   };
 
@@ -2498,20 +2521,20 @@ function ProfileView() {
         </div>
         <div className="text-center">
           <h2 className="text-3xl font-bold tracking-tighter">@{user.username}</h2>
-          <p className="text-zinc-500 text-sm">Member since {new Date(user.lastLogin).toLocaleDateString()}</p>
+          <p className="text-zinc-500 text-sm">{t("Member since")} {new Date(user.lastLogin).toLocaleDateString()}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
       <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 space-y-1">
-        <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">Credits</span>
+        <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">{t("Credits")}</span>
         <div className="flex items-center justify-between">
           <p className="text-3xl font-bold">{user.credits}</p>
           <button 
             onClick={() => setShowStore(true)}
             className="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl text-xs font-bold transition-all"
           >
-            Get More
+            {t("Get More")}
           </button>
         </div>
       </div>
@@ -2523,7 +2546,7 @@ function ProfileView() {
           className="bg-zinc-900/50 border border-indigo-500/20 rounded-3xl p-6 space-y-6"
         >
           <div className="flex items-center justify-between">
-            <h3 className="font-bold">Pulse Store</h3>
+            <h3 className="font-bold">{t("Pulse Store")}</h3>
             <button onClick={() => setShowStore(false)} className="text-zinc-500 hover:text-white">
               <X className="w-4 h-4" />
             </button>
@@ -2531,9 +2554,9 @@ function ProfileView() {
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-start gap-3">
             <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Development Mode</p>
+              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">{t("Development Mode")}</p>
               <p className="text-[10px] text-amber-500/60 leading-relaxed">
-                Payments are simulated. No real money will be charged during this preview.
+                {t("Payments are simulated. No real money will be charged during this preview.")}
               </p>
             </div>
           </div>
@@ -2558,17 +2581,17 @@ function ProfileView() {
         </motion.div>
       )}
         <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 space-y-1">
-          <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">Status</span>
+          <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">{t("Status")}</span>
           <div className="flex items-center gap-2">
             {user.isVerified ? (
               <>
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span className="text-sm font-bold text-green-500">Verified</span>
+                <span className="text-sm font-bold text-green-500">{t("Verified")}</span>
               </>
             ) : (
               <>
                 <AlertCircle className="w-4 h-4 text-yellow-500" />
-                <span className="text-sm font-bold text-yellow-500">Unverified</span>
+                <span className="text-sm font-bold text-yellow-500">{t("Unverified")}</span>
               </>
             )}
           </div>
@@ -2578,21 +2601,21 @@ function ProfileView() {
       {!user.isVerified && (
         <div className="bg-zinc-900/50 border border-yellow-500/20 rounded-3xl p-6 space-y-4">
           <div className="space-y-1">
-            <h3 className="font-bold">Unlock Posting</h3>
-            <p className="text-sm text-zinc-500">Verify your phone number to post questions and earn more credits.</p>
+            <h3 className="font-bold">{t("Unlock Posting")}</h3>
+            <p className="text-sm text-zinc-500">{t("Verify your phone number to post questions and earn more credits.")}</p>
           </div>
           <Button onClick={handleVerify} loading={verifying} className="w-full bg-yellow-500 text-black hover:bg-yellow-400">
-            Verify Phone Number
+            {t("Verify Phone Number")}
           </Button>
         </div>
       )}
 
       <div className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 ml-1">Referral Program</h3>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 ml-1">{t("Referral Program")}</h3>
         <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">Your Referral Code</span>
+              <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">{t("Your Referral Code")}</span>
               <p className="font-mono font-bold text-lg tracking-wider">{user.referralCode}</p>
             </div>
             <button onClick={copyMyCode} className="p-2 hover:bg-white/5 rounded-lg transition-colors text-zinc-400">
@@ -2602,13 +2625,13 @@ function ProfileView() {
           
           {!user.referredBy ? (
             <div className="space-y-3 pt-2">
-              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Have a code? Redeem for +15 credits</p>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">{t("Have a code? Redeem for +15 credits")}</p>
               <div className="flex gap-2">
                 <input 
                   type="text"
                   value={referralCode}
                   onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                  placeholder="ENTER CODE"
+                  placeholder={t("ENTER CODE")}
                   className="flex-1 bg-black border border-zinc-800 rounded-xl px-4 py-3 text-xs font-mono focus:outline-none focus:border-white/20"
                 />
                 <button 
@@ -2616,30 +2639,32 @@ function ProfileView() {
                   disabled={redeeming || !referralCode.trim()}
                   className="px-4 py-3 bg-white text-black rounded-xl font-bold text-xs disabled:opacity-50"
                 >
-                  {redeeming ? '...' : 'Redeem'}
+                  {redeeming ? '...' : t("Redeem")}
                 </button>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-bold uppercase tracking-widest bg-black/40 p-3 rounded-xl border border-white/5">
               <CheckCircle2 className="w-3 h-3 text-green-500" />
-              <span>Referral code redeemed</span>
+              <span>{t("Referral code redeemed")}</span>
             </div>
           )}
         </div>
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 ml-1">Demographics</h3>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 ml-1">{t("Demographics")}</h3>
         <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 space-y-4">
-          <ProfileStat label="Age Range" value={user.demographics.ageRange || 'Not set'} />
-          <ProfileStat label="Gender" value={user.demographics.gender || 'Not set'} />
-          <ProfileStat label="Country" value={user.demographics.country || 'Not set'} />
+          <ProfileStat label={t("Age Range")} value={user.demographics.ageRange || t("Not set")} />
+          <ProfileStat label={t("Gender")} value={user.demographics.gender || t("Not set")} />
+          <ProfileStat label={t("Country")} value={user.demographics.country || t("Not set")} />
         </div>
       </div>
 
+      <LanguageToggle />
+
       <Button variant="ghost" className="w-full text-red-500 hover:text-red-400 hover:bg-red-500/10" onClick={signOut}>
-        Sign Out
+        {t("Sign Out")}
       </Button>
     </div>
   );
@@ -2660,19 +2685,19 @@ function StoreItem({ credits, price, onBuy, popular }: { credits: number, price:
       onClick={onBuy}
       className={cn(
         "flex items-center justify-between p-4 rounded-2xl border transition-all active:scale-[0.98]",
-        popular ? "bg-indigo-500/10 border-indigo-500/30" : "bg-black/40 border-white/5 hover:border-white/10"
+        popular ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-black/40 border-white/5 hover:border-white/10'
       )}
     >
       <div className="flex items-center gap-3">
         <div className={cn(
           "w-10 h-10 rounded-xl flex items-center justify-center",
-          popular ? "bg-indigo-500 text-white" : "bg-zinc-800 text-zinc-400"
+          popular ? 'bg-indigo-500 text-white' : 'bg-zinc-800 text-zinc-400'
         )}>
           <Coins className="w-5 h-5" />
         </div>
         <div className="text-left">
-          <p className="font-bold">{credits} Credits</p>
-          {popular && <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">Most Popular</span>}
+          <p className="font-bold">{credits} {t("Credits")}</p>
+          {popular && <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">{t("Most Popular")}</span>}
         </div>
       </div>
       <div className="text-right">

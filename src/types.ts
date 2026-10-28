@@ -21,6 +21,9 @@ export type Question = {
   id: string;
   text: string;
   options: [string, string];
+  /** Arabic text and options, when translated. */
+  text_ar?: string;
+  options_ar?: [string, string];
   category: string;
   authorUid: string;
   isPublic: boolean;

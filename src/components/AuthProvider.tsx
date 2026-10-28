@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../lib/firebase';
 import { 
@@ -91,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const awarded = await awardDailyBonus(db, firebaseUser.uid);
               if (awarded) {
                 setTimeout(() => {
-                  toast.success("🎉 Daily bonus! +3 credits");
+                  toast.success(t("🎉 Daily bonus! +3 credits"));
                 }, 2000);
               }
             } catch (err) {
@@ -420,7 +421,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!referrerUid) throw new Error('Invalid referral code.');
 
       await awardReferral(db, user.uid, referrerUid);
-      toast.success('Referral code redeemed! +15 Credits awarded to both of you.');
+      toast.success(t("Referral code redeemed! +15 Credits awarded to both of you."));
     } catch (error: any) {
       toast.error(error.message || 'Failed to redeem referral code.');
       throw error;
