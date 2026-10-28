@@ -27,6 +27,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 const key = JSON.parse(readFileSync(process.env.PULSE_SA_KEY, 'utf8'));
 const db = getFirestore(initializeApp({ credential: cert(key) }));
+db.settings({ ignoreUndefinedProperties: true });
 const DEADLINE = Date.now() + Number(process.env.MAX_MINUTES ?? 14) * 60000;
 const TASKS = (process.env.TASKS ?? 'moderate,trends,dialects,generate').split(',');
 const timeLeft = () => DEADLINE - Date.now();
@@ -114,9 +115,10 @@ Write each in English and natural Arabic (light Modern Standard Arabic readable 
 async function insert(items, { status, source, expiresAt }) {
   let n = 0;
   for (const x of items) {
+    if (!x || typeof x !== 'object') continue;
     if (!x.q_en || !x.a_en || !x.b_en || isDup(x.q_en) || x.q_en.length > 100 || x.a_en.length > 40 || x.b_en.length > 40) continue;
     await db.doc(`questions/${qid(x.q_en)}`).set({
-      text: x.q_en, options: [x.a_en, x.b_en], ...(x.q_ar ? { text_ar: x.q_ar, options_ar: [x.a_ar, x.b_ar] } : {}),
+      text: x.q_en, options: [x.a_en, x.b_en], ...(x.q_ar && x.a_ar && x.b_ar ? { text_ar: x.q_ar, options_ar: [x.a_ar, x.b_ar] } : {}),
       category: x.category, authorUid: 'pulse_originals_system', isPublic: true, groupId: null,
       createdAt: new Date().toISOString(), status, flags: 0, random: Math.random(), boostCount: 0,
       rankTier: 'exploring', source, ...(expiresAt ? { expiresAt } : {}),

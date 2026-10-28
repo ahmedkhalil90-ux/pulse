@@ -58,7 +58,7 @@ jobs:
         run: |
           [ -f daily-report.md ] || echo "Daily bot did not produce a report; see the run log." > daily-report.md
           if [ -f rank-report.json ]; then
-            node -e "const r=require('./rank-report.json');console.log('\n**Ranking:** '+r.live+' live, '+r.top+' top, '+r.normal+' normal, '+r.low+' low, '+r.exploring+' exploring, '+r.retired+' retired, '+r.expired+' expired trends, '+r.promoted+' promoted from a pool of '+r.poolLeft+'\n\n**Best:** '+r.best.join(' / ')+'\n\n**Weakest:** '+r.worst.join(' / '))" >> daily-report.md
+            node -e "const r=require('./rank-report.json');console.log('\n**Ranking:** '+r.live+' live, '+r.top+' top, '+r.normal+' normal, '+r.low+' low, '+r.exploring+' exploring, '+r.retired+' retired, '+r.expired+' expired trends, '+r.promoted+' promoted from a pool of '+r.poolLeft+(r.best.length?'\n\n**Best:** '+r.best.join(' / ')+'\n\n**Weakest:** '+r.worst.join(' / '):'\n\nNo question has 50 responses yet, so nothing is ranked yet.'))" >> daily-report.md
           fi
           n=$(gh issue list --state open --search 'in:title "Pulse daily bot"' --json number -q '.[0].number')
           if [ -z "$n" ]; then gh issue create --title "Pulse daily bot" --body-file daily-report.md; else gh issue comment "$n" --body-file daily-report.md; fi
