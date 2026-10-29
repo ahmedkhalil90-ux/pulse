@@ -195,6 +195,20 @@ await step(a, 'returning user: answered questions do not come back', async p => 
   }
 });
 
+await step(a, 'category chips match the questions and filter the feed', async p => {
+  await p.reload({ waitUntil: 'domcontentloaded' });
+  await p.locator('h3').first().waitFor({ timeout: 15000 });
+  const chips = (await p.locator('.no-scrollbar button').allInnerTexts()).map((x) => x.trim().toLowerCase());
+  if (chips.includes('sports') && !chips.includes('lifestyle & daily habits')) throw new Error('chips are the old hardcoded list');
+  if (!chips.includes('lifestyle & daily habits')) throw new Error(`expected a chip for the seeded category, got: ${chips.join(', ')}`);
+  await p.locator('.no-scrollbar button', { hasText: 'Lifestyle & Daily Habits' }).click();
+  await p.waitForTimeout(1500);
+  // The card's own category label (the text block that holds the question).
+  const card = (await p.locator('h3').first().locator('xpath=ancestor::div[.//span][1]').innerText()).toLowerCase();
+  if (!card.includes('lifestyle & daily habits')) throw new Error(`filtered feed card is from another category: ${card.slice(0, 80)}`);
+  await p.locator('.no-scrollbar button').first().click(); // back to All
+});
+
 // 3. Groups: alice creates, bob joins with the invite code
 let inviteCode = '';
 await step(a, 'create group', async p => {
