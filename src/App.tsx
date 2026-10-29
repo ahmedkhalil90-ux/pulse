@@ -72,6 +72,7 @@ import {
 } from './lib/credits';
 import { addVoteToResults } from './lib/votes';
 import { orderFeed, categoryInterest } from './lib/feedOrder';
+import { POST_CATEGORIES, ALL_CATEGORIES, categoriesByCount } from './lib/categories';
 import { findSimilar, type IndexItem } from './lib/similar';
 import { questionUrl, shareText, whatsappUrl, shareLink, pickCard, sharePick } from './lib/share';
 
@@ -694,16 +695,9 @@ function Feed() {
     };
   }, [user?.uid]);
 
-  const categories = [
-    'All',
-    'Lifestyle & Daily Habits',
-    'Personality & Self-Reflection',
-    'Relationships & Social',
-    'Controversial & Debate-Worthy',
-    'Fun & Pop Culture',
-    'Career & Ambition',
-    'Sports'
-  ];
+  // Filter chips: the categories live questions actually have, busiest first.
+  const [catChips, setCatChips] = useState<string[]>([]);
+  const categories = ['All', ...catChips];
 
   const loadQuestions = async (isInitial: boolean = false) => {
     if (!user) {
@@ -792,6 +786,8 @@ function Feed() {
       const questionsSnapshot = await getDocs(q);
       let qs = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question));
       
+      if (!selectedCategory || selectedCategory === 'All') setCatChips(categoriesByCount(qs));
+
       // What this user likes, from the categories they answered vs skipped.
       const catOf = new Map(qs.map((x) => [x.id, x.category]));
       const interest = categoryInterest(
@@ -917,7 +913,7 @@ function Feed() {
                   : 'bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/20'
               )}
             >
-              {cat}
+              {cat === 'All' ? t("All") : t(cat)}
             </button>
           ))}
         </div>
@@ -999,16 +995,7 @@ function AllCaughtUpScreen({ onClose, onRevisit }: { onClose: () => void, onRevi
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['All Categories']);
   const [timeRange, setTimeRange] = useState('Any time');
 
-  const categories = [
-    'All Categories',
-    'Lifestyle & Daily Habits',
-    'Personality & Self-Reflection',
-    'Relationships & Social',
-    'Controversial & Debate-Worthy',
-    'Fun & Pop Culture',
-    'Career & Ambition',
-    'Sports'
-  ];
+  const categories = ['All Categories', ...ALL_CATEGORIES];
 
   const handleCategoryToggle = (cat: string) => {
     if (cat === 'All Categories') {
@@ -1662,7 +1649,7 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
   const [text, setText] = useState('');
   const [opt1, setOpt1] = useState('');
   const [opt2, setOpt2] = useState('');
-  const [category, setCategory] = useState('Lifestyle');
+  const [category, setCategory] = useState(POST_CATEGORIES[0]);
   const [loading, setLoading] = useState(false);
   const [similarQ, setSimilarQ] = useState<(IndexItem & { score: number }) | null>(null);
   const [dupChoice, setDupChoice] = useState<'none' | 'answer' | 'different'>('none');
@@ -1686,15 +1673,7 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
     if (snap.exists()) setExisting({ id: snap.id, ...snap.data() } as Question);
   };
 
-  const categories = [
-    'Lifestyle & Daily Habits',
-    'Personality & Self-Reflection',
-    'Relationships & Social',
-    'Controversial & Debate-Worthy',
-    'Fun & Pop Culture',
-    'Career & Ambition',
-    'Sports'
-  ];
+  const categories = POST_CATEGORIES;
 
   const handlePublish = async () => {
     if (!user) return;
@@ -1810,7 +1789,7 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
               className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-white/20"
             >
               {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>{t(cat)}</option>
               ))}
             </select>
           </div>
