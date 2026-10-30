@@ -72,6 +72,7 @@ import {
 } from './lib/credits';
 import { addVoteToResults } from './lib/votes';
 import { orderFeed, categoryInterest } from './lib/feedOrder';
+import { track } from './lib/activity';
 import { POST_CATEGORIES, ALL_CATEGORIES, categoriesByCount } from './lib/categories';
 import { findSimilar, type IndexItem } from './lib/similar';
 import { questionUrl, shareText, whatsappUrl, shareLink, pickCard, sharePick } from './lib/share';
@@ -239,6 +240,12 @@ function PulseApp() {
     try { localStorage.removeItem(REF_KEY); } catch { /* ignore */ }
     if (user.referredBy || user.referralCode === ref) return;
     redeemReferral(ref).catch(() => {});
+  }, [user?.uid]);
+
+  // One session per app open, counted once the user is known.
+  const sessionCounted = useRef(false);
+  useEffect(() => {
+    if (user && !sessionCounted.current) { sessionCounted.current = true; track(user.uid, 'sessions'); }
   }, [user?.uid]);
 
   const closeShared = () => {
@@ -523,6 +530,7 @@ function ShareRow({ question, results, pick }: { question: Question; results: Qu
   const text = shareText(question, country);
   const share = async () => {
     const r = await shareLink(text, url);
+    if (r !== 'cancelled') track(user?.uid, 'shares');
     if (r === 'copied') toast.success(t("Link copied"));
   };
   const myPick = async () => {
@@ -532,6 +540,7 @@ function ShareRow({ question, results, pick }: { question: Question; results: Qu
     const pct = total ? Math.round(((c[String(pick)] || 0) / total) * 100) : 100;
     const blob = await pickCard(qText(question, country), qOptions(question, country)[pick], pct, url);
     const r = await sharePick(blob, text, url);
+    track(user?.uid, 'shares');
     if (r === 'downloaded') toast.success(t("Image saved: post it to your story"));
   };
   return (
@@ -539,7 +548,7 @@ function ShareRow({ question, results, pick }: { question: Question; results: Qu
       <Button variant="outline" onClick={share} className="flex-1 h-11 text-sm">
         <Share2 className="w-4 h-4" /> {t("Share")}
       </Button>
-      <a href={whatsappUrl(text, url)} target="_blank" rel="noopener noreferrer"
+      <a href={whatsappUrl(text, url)} target="_blank" rel="noopener noreferrer" onClick={() => track(user?.uid, 'shares')}
          className="flex-1 h-11 text-sm rounded-xl border border-green-500/30 text-green-400 flex items-center justify-center gap-2 hover:bg-green-500/10">
         <MessageCircle className="w-4 h-4" /> WhatsApp
       </a>
@@ -831,6 +840,7 @@ function Feed() {
           questionId: questions[currentIndex].id,
           skippedAt: new Date().toISOString()
         });
+        track(user.uid, 'skips');
         toast.info(t("Question skipped. You can find it in your history later."));
         
         // Remove from local state to prevent "return back" in same session
@@ -1232,6 +1242,7 @@ function QuestionCard({
         await awardAnswerCredit(db, user.uid);
 
         toast.success(t("Vote recorded anonymously! +1 Credit"));
+        track(user.uid, 'answers');
       } else {
         toast.success(t("Answer updated!"));
       }
