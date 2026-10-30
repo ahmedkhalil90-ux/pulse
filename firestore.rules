@@ -287,6 +287,26 @@ service cloud.firestore {
       allow list, write: if false;
     }
 
+    // Beta tracking: per user per day, counts only (never which question or
+    // which option). The owner may only create their own day's document and
+    // only ever count upwards, one at a time.
+    function counterStepOk(field) {
+      return request.resource.data.get(field, 0) is int
+             && request.resource.data.get(field, 0) >= (resource == null ? 0 : resource.data.get(field, 0))
+             && request.resource.data.get(field, 0) <= (resource == null ? 0 : resource.data.get(field, 0)) + 1;
+    }
+    match /activity/{docId} {
+      allow get: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
+      allow list: if isAdmin();
+      allow create, update: if isAuthenticated()
+        && request.resource.data.uid == request.auth.uid
+        && docId == request.auth.uid + '_' + request.resource.data.day
+        && request.resource.data.keys().hasOnly(['uid', 'day', 'sessions', 'answers', 'skips', 'shares'])
+        && (resource == null || (resource.data.uid == request.resource.data.uid && resource.data.day == request.resource.data.day))
+        && counterStepOk('sessions') && counterStepOk('answers') && counterStepOk('skips') && counterStepOk('shares');
+      allow delete: if isAdmin();
+    }
+
     // Operational documents written by the scheduled jobs (Admin SDK).
     // Only the question index is readable: the app checks new submissions
     // against it for duplicates. It holds live public question text only.

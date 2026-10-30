@@ -1006,6 +1006,21 @@ export const MUTATIONS: Mutation[] = [
       },
     ],
   },
+  {
+    id: 'M86',
+    label: "activity: a user may write another user's activity",
+    edits: [{ find: '        && request.resource.data.uid == request.auth.uid\n        && docId == request.auth.uid', replace: '        && docId == request.resource.data.uid' }],
+  },
+  {
+    id: 'M87',
+    label: 'activity: counters may jump by any amount',
+    edits: [{ find: "             && request.resource.data.get(field, 0) <= (resource == null ? 0 : resource.data.get(field, 0)) + 1;", replace: ';' }],
+  },
+  {
+    id: 'M88',
+    label: 'activity: extra fields (e.g. a question id) may be stored',
+    edits: [{ find: "        && request.resource.data.keys().hasOnly(['uid', 'day', 'sessions', 'answers', 'skips', 'shares'])\n", replace: '' }],
+  },
 ];
 
 /**
