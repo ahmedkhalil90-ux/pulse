@@ -153,6 +153,19 @@ await step(a, 'share buttons shown after voting', async p => {
   const file = path.join(OUT, 'my-pick.png'); await dl.saveAs(file);
   if (fs.statSync(file).size < 20000) throw new Error('"My pick" image is suspiciously small');
 });
+await step(a, 'beta tracking counts sessions, answers and shares (counts only)', async () => {
+  let rec;
+  await env.withSecurityRulesDisabled(async ctx => {
+    const { getDoc } = await import('firebase/firestore');
+    const m = await getDoc(doc(ctx.firestore(), 'usernames', `alice${run}`.toLowerCase()));
+    const day = new Date().toISOString().slice(0, 10);
+    rec = (await getDoc(doc(ctx.firestore(), 'activity', `${m.data().uid}_${day}`))).data();
+  });
+  if (!rec) throw new Error('no activity record for today');
+  if (!(rec.sessions >= 1 && rec.answers >= 1 && rec.shares >= 1)) throw new Error(`counters not filled: ${JSON.stringify(rec)}`);
+  const extra = Object.keys(rec).filter((k) => !['uid', 'day', 'sessions', 'answers', 'skips', 'shares'].includes(k));
+  if (extra.length) throw new Error(`activity holds more than counts: ${extra.join(', ')}`);
+});
 await step(a, 'unlock demographics: -3 credits, small groups stay hidden', async p => {
   // Vote on whichever card is in front first: the feed may have moved on.
   if (!(await p.getByRole('button', { name: /Unlock — 3 Credits/ }).count())) {
