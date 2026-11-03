@@ -11,7 +11,8 @@ VP=$!
 for i in $(seq 1 60); do curl -s -o /dev/null http://127.0.0.1:3000 && break; sleep 1; done
 node bots/e2e/players.mjs; E=$?
 kill $VP 2>/dev/null
+node bots/ops/members-smoke.mjs; M=$?
 echo "--- swarm + attack bots ---"; grep -E "Test Files|Tests |FAIL|✗|×" bots/out-vitest.log | head -40
-exit $(( V || E ))
+exit $(( V || E || M ))
 INNER
 npx -y firebase-tools@15 emulators:exec --only firestore,auth --project "$(node -p "require('./firebase-applet-config.json').projectId")" "bash /tmp/pulse-bots-inner.sh"

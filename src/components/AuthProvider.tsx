@@ -5,6 +5,9 @@ import {
   onAuthStateChanged, 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  verifyBeforeUpdateEmail,
+  deleteUser,
   signOut as firebaseSignOut
 } from 'firebase/auth';
 import { 
@@ -19,6 +22,7 @@ import {
   where, 
   getDocs, 
   deleteDoc,
+  serverTimestamp,
   deleteField, 
   writeBatch 
 } from 'firebase/firestore';
@@ -30,8 +34,12 @@ import { awardDailyBonus, awardReferral } from '../lib/credits';
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
-  signUp: (username: string, password: string, demographics: UserProfile['demographics']) => Promise<void>;
-  signIn: (username: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, demographics: UserProfile['demographics'], inviteCode: string) => Promise<void>;
+  /** Email, or the username of an account made before email sign-in. */
+  signIn: (emailOrUsername: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  /** Legacy username accounts: attach a real email so the password can be reset. */
+  addRecoveryEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   redeemReferral: (code: string) => Promise<void>;
@@ -131,6 +139,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // By document ID: `users` is no longer listable. This finds the
               // one profile the username currently maps to, which is the
               // orphan if it is not already us.
+              // Email accounts have no username and nothing to migrate.
+              if (!profile.username) throw Object.assign(new Error('no username'), { skip: true });
               const usernameKey = profile.username.toLowerCase();
               const mappingSnap = await getDoc(doc(db, 'usernames', usernameKey));
               const mappedUid = mappingSnap.exists()
@@ -216,7 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
               }
             } catch (migError: any) {
-              console.error('Migration error (non-fatal):', migError);
+              if (!migError?.skip) console.error('Migration error (non-fatal):', migError);
               // Don't throw here, just log it. We want the user to be able to use the app.
             }
           } else {
@@ -240,149 +250,95 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signUp = async (username: string, password: string, demographics: UserProfile['demographics']) => {
+  /**
+   * Invite-only sign-up with a real email address, so the password can be
+   * reset. The rules refuse the profile unless `inviteCode` belongs to a
+   * member who has unlocked inviting. If they refuse, the just-created auth
+   * account is deleted again, so the person is not left with a login that
+   * leads nowhere.
+   */
+  const signUp = async (email: string, password: string, demographics: UserProfile['demographics'], inviteCode: string) => {
+    const address = email.trim().toLowerCase();
+    if (address.endsWith('@pulse.app')) throw new Error(t('Please use your own email address.'));
+    let firebaseUser;
     try {
-      // Use a dummy email for username/password auth
-      const email = `${username.toLowerCase()}@pulse.app`;
-      
-      // 1. Check if this username is already registered with a password
-      // We do this by trying to create the user. If it fails with 'email-already-in-use', 
-      // it means someone already set a password for this handle.
-      let firebaseUser;
-      try {
-        firebaseUser = (await createUserWithEmailAndPassword(auth, email, password)).user;
-      } catch (authError: any) {
-        if (authError.code === 'auth/email-already-in-use') {
-          throw new Error('This username is already protected with a password. Please Sign In instead.');
-        }
-        if (authError.code === 'auth/weak-password') {
-          throw new Error('Password must be at least 6 characters.');
-        }
-        throw authError;
-      }
+      firebaseUser = (await createUserWithEmailAndPassword(auth, address, password)).user;
+    } catch (authError: any) {
+      if (authError.code === 'auth/email-already-in-use') throw new Error(t('This email already has an account. Please sign in.'));
+      if (authError.code === 'auth/invalid-email') throw new Error(t('Please enter a valid email address.'));
+      if (authError.code === 'auth/weak-password') throw new Error(t('Password must be at least 6 characters'));
+      throw authError;
+    }
 
-      // 2. Check if a profile with this username already exists (e.g. from your
-      // previous anonymous session).
-      //
-      // Looked up by document ID rather than by scanning `users`, which is no
-      // longer listable. Uniqueness is not enforced here and never was --
-      // createUserWithEmailAndPassword above already rejected a duplicate.
-      const usernameKey = username.toLowerCase();
-      const mappingSnap = await getDoc(doc(db, 'usernames', usernameKey));
-
-      let oldUid: string | null = null;
-      let existingData: any = {};
-
-      if (mappingSnap.exists()) {
-        const mappedUid = mappingSnap.data().uid as string;
-        if (mappedUid && mappedUid !== firebaseUser.uid) {
-          const oldProfile = await getDoc(doc(db, 'users', mappedUid));
-          if (oldProfile.exists()) {
-            oldUid = mappedUid;
-            existingData = oldProfile.data();
-          }
-        }
-      }
-
-      // 3. Create/Update the new profile FIRST
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Calculate initial credits: 10 base + 3 daily bonus
-      // If migrating from an existing account, add their credits too
-      const baseCredits = 10;
-      const dailyBonus = 3;
-      const existingCredits = existingData.credits !== undefined ? existingData.credits : 0;
-      const initialCredits = baseCredits + dailyBonus + existingCredits;
-
-      const profile: UserProfile = {
-        uid: firebaseUser.uid,
-        username,
-        isVerified: existingData.isVerified || false,
-        credits: initialCredits,
-        demographics: existingData.demographics || demographics,
-        lastLogin: today,
-        referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
-      };
-      
+    const profile = {
+      uid: firebaseUser.uid,
+      isVerified: false,
+      credits: 13, // 10 to start + today's daily bonus
+      demographics,
+      lastLogin: new Date().toISOString().split('T')[0],
+      referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+      invitedWith: inviteCode.trim().toUpperCase(),
+      createdAt: serverTimestamp(),
+    };
+    try {
       await setDoc(doc(db, 'users', firebaseUser.uid), profile);
-
-      // The referral mapping is checked against the profile just written, so
-      // it has to follow it. Non-fatal: a code collision would otherwise
-      // reject signUp after the auth account and profile already exist,
-      // leaving the user unable to sign up OR sign in.
-      try {
-        await setDoc(doc(db, 'referralCodes', profile.referralCode), {
-          uid: firebaseUser.uid,
-        });
-      } catch (codeErr) {
-        console.error('Referral code mapping not claimed (code may collide):', codeErr);
+    } catch (e: any) {
+      await deleteUser(firebaseUser).catch(() => {});
+      if (e?.code === 'permission-denied') {
+        throw Object.assign(new Error(t("This invite link isn't valid any more. Ask your friend for a new one, or join the waitlist.")), { code: 'invalid-invite' });
       }
+      throw e;
+    }
 
-      // NOTE: the username mapping is claimed AFTER migration, further down.
-      // Claiming it here would make migration single-shot -- the next sign-in
-      // would see the mapping already pointing at us and never retry.
+    // Non-fatal: a code collision must not undo a finished sign-up.
+    try {
+      await setDoc(doc(db, 'referralCodes', profile.referralCode), { uid: firebaseUser.uid });
+    } catch (codeErr) {
+      console.error('Referral code mapping not claimed (code may collide):', codeErr);
+    }
+    // The rules needed the invite code to create the profile; it is not kept
+    // there, because profiles are readable by any member and the code leads
+    // to the inviter. The private referrals record keeps it instead.
+    await updateDoc(doc(db, 'users', firebaseUser.uid), { invitedWith: deleteField() }).catch(() => {});
+    const { invitedWith: _code, createdAt: _at, ...visible } = profile;
+    setUser(visible as unknown as UserProfile);
+  };
 
-      // 4. If we have an old account to migrate from
-      if (oldUid) {
-        console.log('Migrating data from old account:', oldUid);
-        const batch = writeBatch(db);
-        
-        try {
-          // Migrate user_answers
-          const answersQ = query(collection(db, 'user_answers'), where('userId', '==', oldUid));
-          const answersSnapshot = await getDocs(answersQ);
-          for (const answerDoc of answersSnapshot.docs) {
-            const data = answerDoc.data();
-            const newAnswerId = `${firebaseUser.uid}_${data.questionId}`;
-            batch.set(doc(db, 'user_answers', newAnswerId), {
-              ...data,
-              userId: firebaseUser.uid
-            });
-            batch.delete(answerDoc.ref);
-          }
-          
-          // Migrate questions
-          const questionsQ = query(collection(db, 'questions'), where('authorUid', '==', oldUid));
-          const questionsSnapshot = await getDocs(questionsQ);
-          for (const questionDoc of questionsSnapshot.docs) {
-            batch.update(questionDoc.ref, { authorUid: firebaseUser.uid });
-          }
-          
-          // Delete old user profile
-          batch.delete(doc(db, 'users', oldUid));
-          
-          await batch.commit();
-        } catch (migError: any) {
-          console.error('Migration error during signup:', migError);
-          // Log more details if it's a permission error
-          if (migError.message?.includes('permissions')) {
-            handleFirestoreError(migError, OperationType.WRITE, `migration_from_${oldUid}`);
-          }
-        }
-      }
-
-      // Claim the username mapping last. If migration above failed, the
-      // mapping still points at the orphan, so the next sign-in finds it and
-      // tries again -- which is what the old username scan gave us for free.
-      try {
-        await setDoc(doc(db, 'usernames', usernameKey), { uid: firebaseUser.uid });
-      } catch (mapErr) {
-        console.error('Username mapping not claimed; sign-in will retry:', mapErr);
-      }
-
-      setUser(profile);
-    } catch (error: any) {
-      throw error;
+  const resetPassword = async (email: string) => {
+    const address = email.trim().toLowerCase();
+    if (!address.includes('@') || address.endsWith('@pulse.app')) {
+      throw new Error(t('Enter the email address on your account. Username accounts can add one in Profile once signed in.'));
+    }
+    try {
+      await sendPasswordResetEmail(auth, address);
+    } catch (e: any) {
+      if (e.code === 'auth/invalid-email') throw new Error(t('Please enter a valid email address.'));
+      // auth/user-not-found is not revealed, so nobody can probe who has an account.
+      if (e.code !== 'auth/user-not-found') throw e;
     }
   };
 
-  const signIn = async (username: string, password: string) => {
+  const addRecoveryEmail = async (email: string) => {
+    const address = email.trim().toLowerCase();
+    if (!auth.currentUser) return;
+    if (!address.includes('@') || address.endsWith('@pulse.app')) throw new Error(t('Please enter a valid email address.'));
     try {
-      const email = `${username.toLowerCase()}@pulse.app`;
+      await verifyBeforeUpdateEmail(auth.currentUser, address);
+    } catch (e: any) {
+      if (e.code === 'auth/requires-recent-login') throw new Error(t('For your security, sign out and back in, then try again.'));
+      if (e.code === 'auth/email-already-in-use') throw new Error(t('That email already has an account.'));
+      throw e;
+    }
+  };
+
+  const signIn = async (emailOrUsername: string, password: string) => {
+    try {
+      const id = emailOrUsername.trim().toLowerCase();
+      const email = id.includes('@') ? id : `${id}@pulse.app`;
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        throw new Error('Invalid username or password.');
+        throw new Error(t('Wrong email or password.'));
       }
       throw error;
     }
@@ -429,7 +385,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, updateProfile, redeemReferral }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, updateProfile, redeemReferral, resetPassword, addRecoveryEmail }}>
       {children}
     </AuthContext.Provider>
   );

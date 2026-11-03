@@ -31,7 +31,7 @@ const env = await initializeTestEnvironment({
 await env.clearFirestore();
 await env.withSecurityRulesDisabled(async ctx => {
   const db = ctx.firestore();
-  const seed = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/pulse_seed_questions.json'), 'utf8')).questions.slice(0, 15);
+  const seed = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/pulse_seed_questions.json'), 'utf8')).questions.slice(0, 30);
   for (const q of seed) {
     await setDoc(doc(db, 'questions', `seed_${q.id}`), {
       text: q.question, options: [q.option_a, q.option_b], category: q.category,
@@ -56,16 +56,30 @@ await env.withSecurityRulesDisabled(async ctx => {
   await setDoc(doc(ctx.firestore(), 'ops', 'questionIndex'), { items: seedQs.map(q => ({ id: `seed_${q.id}`, t: q.question, o: [q.option_a, q.option_b] })) });
 });
 await env.withSecurityRulesDisabled(async ctx => { await setDoc(doc(ctx.firestore(), 'ops', 'questionOfDay'), { id: 'seed_2', date: '2026-10-28' }); });
+// Invite-only: a founding member (#1) whose link the bots arrive through.
+const FOUNDER_CODE = 'FOUNDR';
+await env.withSecurityRulesDisabled(async ctx => {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'users', 'founder'), { credits: 0, referralCode: FOUNDER_CODE, memberNumber: 1, demographics: {} });
+  await setDoc(doc(db, 'referralCodes', FOUNDER_CODE), { uid: 'founder' });
+  await setDoc(doc(db, 'counters', 'members'), { last: 1 });
+});
+const AUTH = 'http://127.0.0.1:9099';
+const PASS = 'botpass123';
+/** uid for an email account, straight from the Auth emulator. */
+async function uidOf(email) {
+  const r = await fetch(`${AUTH}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=bots`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password: PASS, returnSecureToken: true }),
+  });
+  const j = await r.json();
+  if (!j.localId) throw new Error(`no auth account for ${email}`);
+  return j.localId;
+}
 const DUP_SEED = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/pulse_seed_questions.json'), 'utf8')).questions[3];
 
-async function makeAdmin(username) {
-  await env.withSecurityRulesDisabled(async ctx => {
-    const db = ctx.firestore();
-    const { getDoc } = await import('firebase/firestore');
-    const m = await getDoc(doc(db, 'usernames', username.toLowerCase()));
-    if (!m.exists()) throw new Error(`no usernames mapping for ${username}`);
-    await setDoc(doc(db, 'admins', m.data().uid), { note: 'bot admin' });
-  });
+async function makeAdmin(email) {
+  const uid = await uidOf(email);
+  await env.withSecurityRulesDisabled(async ctx => { await setDoc(doc(ctx.firestore(), 'admins', uid), { note: 'bot admin' }); });
 }
 
 const steps = [];
@@ -95,12 +109,14 @@ const nav = (page, label) => page.locator('nav').getByText(label, { exact: true 
 const credits = async page => Number(await page.locator('svg.lucide-coins + span').first().innerText());
 const toast = (page, text) => page.getByText(text, { exact: false }).first().waitFor({ timeout: 10000 });
 
-async function signup(bot, username, age, gender, country) {
-  await step(bot, 'open app', p => p.goto(APP, { waitUntil: 'domcontentloaded' }));
-  await step(bot, 'sign up', async p => {
-    await p.getByText("Don't have an account? Sign Up").click();
-    await p.getByPlaceholder('Enter your handle...').fill(username);
-    await p.getByPlaceholder('Min 6 characters...').fill('botpass123');
+async function signup(bot, email, age, gender, country) {
+  await step(bot, 'open invite link', async p => {
+    await p.goto(`${APP}/?ref=${FOUNDER_CODE}`, { waitUntil: 'domcontentloaded' });
+    await p.locator('[data-testid="invite-chip"]').waitFor({ timeout: 15000 });
+  });
+  await step(bot, 'sign up with email', async p => {
+    await p.getByPlaceholder('you@example.com').fill(email);
+    await p.getByPlaceholder('Min 6 characters...').fill(PASS);
     const selects = p.locator('select');
     await selects.nth(0).selectOption(age);
     await selects.nth(1).selectOption(gender);
@@ -113,10 +129,50 @@ async function signup(bot, username, age, gender, country) {
 const run = Date.now().toString(36).slice(-4);
 const a = await newBot('alice');
 const b = await newBot('bob');
+const ALICE = `alice${run}@example.com`, BOB = `bob${run}@example.com`, CAROL = `carol${run}@example.com`;
 
-// 1. Onboarding
-await signup(a, `alice${run}`, '25-34', 'Female', 'UAE');
-await signup(b, `bob${run}`, '18-24', 'Male', 'Egypt');
+/** Answer n questions from the feed, one after another. */
+async function answer(p, n) {
+  for (let k = 0; k < n; k++) {
+    const opt = p.locator('h3 + div button').first();
+    await opt.waitFor({ timeout: 10000 });
+    await opt.click();
+    await p.waitForTimeout(700);
+    await p.getByRole('button', { name: /Next/ }).first().click().catch(() => {});
+    await p.waitForTimeout(500);
+  }
+}
+
+// 1. Onboarding: invite-only, email sign-in
+await signup(a, ALICE, '25-34', 'Female', 'UAE');
+await signup(b, BOB, '18-24', 'Male', 'Egypt');
+
+await step(a, 'new member answers 5 before the app opens up', async p => {
+  await p.locator('[data-testid="entry-progress"]').waitFor({ timeout: 10000 });
+  await nav(p, 'Groups');
+  await toast(p, 'more to unlock this');
+  if (await p.getByRole('button', { name: /Create Group|Join/ }).count()) throw new Error('Groups opened before the entry answers');
+  await answer(p, 5);
+  await toast(p, "You're in!");
+  await p.locator('[data-testid="entry-progress"]').waitFor({ state: 'detached', timeout: 5000 });
+});
+await step(a, 'invite link locked until 10 answers', async p => {
+  await p.locator('header button').last().click(); // profile
+  await p.locator('[data-testid="invite-locked"]').waitFor({ timeout: 8000 });
+  if (await p.locator('[data-testid="invite-link"]').count()) throw new Error('invite link shown before 10 answers');
+  await nav(p, 'Feed');
+});
+await step(a, 'at 10 answers: member number and invite link', async p => {
+  await answer(p, 5);
+  await toast(p, "You're member #0002");
+  await p.locator('header button').last().click();
+  const label = (await p.locator('[data-testid="member-label"]').innerText()).trim();
+  if (label !== '#0002') throw new Error(`profile shows ${label}, expected #0002`);
+  const link = await p.locator('[data-testid="invite-link"]').innerText({ timeout: 8000 });
+  if (!/\?ref=[A-Z0-9]{6}$/.test(link.trim())) throw new Error(`bad invite link: ${link}`);
+  if (await p.locator('[data-testid="recovery-email"]').count()) throw new Error('email account asked for a recovery email');
+  await nav(p, 'Feed');
+});
 
 // 2. Feed: vote, see results and the anonymity confirmation
 let creditsBefore = 0;
@@ -157,9 +213,8 @@ await step(a, 'beta tracking counts sessions, answers and shares (counts only)',
   let rec;
   await env.withSecurityRulesDisabled(async ctx => {
     const { getDoc } = await import('firebase/firestore');
-    const m = await getDoc(doc(ctx.firestore(), 'usernames', `alice${run}`.toLowerCase()));
     const day = new Date().toISOString().slice(0, 10);
-    rec = (await getDoc(doc(ctx.firestore(), 'activity', `${m.data().uid}_${day}`))).data();
+    rec = (await getDoc(doc(ctx.firestore(), 'activity', `${await uidOf(ALICE)}_${day}`))).data();
   });
   if (!rec) throw new Error('no activity record for today');
   if (!(rec.sessions >= 1 && rec.answers >= 1 && rec.shares >= 1)) throw new Error(`counters not filled: ${JSON.stringify(rec)}`);
@@ -196,8 +251,7 @@ await step(a, 'returning user: answered questions do not come back', async p => 
   await env.withSecurityRulesDisabled(async ctx => {
     const { getDocs, getDoc, collection, query, where } = await import('firebase/firestore');
     const db = ctx.firestore();
-    const m = await getDoc(doc(db, 'usernames', `alice${run}`.toLowerCase()));
-    const ans = await getDocs(query(collection(db, 'user_answers'), where('userId', '==', m.data().uid)));
+    const ans = await getDocs(query(collection(db, 'user_answers'), where('userId', '==', await uidOf(ALICE))));
     for (const d of ans.docs) answeredTexts.add((await getDoc(doc(db, 'questions', d.data().questionId))).data()?.text);
   });
   if (answeredTexts.size < 2) throw new Error(`bot answered only ${answeredTexts.size} questions`);
@@ -221,6 +275,8 @@ await step(a, 'category chips match the questions and filter the feed', async p 
   if (!card.includes('lifestyle & daily habits')) throw new Error(`filtered feed card is from another category: ${card.slice(0, 80)}`);
   await p.locator('.no-scrollbar button').first().click(); // back to All
 });
+
+await step(b, 'bob answers his entry questions', async p => { await answer(p, 5); await toast(p, "You're in!"); });
 
 // 3. Groups: alice creates, bob joins with the invite code
 let inviteCode = '';
@@ -249,7 +305,7 @@ await step(b, 'join group by code', async p => {
 await step(b, 'members tab shows count only, no usernames', async p => {
   await p.getByText(`Bots ${run}`).first().click();
   const body = await p.locator('body').innerText();
-  if (body.includes(`alice${run}`)) throw new Error('another member\'s username is visible in the group');
+  if (body.includes(`alice${run}`) || body.includes('#0002')) throw new Error('another member\'s name or number is visible in the group');
 });
 
 // 4. Posting: verify phone, post, question held for moderation (no Gemini key in test)
@@ -280,7 +336,7 @@ await step(a, 'post a question', async p => {
 });
 
 await step(a, 'admin approves the pending question in the review queue', async p => {
-  await makeAdmin(`alice${run}`);
+  await makeAdmin(ALICE);
   await p.locator('button:has(svg.lucide-user)').first().click();
   await p.getByText(`Bot test ${run}`).first().waitFor({ timeout: 15000 });
   await p.getByRole('button', { name: /Approve/ }).first().click();
@@ -361,7 +417,7 @@ await step(a, 'play every question to Game Over', async () => {
 await step(a, 'final leaderboard shown, no individual answers', async p => {
   const body = await p.locator('body').innerText();
   if (!/Final Leaderboard/i.test(body)) throw new Error('no final leaderboard');
-  if (new RegExp(`bob${run}[^\\n]{0,40}(picked|answered|chose)`, 'i').test(body)) throw new Error('ANONYMITY: another player\'s answer is shown');
+  if (new RegExp(`(Newcomer|#\\d{4})[^\\n]{0,40}(picked|answered|chose)`, 'i').test(body)) throw new Error('ANONYMITY: another player\'s answer is shown');
 });
 
 // 8. A friend opens a shared link: sees the question, signs up, answers it; referral recorded
@@ -369,8 +425,7 @@ await step(a, 'final leaderboard shown, no individual answers', async p => {
   let refCode = '';
   await env.withSecurityRulesDisabled(async ctx => {
     const { getDoc } = await import('firebase/firestore');
-    const m = await getDoc(doc(ctx.firestore(), 'usernames', `alice${run}`.toLowerCase()));
-    refCode = (await getDoc(doc(ctx.firestore(), 'users', m.data().uid))).data().referralCode || '';
+    refCode = (await getDoc(doc(ctx.firestore(), 'users', await uidOf(ALICE)))).data().referralCode || '';
   });
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
@@ -383,8 +438,9 @@ await step(a, 'final leaderboard shown, no individual answers', async p => {
     await p.getByRole('button', { name: 'Create Account' }).waitFor({ timeout: 5000 });
   });
   await step(carol, 'after sign-up the shared question opens, referral recorded', async p => {
-    await p.getByPlaceholder('Enter your handle...').fill(`carol${run}`);
-    await p.getByPlaceholder('Min 6 characters...').fill('botpass123');
+    await p.locator('[data-testid="invite-chip"]').waitFor({ timeout: 5000 });
+    await p.getByPlaceholder('you@example.com').fill(CAROL);
+    await p.getByPlaceholder('Min 6 characters...').fill(PASS);
     const sel = p.locator('select');
     await sel.nth(0).selectOption('25-34'); await sel.nth(1).selectOption('Female'); await sel.nth(2).selectOption('Egypt');
     await p.getByRole('button', { name: 'Create Account' }).click();
@@ -396,6 +452,58 @@ await step(a, 'final leaderboard shown, no individual answers', async p => {
       found = (await getDocs(collection(c.firestore(), 'referrals'))).size > 0;
     });
     if (!found) throw new Error('no referral record written');
+    let prof;
+    await env.withSecurityRulesDisabled(async c => {
+      const { getDoc } = await import('firebase/firestore');
+      prof = (await getDoc(doc(c.firestore(), 'users', await uidOf(CAROL)))).data();
+    });
+    if (prof.invitedWith || typeof prof.referredBy === 'string') throw new Error('ANONYMITY: the profile shows who invited this member');
+  });
+}
+
+// 9. No invite: waitlist. Bad invite: refused, no account left behind. Password reset.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => consoleErrors.push({ bot: 'dave', text: `CRASH: ${String(e.message).slice(0, 300)}` }));
+  const dave = { name: 'dave', page };
+  await step(dave, 'no invite: sign-up leads to the waitlist', async p => {
+    await p.goto(APP, { waitUntil: 'domcontentloaded' });
+    await p.getByText("Don't have an account? Sign Up").click();
+    await p.getByText('Pulse is invite-only').waitFor({ timeout: 5000 });
+    if (await p.getByRole('button', { name: 'Create Account' }).count()) throw new Error('sign-up form shown without an invite');
+    await p.getByPlaceholder('Your email').fill(`dave${run}@example.com`);
+    await p.getByRole('button', { name: 'Join the waitlist' }).click();
+    await p.locator('[data-testid="waitlist-done"]').waitFor({ timeout: 10000 });
+    let rows = [];
+    await env.withSecurityRulesDisabled(async c => {
+      const { getDocs, collection } = await import('firebase/firestore');
+      rows = (await getDocs(collection(c.firestore(), 'waitlist'))).docs.map((d) => d.data());
+    });
+    const mine = rows.find((r) => r.email === `dave${run}@example.com`);
+    if (!mine) throw new Error('waitlist entry not stored');
+    const extra = Object.keys(mine).filter((k) => !['email', 'lang', 'createdAt'].includes(k));
+    if (extra.length) throw new Error(`waitlist stores more than it should: ${extra.join(', ')}`);
+  });
+  await step(dave, 'a made-up invite code is refused and leaves no account', async p => {
+    await p.goto(`${APP}/?ref=BOGUS9`, { waitUntil: 'domcontentloaded' });
+    await p.getByPlaceholder('you@example.com').fill(`eve${run}@example.com`);
+    await p.getByPlaceholder('Min 6 characters...').fill(PASS);
+    const sel = p.locator('select');
+    await sel.nth(0).selectOption('25-34'); await sel.nth(1).selectOption('Male'); await sel.nth(2).selectOption('UAE');
+    await p.getByRole('button', { name: 'Create Account' }).click();
+    await toast(p, "isn't valid any more");
+    const left = await uidOf(`eve${run}@example.com`).then(() => true).catch(() => false);
+    if (left) throw new Error('an auth account was left behind after the invite was refused');
+  });
+  await step(dave, 'forgot password sends a reset email', async p => {
+    await p.goto(APP, { waitUntil: 'domcontentloaded' });
+    await p.getByText('Forgot password?').click();
+    await p.getByPlaceholder('you@example.com').fill(CAROL);
+    await p.getByRole('button', { name: 'Send reset link' }).click();
+    await toast(p, 'reset link is on its way');
+    const r = await (await fetch(`${AUTH}/emulator/v1/projects/${config.projectId}/oobCodes`)).json();
+    if (!r.oobCodes?.some((c) => c.email === CAROL && c.requestType === 'PASSWORD_RESET')) throw new Error('no password-reset email was sent');
   });
 }
 
