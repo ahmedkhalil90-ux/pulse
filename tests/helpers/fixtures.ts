@@ -88,3 +88,12 @@ export async function seedQuestion(
     ...overrides,
   });
 }
+
+/** An inviter who has unlocked inviting (holds a member number), and their code. */
+export const INVITER_UID = 'inviter1';
+export const INVITE = 'INVITE1';
+export async function seedInvite(ctx: RulesTestContext, extra: Record<string, unknown> = {}) {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'users', INVITER_UID), { username: 'inviter', credits: 0, referralCode: INVITE, memberNumber: 1 });
+  await setDoc(doc(db, 'referralCodes', INVITE), { uid: INVITER_UID, ...extra });
+}
