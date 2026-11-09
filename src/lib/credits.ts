@@ -2,6 +2,7 @@ import {
   doc,
   increment,
   runTransaction,
+  serverTimestamp,
   updateDoc,
   writeBatch,
   type Firestore,
@@ -45,15 +46,24 @@ export function dayKey(when: Date | string = new Date()): string {
   return iso.split('T')[0];
 }
 
-/** +1 for answering a question, in the feed or a group. */
+/**
+ * Why the balance moved. The rules only accept a credit change written in the
+ * same transaction or batch as this record and the action it names (see
+ * creditOk in firestore.rules), so every credit write below sets it.
+ */
+export type CreditReason = 'answer' | 'bracket' | 'unlock' | 'referral' | 'boost' | 'daily';
+export const reasonRef = (db: Firestore, uid: string) => doc(db, 'users', uid, 'private', 'credit');
+export const reasonData = (reason: CreditReason, ref = '') => ({ reason, ref, at: serverTimestamp() });
+
+/**
+ * +1 for answering a question. Not used by the app any more: the answer, the
+ * vote and the credit are one write in castVote (src/lib/votes.ts), which is
+ * what the rules require. Kept for the credit-economy tests.
+ */
 export async function awardAnswerCredit(db: Firestore, uid: string): Promise<void> {
   await updateDoc(doc(db, 'users', uid), { credits: increment(CREDIT_VALUES.ANSWER) });
 }
 
-/** +1 for finishing a Knockout bracket. Called once, after the picks are saved. */
-export async function awardBracketCredit(db: Firestore, uid: string): Promise<void> {
-  await updateDoc(doc(db, 'users', uid), { credits: increment(CREDIT_VALUES.BRACKET) });
-}
 
 /**
  * +3 on the first app open of a calendar day.
@@ -81,6 +91,7 @@ export async function awardDailyBonus(
       credits: increment(CREDIT_VALUES.DAILY_BONUS),
       lastLogin: today,
     });
+    tx.set(reasonRef(db, uid), reasonData('daily'));
     return true;
   });
 }
@@ -113,6 +124,7 @@ export async function boostQuestion(
 
     tx.update(userRef, { credits: increment(CREDIT_VALUES.BOOST) });
     tx.update(questionRef, { boostCount: increment(BOOST_IMPRESSIONS) });
+    tx.set(reasonRef(db, uid), reasonData('boost', questionId));
   });
 }
 
@@ -141,6 +153,7 @@ export async function unlockDemographics(
 
     tx.update(userRef, { credits: increment(CREDIT_VALUES.UNLOCK_DEMOGRAPHICS) });
     tx.set(unlockRef, { unlockedAt: new Date().toISOString() });
+    tx.set(reasonRef(db, uid), reasonData('unlock', questionId));
     return true;
   });
 }
@@ -164,6 +177,7 @@ export async function awardReferral(
     // below is where the referrer is kept.
     referredBy: true,
   });
+  batch.set(reasonRef(db, newUserUid), reasonData('referral'));
   batch.set(doc(db, 'referrals', newUserUid), {
     code: code.toUpperCase(),
     referrerUid,

@@ -1,4 +1,5 @@
-import { doc, runTransaction, type Firestore } from 'firebase/firestore';
+import { doc, increment, runTransaction, type Firestore } from 'firebase/firestore';
+import { CREDIT_VALUES, reasonData, reasonRef } from './credits';
 
 /**
  * Knockout: 8 contenders, 7 picks. Round 1 pairs are fixed (0v1, 2v3, 4v5,
@@ -51,7 +52,7 @@ export function communityChampion(t: Tally | null): { idx: number; pct: number; 
   return { idx: Number(idx), pct: Math.round((n / total) * 100), total };
 }
 
-/** Save a finished bracket: private picks plus the community tally, together. */
+/** Save a finished bracket: private picks, the community tally and the +1 credit, in one write. */
 export async function submitBracket(db: Firestore, uid: string, bracketId: string, picks: number[]): Promise<Tally> {
   const resultsRef = doc(db, 'bracketResults', bracketId);
   return runTransaction(db, async (tx) => {
@@ -59,6 +60,8 @@ export async function submitBracket(db: Firestore, uid: string, bracketId: strin
     const next = addPicks(picks, cur.exists() ? (cur.data() as Tally) : undefined);
     tx.set(doc(db, 'bracketPicks', `${uid}_${bracketId}`), { bracketId, picks, createdAt: new Date().toISOString() });
     tx.set(resultsRef, next);
+    tx.update(doc(db, 'users', uid), { credits: increment(CREDIT_VALUES.BRACKET) });
+    tx.set(reasonRef(db, uid), reasonData('bracket', bracketId));
     return next;
   });
 }

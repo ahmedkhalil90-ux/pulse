@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { db } from '../lib/firebase';
 import { t, lang } from '../lib/i18n';
 import { useAuth } from './AuthProvider';
-import { awardBracketCredit } from '../lib/credits';
 import { track } from '../lib/activity';
 import { pickCard, sharePick } from '../lib/share';
 import { inviteUrl } from '../lib/member';
@@ -89,7 +88,6 @@ function KnockoutPlay({ bracket, onClose }: { bracket: Bracket; onClose: () => v
       const after = await submitBracket(db, user.uid, bracket.id, next);
       setTally(after);
       setDone(next);
-      await awardBracketCredit(db, user.uid);
       toast.success(t("Bracket complete! +1 Credit"));
       toast(t("Your picks are anonymous"));
       track(user.uid, 'answers');

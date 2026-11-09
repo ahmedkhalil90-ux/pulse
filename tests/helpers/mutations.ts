@@ -29,9 +29,9 @@ export const MUTATIONS: Mutation[] = [
     id: 'M1',
     label: "results: rules no longer consult the caller's answer record",
     edits: [
-      { find: 'return exists(answerPath(questionId));', replace: 'return true;' },
+      { find: 'return existsAfter(answerPath(questionId))\n        && !exists(answerPath(questionId));', replace: 'return true;' },
       {
-        find: 'return string(get(answerPath(questionId)).data.answerIndex);',
+        find: 'return string(getAfter(answerPath(questionId)).data.answerIndex);',
         replace: "return '0';",
       },
     ],
@@ -1140,6 +1140,56 @@ export const MUTATIONS: Mutation[] = [
     id: 'M112',
     label: 'knockout: suggestions may be any length',
     edits: [{ find: ' && request.resource.data.text.size() <= 60', replace: '' }],
+  },
+  {
+    id: 'M113',
+    label: 'results: a member who already answered may send the +1 again (replay)',
+    edits: [{ find: '\n        && !exists(answerPath(questionId));', replace: ';' }],
+  },
+  {
+    id: 'M114',
+    label: 'credits: the balance may change with no reason',
+    edits: [{ find: "                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['credits'])\n                        || isAdmin()\n                        || isMigrating(userId)\n                        || creditOk(userId));", replace: ';' }],
+  },
+  {
+    id: 'M115',
+    label: 'credits: the proving record may already exist (claim twice)',
+    edits: [{ find: '      return !exists(path) && existsAfter(path);', replace: '      return existsAfter(path);' }],
+  },
+  {
+    id: 'M116',
+    label: 'credits: an answer may pay more than 1',
+    edits: [{ find: "r.reason == 'answer' && d == 1", replace: "r.reason == 'answer' && d >= 1" }],
+  },
+  {
+    id: 'M117',
+    label: 'credits: a reason recorded in an earlier write may be reused',
+    edits: [{ find: '\n        && r.at == request.time\n', replace: '\n' }],
+  },
+  {
+    id: 'M118',
+    label: 'credits: the balance may go below zero',
+    edits: [{ find: '        && request.resource.data.credits >= 0\n        && r.at', replace: '        && r.at' }],
+  },
+  {
+    id: 'M119',
+    label: 'credits: the daily bonus may be taken twice in a day',
+    edits: [{ find: "        && day != resource.data.get('lastLogin', '')\n", replace: '' }],
+  },
+  {
+    id: 'M120',
+    label: 'credits: the daily bonus may be claimed for any date',
+    edits: [{ find: '\n        && timestamp.date(int(day[0:4]), int(day[5:7]), int(day[8:10])) == request.time.date();', replace: ';' }],
+  },
+  {
+    id: 'M121',
+    label: 'users: a new profile may start with any balance',
+    edits: [{ find: "\n                                      && request.resource.data.get('credits', 0) <= 13))", replace: '))' }],
+  },
+  {
+    id: 'M122',
+    label: 'credits: the private reason record may carry other fields',
+    edits: [{ find: "          && request.resource.data.keys().hasOnly(['reason', 'ref', 'at'])\n", replace: '' }],
   },
 ];
 

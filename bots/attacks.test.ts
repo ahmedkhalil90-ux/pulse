@@ -58,6 +58,8 @@ const ATTACKS: Attack[] = [
   { name: 'post a live question as the official Pulse Originals account', run: () => setDoc(doc(mallory.db, 'questions', 'fake_official'), {
       text: 'x?', options: ['a', 'b'], category: 'x', authorUid: 'pulse_originals_system', isPublic: true,
       createdAt: new Date().toISOString(), status: 'live', flags: 0, random: 0.5 }) },
+  { name: 'grant yourself 1000 credits', run: () => updateDoc(doc(mallory.db, 'users', mallory.uid), { credits: increment(1000) }) },
+  { name: 'claim an answer credit twice for the same question', run: () => updateDoc(doc(victim.db, 'users', victim.uid), { credits: increment(1) }) },
   { name: 'replay a genuine vote to inflate results', run: () => updateDoc(doc(victim.db, 'results', 'q1'), { 'counts.1': increment(1) }) },
   // Game integrity
   { name: 'write another player\'s game answer', run: () => updateDoc(doc(mallory.db, 'games', 'g1'), { [`answers.${friend.uid}.gq1`]: 1 }) },
@@ -72,7 +74,6 @@ const KNOWN_GAPS: Attack[] = [
       const g = (await getDoc(doc(friend.db, 'games', 'g1'))).data() as Game;
       if (g.answers?.[victim.uid]?.gq1 === undefined) throw new Error('PERMISSION_DENIED: answer hidden');
     } },
-  { name: 'grant yourself 1000 credits (credits are client-managed)', run: () => updateDoc(doc(mallory.db, 'users', mallory.uid), { credits: increment(1000) }) },
   { name: 'self-verify phone without verification', run: () => updateDoc(doc(mallory.db, 'users', mallory.uid), { isVerified: true }) },
 ];
 

@@ -1,4 +1,5 @@
-import { doc, getDoc, increment, runTransaction, updateDoc, type Firestore } from 'firebase/firestore';
+import { doc, getDoc, increment, runTransaction, updateDoc, writeBatch, type Firestore } from 'firebase/firestore';
+import { CREDIT_VALUES, reasonData, reasonRef } from './credits';
 import type { UserDemographics } from '../types';
 
 /**
@@ -63,5 +64,65 @@ export async function addVoteToResults(
         tx.set(ref, { counts: c, demographics: demo });
       }
     });
+  }
+}
+
+/**
+ * The whole act of answering, as one write: the answer record, the +1 vote,
+ * the +1 credit and the credit reason. The rules accept a vote and a credit
+ * only in the same write that creates the answer record, so neither can be
+ * replayed. When the results document already exists the write is a batch of
+ * atomic increments (no contention between voters); only the first vote on a
+ * question needs a transaction, to create the document.
+ */
+export async function castVote(
+  db: Firestore,
+  uid: string,
+  questionId: string,
+  optionIndex: 0 | 1,
+  demographics: UserDemographics,
+  answerData: Record<string, unknown>,
+): Promise<void> {
+  const resultsRef = doc(db, 'results', questionId);
+  const answerRef = doc(db, 'user_answers', `${uid}_${questionId}`);
+  const userRef = doc(db, 'users', uid);
+  const buckets = (['ageRange', 'gender', 'country'] as const).filter((k) => !!demographics[k]);
+  const update: Record<string, unknown> = { [`counts.${optionIndex}`]: increment(1) };
+  for (const k of buckets) update[`demographics.${k}.${demographics[k]}.${optionIndex}`] = increment(1);
+  const credit = { credits: increment(CREDIT_VALUES.ANSWER) };
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      if ((await getDoc(resultsRef)).exists()) {
+        const b = writeBatch(db);
+        b.set(answerRef, answerData);
+        b.update(resultsRef, update);
+        b.update(userRef, credit);
+        b.set(reasonRef(db, uid), reasonData('answer', questionId));
+        await b.commit();
+        return;
+      }
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(resultsRef);
+        tx.set(answerRef, answerData);
+        if (snap.exists()) tx.update(resultsRef, update);
+        else {
+          const c = { '0': optionIndex === 0 ? 1 : 0, '1': optionIndex === 1 ? 1 : 0 };
+          const demo: Record<string, Record<string, typeof c>> = { ageRange: {}, gender: {}, country: {} };
+          for (const k of buckets) demo[k] = { [demographics[k] as string]: c };
+          tx.set(resultsRef, { counts: c, demographics: demo });
+        }
+        tx.update(userRef, credit);
+        tx.set(reasonRef(db, uid), reasonData('answer', questionId));
+      });
+      return;
+    } catch (e) {
+      // Nothing was written by a refused or aborted write, so a retry cannot
+      // count twice; a retry after a real success is refused by the rules.
+      const code = (e as { code?: string }).code;
+      if (!(code === 'aborted' || code === 'permission-denied' || code === 'failed-precondition') || attempt >= 5) throw e;
+      if ((await getDoc(answerRef).catch(() => null))?.exists()) return; // our earlier attempt landed
+      await new Promise((r) => setTimeout(r, 100 + Math.random() * 300 * (attempt + 1)));
+    }
   }
 }

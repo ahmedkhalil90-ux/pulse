@@ -142,7 +142,7 @@ Do not introduce new UI libraries or a light theme without asking.
 
 **Safe to proceed on:** dependency updates, test coverage, copy fixes, UI polish, seed content generation, refactors that do not touch the above.
 
-**Testing:** 413 tests, plus the bots (`npm run bots`). `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
+**Testing:** 440 tests, plus the bots (`npm run bots`). `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
 
 - **Rules**  (`tests/rules.test.ts`, cases in `tests/cases/`). Vote integrity, flagging and boosting, the UID-migration takeover fix, answer-record ownership, game reads, group updates, results reads.
 - **Mutation verification** (`tests/mutation.test.ts`). Every deny-case names the mutation that should make it pass. The harness loosens that one guard in an in-memory copy of the rules, loads it into a throwaway emulator project, and asserts the case flips to allowed. `firestore.rules` is only ever read, never written. A mutation target that no longer matches exactly once throws, so a reworded rule breaks loudly instead of silently making a test vacuous.
@@ -174,6 +174,8 @@ Do not re-report these, and do not "fix" them again.
 - Feed shuffle works — the seeder writes `random`.
 - Six credit bugs: boost overdraft, unlock overdraft, non-atomic boost, unlock double-charge, unlock race, daily bonus double-award.
 - Game scoring double-count — advancing is idempotent per question.
+- Vote replay: a vote counts only in the same write that creates the answer record (`castVote`).
+- Self-granted credits: every credit change needs its reason in `users/{uid}/private/credit` and its proving record, in the same write (`creditOk`). The simulated store is gone.
 - Who-invited-whom leak: profiles no longer carry `referredBy` as a uid or the invite code; the private `referrals` record holds it.
 
 ## Invite-only membership
@@ -196,9 +198,8 @@ Do not re-report these, and do not "fix" them again.
 (Fixed and live: the game author leak, listable `users`, group member UIDs, the Gemini key in the bundle (moderation runs in the daily bot), password recovery (email accounts), and the admin review queue.)
 
 4. **Results min-10 threshold and the 3-credit unlock are unenforceable in rules.** *(Blaze)* Rules are all-or-nothing on a document — they cannot withhold `demographics` or count a bucket before releasing it. Needs a callable Cloud Function.
-6. **Vote replay.** *(Blaze)* A user who genuinely answered can repeat the `results` +1 indefinitely. Rules cannot detect a replay; needs a server-side transaction.
 
-**Items 4 and 6 need server-side code (Blaze, or a free Cloudflare Worker) and should ship together** — they are all the same piece of work, a Cloud Functions codebase, and doing them one at a time pays the setup cost four times.
+**Item 4, game score/answer privacy, phone verification and hashed answer ids need server-side code (a free Cloudflare Worker).**
 
 Also outstanding: no IAP integration, Capacitor conversion not started.
 
