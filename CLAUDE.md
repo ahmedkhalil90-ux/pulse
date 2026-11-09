@@ -178,7 +178,7 @@ Do not re-report these, and do not "fix" them again.
 
 - Sign-up needs a member's invite code (`?ref=`), enforced in rules on profile create. No code: waitlist (email only, admin-readable).
 - Real email + password sign-in with password reset. Legacy `username@pulse.app` accounts still sign in and can add a recovery email.
-- 5 answers to get past the entry gate (client-side); 10 answers to claim a member number (`#0042`, the public identity) and unlock the personal invite link, which is unlimited.
+- 5 answers to get past the entry gate (client-side); 10 answers to claim a member number (`#42`, the public identity) and unlock the personal invite link, which is unlimited.
 - Member numbers are claimed in one transaction (counter +1, `memberNumbers/{n}`, profile), cross-checked in rules.
 - Nightly `scripts/ops/members.mjs`: backfills numbers (founder #1), +5 credits and the Asker badge at 100 answers on a member's question, Question of the Week from member questions (author never shown), pauses an invite link with more than 100 sign-ups in 24h.
 

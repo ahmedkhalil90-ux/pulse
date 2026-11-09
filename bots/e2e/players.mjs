@@ -164,10 +164,10 @@ await step(a, 'invite link locked until 10 answers', async p => {
 });
 await step(a, 'at 10 answers: member number and invite link', async p => {
   await answer(p, 5);
-  await toast(p, "You're member #0002");
+  await toast(p, "You're member #2");
   await p.locator('header button').last().click();
   const label = (await p.locator('[data-testid="member-label"]').innerText()).trim();
-  if (label !== '#0002') throw new Error(`profile shows ${label}, expected #0002`);
+  if (label !== '#2') throw new Error(`profile shows ${label}, expected #2`);
   const link = await p.locator('[data-testid="invite-link"]').innerText({ timeout: 8000 });
   if (!/\?ref=[A-Z0-9]{6}$/.test(link.trim())) throw new Error(`bad invite link: ${link}`);
   if (await p.locator('[data-testid="recovery-email"]').count()) throw new Error('email account asked for a recovery email');
@@ -305,7 +305,7 @@ await step(b, 'join group by code', async p => {
 await step(b, 'members tab shows count only, no usernames', async p => {
   await p.getByText(`Bots ${run}`).first().click();
   const body = await p.locator('body').innerText();
-  if (body.includes(`alice${run}`) || body.includes('#0002')) throw new Error('another member\'s name or number is visible in the group');
+  if (body.includes(`alice${run}`) || /#2\b/.test(body)) throw new Error('another member\'s name or number is visible in the group');
 });
 
 // 4. Posting: verify phone, post, question held for moderation (no Gemini key in test)
@@ -417,7 +417,7 @@ await step(a, 'play every question to Game Over', async () => {
 await step(a, 'final leaderboard shown, no individual answers', async p => {
   const body = await p.locator('body').innerText();
   if (!/Final Leaderboard/i.test(body)) throw new Error('no final leaderboard');
-  if (new RegExp(`(Newcomer|#\\d{4})[^\\n]{0,40}(picked|answered|chose)`, 'i').test(body)) throw new Error('ANONYMITY: another player\'s answer is shown');
+  if (new RegExp(`(Newcomer|#\\d+)[^\\n]{0,40}(picked|answered|chose)`, 'i').test(body)) throw new Error('ANONYMITY: another player\'s answer is shown');
 });
 
 // 8. A friend opens a shared link: sees the question, signs up, answers it; referral recorded

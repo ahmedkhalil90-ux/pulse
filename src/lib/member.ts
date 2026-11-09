@@ -8,7 +8,7 @@ export const UNLOCK_ANSWERS = 10;
 /** Answers before we start suggesting the member asks a question. */
 export const ASK_PROMPT_ANSWERS = 15;
 
-export const formatMemberNumber = (n: number) => `#${String(n).padStart(4, '0')}`;
+export const formatMemberNumber = (n: number) => `#${n}`;
 
 /** The public name for a member: their number, else a legacy username, else "Newcomer". */
 export function memberLabel(p?: { memberNumber?: number; username?: string } | null): string {
