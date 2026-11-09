@@ -17,6 +17,7 @@ import { opsCases } from '../cases/ops.cases';
 import { referralsCases } from '../cases/referrals.cases';
 import { activityCases } from '../cases/activity.cases';
 import { invitesCases } from '../cases/invites.cases';
+import { knockoutCases } from '../cases/knockout.cases';
 
 /**
  * The single source of truth for every rules case. Both the real suite and the
@@ -34,6 +35,7 @@ export const SUITES: Array<[string, Case[]]> = [
   ['referrals/{refereeUid}', referralsCases],
   ['activity/{docId}', activityCases],
   ['invites, member numbers, waitlist', invitesCases],
+  ['knockout brackets', knockoutCases],
   ['admin identity', adminIdentityCases],
   ['skips and unlocks', skipsAndUnlocksCases],
   ['games/{gameId} reads', gamesCases],

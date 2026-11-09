@@ -1076,6 +1076,71 @@ export const MUTATIONS: Mutation[] = [
     label: 'waitlist: anything may be stored as the email',
     edits: [{ find: "        && request.resource.data.email.matches('^[^@\\\\s]+@[^@\\\\s]+\\\\.[^@\\\\s]+$')\n", replace: '' }],
   },
+  {
+    id: 'M100',
+    label: 'knockout: the final may be won by someone who was not in it',
+    edits: [{ find: '\n        && pickIn(p, 4, p[0], p[1]) && pickIn(p, 5, p[2], p[3]) && pickIn(p, 6, p[4], p[5]);', replace: '\n        && pickIn(p, 4, p[0], p[1]) && pickIn(p, 5, p[2], p[3]);' }],
+  },
+  {
+    id: 'M101',
+    label: 'knockout: picks may be recorded under another member',
+    edits: [{ find: "        && pickId == request.auth.uid + '_' + request.resource.data.bracketId\n", replace: '' }],
+  },
+  {
+    id: 'M102',
+    label: 'knockout: closed brackets still take picks',
+    edits: [{ find: "        && get(/databases/$(database)/documents/brackets/$(request.resource.data.bracketId)).data.status == 'live'\n", replace: '' }],
+  },
+  {
+    id: 'M103',
+    label: "knockout: anyone may read anyone's picks",
+    edits: [{ find: "      allow get: if isAdmin() || (isAuthenticated() && pickId.matches(request.auth.uid + '_.+'));", replace: '      allow get: if isAuthenticated();' }],
+  },
+  {
+    id: 'M104',
+    label: 'knockout: a member who already played may add to the tally again',
+    edits: [{ find: "            && !exists(/databases/$(database)/documents/bracketPicks/$(request.auth.uid + '_' + bracketId))\n", replace: '' }],
+  },
+  {
+    id: 'M105',
+    label: 'knockout: the tally may gain matches the member never played',
+    edits: [{ find: "\n        && n.diff(o).affectedKeys().hasOnly(['0-1', '2-3', '4-5', '6-7', pairKey(p[0], p[1]), pairKey(p[2], p[3]), pairKey(p[4], p[5])]);", replace: ";" }],
+  },
+  {
+    id: 'M106',
+    label: 'knockout: a pick may count more than once',
+    edits: [{ find: "\n        && nm.get(ws, 0) == om.get(ws, 0) + 1", replace: "\n        && nm.get(ws, 0) >= om.get(ws, 0) + 1" }],
+  },
+  {
+    id: 'M107',
+    label: 'knockout: the side not picked may gain too',
+    edits: [{ find: "\n        && nm.get(ls, 0) == om.get(ls, 0);", replace: ";" }],
+  },
+  {
+    id: 'M108',
+    label: 'knockout: a match tally may gain extra sides',
+    edits: [{ find: "      return nm.keys().hasOnly([string(a), string(b)])\n        && ", replace: "      return " }],
+  },
+  {
+    id: 'M109',
+    label: 'knockout: the champion count is not checked',
+    edits: [{ find: "\n        && champOk(p, request.resource.data.get('champ', {}), old.get('champ', {}));", replace: ";" }],
+  },
+  {
+    id: 'M110',
+    label: 'knockout: the tally may hold other fields (e.g. who voted)',
+    edits: [{ find: "            && request.resource.data.keys().hasOnly(['pairs', 'champ'])\n", replace: '' }],
+  },
+  {
+    id: 'M111',
+    label: 'knockout: suggestions may carry an author',
+    edits: [{ find: "        && request.resource.data.keys().hasOnly(['text', 'lang', 'createdAt'])\n", replace: '' }],
+  },
+  {
+    id: 'M112',
+    label: 'knockout: suggestions may be any length',
+    edits: [{ find: ' && request.resource.data.text.size() <= 60', replace: '' }],
+  },
 ];
 
 /**
