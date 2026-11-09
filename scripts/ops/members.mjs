@@ -126,10 +126,11 @@ for (const [code, n] of Object.entries(byCode)) {
   const ref = db.doc(`referralCodes/${code}`);
   if ((await ref.get()).data()?.paused) continue;
   await ref.update({ paused: true, pausedAt: new Date().toISOString(), pausedReason: `${n} sign-ups in 24h` });
-  paused.push(`${code} (${n})`);
+  paused.push(`a link with ${n} sign-ups (code ending ${code.slice(-2)})`);
 }
-const top = Object.entries(byCode).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([c, n]) => `${c}: ${n}`).join(', ');
-report.push(`**Invites:** ${recent.length} sign-ups in the last 24h${top ? ` (top links ${top})` : ''}.${paused.length ? ` ⚠️ Paused for review: ${paused.join(', ')}. Unpause in Firestore (referralCodes/<code>, set paused to false).` : ''}`);
+// Counts only: the repo and this report are public, and a code is a working invite.
+const top = Object.values(byCode).sort((a, b) => b - a).slice(0, 3).map((n) => `${n}`).join(', ');
+report.push(`**Invites:** ${recent.length} sign-ups in the last 24h${top ? ` (busiest links brought ${top})` : ''}.${paused.length ? ` ⚠️ Paused for review: ${paused.join(', ')}. Find it in Firestore under referralCodes (paused: true) and set paused to false to restore it.` : ''}`);
 
 // --- 5. waitlist ------------------------------------------------------------
 const waiting = (await db.collection('waitlist').count().get()).data().count;

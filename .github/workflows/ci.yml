@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+# Actions minutes are limited on the free plan. The full suite (tests and
+# bots, ~15 min) runs on pull requests; a push to main is a merge of a PR that
+# already passed, so it only type-checks, builds and deploys. Code changes go
+# through pull requests.
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -22,6 +26,7 @@ jobs:
       # The Firestore emulator is a Java process; without a JDK on PATH
       # `firebase emulators:exec` fails before any test runs.
       - name: Set up Java
+        if: github.event_name == 'pull_request'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -30,10 +35,12 @@ jobs:
       # npm test shells out to `firebase emulators:exec`, and firebase-tools is
       # not a project dependency. Pinned to the major version used locally.
       - name: Install firebase-tools
+        if: github.event_name == 'pull_request'
         run: npm install -g firebase-tools@15
 
       # Cache the emulator jar so every run does not re-download it.
       - name: Cache Firestore emulator
+        if: github.event_name == 'pull_request'
         uses: actions/cache@v4
         with:
           path: ~/.cache/firebase/emulators
@@ -49,18 +56,21 @@ jobs:
         run: npm run build
 
       - name: Test against the Firestore emulator
+        if: github.event_name == 'pull_request'
         run: npm test
 
       # Player, swarm and attacker bots: real browsers and concurrent users
       # against the emulators. Screenshots of any failed step are uploaded.
       - name: Install Chromium for the player bots
+        if: github.event_name == 'pull_request'
         run: npx playwright install --with-deps chromium
 
       - name: Run the bots
+        if: github.event_name == 'pull_request'
         run: npm run bots
 
       - name: Upload bot report
-        if: always()
+        if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: bot-report
