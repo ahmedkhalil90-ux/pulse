@@ -91,6 +91,7 @@ function loadQuestionIndex(): Promise<IndexItem[]> {
   return questionIndexCache;
 }
 import { ModerationQueue } from './components/ModerationQueue';
+import { KnockoutBanner } from './components/Knockout';
 
 // A fixed list, so demographic buckets do not fragment ("UAE" vs "uae" vs
 // "Emirates") and can actually reach the 10-response display threshold.
@@ -995,6 +996,7 @@ function Feed() {
   return (
     <div className="space-y-6">
       {!revisitMode && <QuestionOfTheDay answeredIds={answeredIds} />}
+      {!revisitMode && <KnockoutBanner />}
       {!revisitMode && <QuestionOfTheWeek answeredIds={answeredIds} />}
       {revisitMode && (
         <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded-2xl px-4 py-2">

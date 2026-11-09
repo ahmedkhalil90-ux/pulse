@@ -29,7 +29,7 @@ const key = JSON.parse(readFileSync(process.env.PULSE_SA_KEY, 'utf8'));
 const db = getFirestore(initializeApp({ credential: cert(key) }));
 db.settings({ ignoreUndefinedProperties: true });
 const DEADLINE = Date.now() + Number(process.env.MAX_MINUTES ?? 14) * 60000;
-const TASKS = (process.env.TASKS ?? 'moderate,trends,qotd,dialects,generate').split(',');
+const TASKS = (process.env.TASKS ?? 'moderate,trends,qotd,knockout,dialects,generate').split(',');
 const timeLeft = () => DEADLINE - Date.now();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
@@ -229,6 +229,48 @@ async function qotd() {
   report.qotd = pick.text;
 }
 
+// ---------- 2c. knockout brackets ----------
+// One new 8-contender bracket a day, live for 7 days. Member suggestions are
+// read as ideas (merged, joke entries dropped by the reviewer), never copied in
+// unchecked. A second model must agree it is safe and well-formed.
+async function knockout() {
+  const live = (await db.collection('brackets').where('status', '==', 'live').get()).docs;
+  const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+  for (const b of live) if ((b.data().createdAt ?? '') < weekAgo) await b.ref.update({ status: 'closed', closedAt: new Date().toISOString() });
+  const newest = live.map((b) => b.data().createdAt ?? '').sort().pop() ?? '';
+  if (newest > new Date(Date.now() - 20 * 36e5).toISOString()) { report.knockout = 'already made one today'; return; }
+
+  const past = (await db.collection('brackets').select('title').get()).docs.map((d) => d.data().title).slice(-60);
+  const ideaDocs = (await db.collection('bracketSuggestions').limit(200).get()).docs.filter((d) => !d.data().processed).slice(0, 60);
+  const ideas = ideaDocs.map((d) => d.data().text);
+  for (let attempt = 0; attempt < 3 && !allDead(); attempt++) {
+    const draft = await gemini(`Create one "Knockout" bracket for Pulse, an anonymous app for young adults in the UAE and Egypt: a "best of" debate with exactly 8 contenders that people will argue about, e.g. best striker ever, best Ramadan series, best fast-food chain in the UAE, best Amr Diab song.
+Contenders must be real, widely known in the UAE and Egypt, distinct (no two spellings of the same thing), and evenly matched so the bracket is a real fight. Names under 30 characters.
+Never touch: ${RED_LINES}. No living politicians or religious figures.
+Do not repeat these past brackets: ${JSON.stringify(past)}.
+${ideas.length ? `Members suggested these ideas (topics or contenders; ignore jokes, duplicates and anything unsafe; use one if it makes a great bracket): ${JSON.stringify(ideas)}` : ''}
+Write in English and natural Arabic. Return {"title_en","title_ar","category","contenders":[{"en","ar"} x8]}.`);
+    const c = draft?.contenders;
+    if (!draft?.title_en || !Array.isArray(c) || c.length !== 8) continue;
+    const names = c.map((x) => String(x.en ?? '').trim());
+    if (names.some((n) => !n || n.length > 40) || new Set(names.map((n) => n.toLowerCase())).size !== 8) continue;
+    const review = await groq(`Review this bracket for an anonymous polling app in the UAE and Egypt. "safe": false if the topic or any contender touches ${RED_LINES}, or a living politician or religious figure, or could offend. "distinct": false if two contenders are the same thing. Bracket: ${JSON.stringify({ title: draft.title_en, contenders: names })}
+Return {"safe":true|false,"distinct":true|false,"reason":"<short>"}.`) ?? await gemini(`Review this bracket. "safe": false if it touches ${RED_LINES} or a living politician or religious figure. "distinct": false if two contenders are the same. ${JSON.stringify({ title: draft.title_en, contenders: names })} Return {"safe":true|false,"distinct":true|false}.`);
+    if (!review?.safe || !review?.distinct) { report.errors.push(`knockout draft rejected: ${review?.reason ?? 'no review'}`); continue; }
+    const order = c.map((x, i) => ({ x, r: Math.random(), i })).sort((a, b) => a.r - b.r).map((o) => o.x);
+    const id = 'ko_' + crypto.createHash('sha1').update(draft.title_en + Date.now()).digest('hex').slice(0, 12);
+    await db.doc(`brackets/${id}`).set({
+      title: draft.title_en.slice(0, 80), title_ar: String(draft.title_ar ?? '').slice(0, 80), category: draft.category ?? 'Would You Rather',
+      contenders: order.map((x) => ({ name: String(x.en).trim(), name_ar: String(x.ar ?? '').trim() || undefined })),
+      status: 'live', createdAt: new Date().toISOString(), source: 'ai-daily',
+    });
+    for (const d of ideaDocs) await d.ref.update({ processed: true });
+    report.knockout = `${draft.title_en} (${names.join(', ')})`;
+    return;
+  }
+  report.knockout = report.knockout ?? 'no bracket passed review today';
+}
+
 // ---------- 3. dialect variants ----------
 async function dialects() {
   const snap = await db.collection('questions').where('status', '==', 'live').limit(500).get();
@@ -270,7 +312,7 @@ Return a JSON array: [{"q_en","a_en","b_en","q_ar","a_ar","b_ar"}].`);
 
 // ---------- run ----------
 known = (await db.collection('questions').select('text').get()).docs.map((d) => norm(d.data().text ?? ''));
-for (const [name, fn] of Object.entries({ moderate, trends, qotd, dialects, generate })) {
+for (const [name, fn] of Object.entries({ moderate, trends, qotd, knockout, dialects, generate })) {
   if (!TASKS.includes(name) || timeLeft() < 30000) continue;
   log(`task ${name}`);
   try { await fn(); } catch (e) { report.errors.push(`${name}: ${String(e.message).slice(0, 160)}`); }
@@ -278,7 +320,7 @@ for (const [name, fn] of Object.entries({ moderate, trends, qotd, dialects, gene
 report.when = new Date().toISOString();
 const md = [`### Pulse daily bot, ${report.when.slice(0, 10)}`,
   `- Moderation: ${report.moderated.approved} approved, ${report.moderated.rejected} rejected, ${report.moderated.duplicates ?? 0} merged as duplicates, ${report.moderated.held} left for you`,
-  `- Trend questions added: ${report.trends}`, `- Question of the day: ${report.qotd ?? 'unchanged'}`, `- Dialect versions added: ${report.dialects}`,
+  `- Trend questions added: ${report.trends}`, `- Question of the day: ${report.qotd ?? 'unchanged'}`, `- Knockout: ${report.knockout ?? 'not run'}`, `- Dialect versions added: ${report.dialects}`,
   `- New questions: ${report.generated} drafted, ${report.pooled} passed review into the pool`,
   `- Model calls: ${Object.entries(report.calls).map(([m, n]) => `${m} ${n}`).join(', ') || 'none'}`,
   `- Quotas used up: ${report.exhausted.join(', ') || 'none'}`, ...(report.errors.length ? [`- Errors: ${report.errors.slice(0, 5).join('; ')}`] : [])].join('\n');

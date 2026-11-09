@@ -93,6 +93,8 @@ Full field-level schema lives in the Pulse Product Document. Key constraints:
 | Action | Credits |
 |---|---|
 | Answer a question (feed or group) | +1 |
+| Complete a Knockout bracket | +1 |
+| A member's question reaches 100 answers (nightly job) | +5 |
 | Daily login bonus (first open per calendar day) | +3 |
 | Referral (signup + first answer) | +15 |
 | Boost a question (100 impressions) | −10 |
@@ -140,7 +142,7 @@ Do not introduce new UI libraries or a light theme without asking.
 
 **Safe to proceed on:** dependency updates, test coverage, copy fixes, UI polish, seed content generation, refactors that do not touch the above.
 
-**Testing:** 381 tests, plus the bots (`npm run bots`). `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
+**Testing:** 413 tests, plus the bots (`npm run bots`). `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
 
 - **Rules**  (`tests/rules.test.ts`, cases in `tests/cases/`). Vote integrity, flagging and boosting, the UID-migration takeover fix, answer-record ownership, game reads, group updates, results reads.
 - **Mutation verification** (`tests/mutation.test.ts`). Every deny-case names the mutation that should make it pass. The harness loosens that one guard in an in-memory copy of the rules, loads it into a throwaway emulator project, and asserts the case flips to allowed. `firestore.rules` is only ever read, never written. A mutation target that no longer matches exactly once throws, so a reworded rule breaks loudly instead of silently making a test vacuous.
@@ -181,6 +183,13 @@ Do not re-report these, and do not "fix" them again.
 - 5 answers to get past the entry gate (client-side); 10 answers to claim a member number (`#42`, the public identity) and unlock the personal invite link, which is unlimited.
 - Member numbers are claimed in one transaction (counter +1, `memberNumbers/{n}`, profile), cross-checked in rules.
 - Nightly `scripts/ops/members.mjs`: backfills numbers (founder #1), +5 credits and the Asker badge at 100 answers on a member's question, Question of the Week from member questions (author never shown), pauses an invite link with more than 100 sign-ups in 24h.
+
+## Knockout mode
+
+- 8-contender brackets made daily by the AI bot (`knockout` task in `scripts/ops/ai-daily.mjs`), live for 7 days; two models must agree a bracket is safe.
+- picks = 7 winners `[qf0..qf3, sf0, sf1, final]`; round 1 pairs fixed 0v1, 2v3, 4v5, 6v7. `bracketPicks/{uid}_{bracketId}` is private and written once.
+- `bracketResults/{bracketId}` holds only `pairs` (per-match counts) and `champ` (champion counts); rules allow +1 on exactly the caller's own 7 matches, only in the same write that creates their picks, so no replay.
+- Suggestions (`bracketSuggestions`) store no author; the bot reads them as ideas for the next bracket.
 
 ## Open issues — in priority order
 

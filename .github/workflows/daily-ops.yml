@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
     inputs:
       tasks:
-        description: 'AI tasks (moderate,trends,dialects,generate)'
-        default: 'moderate,trends,qotd,dialects,generate'
+        description: 'AI tasks (moderate,trends,qotd,knockout,dialects,generate)'
+        default: 'moderate,trends,qotd,knockout,dialects,generate'
 
 permissions:
   contents: read
@@ -43,7 +43,7 @@ jobs:
           PULSE_SA_KEY: ${{ runner.temp }}/sa.json
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          TASKS: ${{ github.event.schedule == '40 6,14 * * *' && 'moderate' || inputs.tasks || 'moderate,trends,qotd,dialects,generate' }}
+          TASKS: ${{ github.event.schedule == '40 6,14 * * *' && 'moderate' || inputs.tasks || 'moderate,trends,qotd,knockout,dialects,generate' }}
           MAX_MINUTES: ${{ github.event.schedule == '40 6,14 * * *' && '3' || '14' }}
         run: node scripts/ops/ai-daily.mjs
 

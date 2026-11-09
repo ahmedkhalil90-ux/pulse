@@ -21,6 +21,8 @@ import {
  */
 export const CREDIT_VALUES = {
   ANSWER: 1,
+  /** Completing a Knockout bracket (approved by Ahmed, 2026-11-09). */
+  BRACKET: 1,
   DAILY_BONUS: 3,
   REFERRAL: 15,
   BOOST: -10,
@@ -46,6 +48,11 @@ export function dayKey(when: Date | string = new Date()): string {
 /** +1 for answering a question, in the feed or a group. */
 export async function awardAnswerCredit(db: Firestore, uid: string): Promise<void> {
   await updateDoc(doc(db, 'users', uid), { credits: increment(CREDIT_VALUES.ANSWER) });
+}
+
+/** +1 for finishing a Knockout bracket. Called once, after the picks are saved. */
+export async function awardBracketCredit(db: Firestore, uid: string): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { credits: increment(CREDIT_VALUES.BRACKET) });
 }
 
 /**

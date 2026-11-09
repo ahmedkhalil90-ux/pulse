@@ -64,6 +64,13 @@ await env.withSecurityRulesDisabled(async ctx => {
   await setDoc(doc(db, 'referralCodes', FOUNDER_CODE), { uid: 'founder' });
   await setDoc(doc(db, 'counters', 'members'), { last: 1 });
 });
+// A live Knockout bracket (normally made by the daily AI bot).
+await env.withSecurityRulesDisabled(async ctx => {
+  await setDoc(doc(ctx.firestore(), 'brackets', 'ko_bots'), {
+    title: 'Best striker ever', title_ar: 'أفضل مهاجم في التاريخ', status: 'live', createdAt: new Date().toISOString(),
+    contenders: ['Messi', 'Ronaldo', 'Salah', 'Pele', 'Maradona', 'Henry', 'Ronaldo Nazario', 'Benzema'].map((name) => ({ name })),
+  });
+});
 const AUTH = 'http://127.0.0.1:9099';
 const PASS = 'botpass123';
 /** uid for an email account, straight from the Auth emulator. */
@@ -277,6 +284,57 @@ await step(a, 'category chips match the questions and filter the feed', async p 
 });
 
 await step(b, 'bob answers his entry questions', async p => { await answer(p, 5); await toast(p, "You're in!"); });
+
+await step(a, 'knockout: play a bracket to a champion, +1 credit', async p => {
+  await nav(p, 'Feed');
+  const before = await credits(p);
+  await p.locator('[data-testid="knockout-banner"] button').first().click();
+  await p.locator('[data-testid="knockout-overlay"]').waitFor({ timeout: 8000 });
+  for (let i = 0; i < 7; i++) {
+    await p.locator('[data-testid="knockout-option"]').first().waitFor({ timeout: 5000 });
+    await p.locator('[data-testid="knockout-option"]').first().click();
+    await p.waitForTimeout(450);
+  }
+  await p.locator('[data-testid="knockout-results"]').waitFor({ timeout: 10000 });
+  const mine = (await p.locator('[data-testid="my-champion"]').innerText()).trim();
+  if (mine !== 'Messi') throw new Error(`champion shown as "${mine}", expected Messi (always picked first)`);
+  await toast(p, 'Bracket complete! +1 Credit');
+  await p.waitForTimeout(1500);
+  const after = await credits(p);
+  if (after !== before + 1) throw new Error(`credits ${before} -> ${after}, expected +1`);
+  let picks, tally;
+  await env.withSecurityRulesDisabled(async c => {
+    const { getDoc } = await import('firebase/firestore');
+    picks = (await getDoc(doc(c.firestore(), 'bracketPicks', `${await uidOf(ALICE)}_ko_bots`))).data();
+    tally = (await getDoc(doc(c.firestore(), 'bracketResults', 'ko_bots'))).data();
+  });
+  if (JSON.stringify(picks?.picks) !== JSON.stringify([0, 2, 4, 6, 0, 4, 0])) throw new Error(`stored picks ${JSON.stringify(picks?.picks)}`);
+  if (tally?.champ?.['0'] !== 1 || Object.keys(tally.pairs).length !== 7) throw new Error(`tally wrong: ${JSON.stringify(tally)}`);
+  if (JSON.stringify(tally).includes(await uidOf(ALICE))) throw new Error('ANONYMITY: the public tally contains a user id');
+});
+await step(a, 'knockout: reopening shows results, no second run', async p => {
+  await p.locator('[data-testid="knockout-overlay"] button[aria-label="Close"]').click();
+  await p.locator('[data-testid="knockout-banner"] button').first().click();
+  await p.locator('[data-testid="knockout-results"]').waitFor({ timeout: 10000 });
+  if (await p.locator('[data-testid="knockout-option"]').count()) throw new Error('a finished bracket can be played again');
+  await p.locator('[data-testid="knockout-suggest"] input').fill('Best Amr Diab song');
+  await p.locator('[data-testid="knockout-suggest"] button').click();
+  await toast(p, 'best ideas become future brackets');
+  await p.locator('[data-testid="knockout-overlay"] button[aria-label="Close"]').click();
+});
+await step(b, 'knockout: a second member moves the community result', async p => {
+  await p.locator('[data-testid="knockout-banner"] button').first().click();
+  for (let i = 0; i < 7; i++) {
+    await p.locator('[data-testid="knockout-option"]').last().waitFor({ timeout: 5000 });
+    await p.locator('[data-testid="knockout-option"]').last().click();
+    await p.waitForTimeout(450);
+  }
+  await p.locator('[data-testid="knockout-results"]').waitFor({ timeout: 10000 });
+  const pulse = (await p.locator('[data-testid="pulse-champion"]').innerText()).trim();
+  if (!['Messi', 'Benzema'].includes(pulse)) throw new Error(`Pulse champion shown as "${pulse}"`);
+  if (!(await p.getByText('2 brackets').count())) throw new Error('community total does not show 2 brackets');
+  await p.locator('[data-testid="knockout-overlay"] button[aria-label="Close"]').click();
+});
 
 // 3. Groups: alice creates, bob joins with the invite code
 let inviteCode = '';

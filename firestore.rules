@@ -355,6 +355,93 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ---------------------------------------------------------------
+    // Knockout: 8-contender brackets. Round 1 pairs are fixed (0v1, 2v3,
+    // 4v5, 6v7); later pairs depend on each member's own picks.
+    //
+    // picks = the 7 winners in order: [qf0, qf1, qf2, qf3, sf0, sf1, final].
+    // A member's picks are private and written once. The community tally is
+    // +1 per match the member actually played, on the side they picked, and
+    // only in the same write that creates their picks: so it cannot be
+    // replayed, inflated, or written for a match they never had.
+    // ---------------------------------------------------------------
+    function pickIn(p, i, a, b) {
+      return p[i] is int && (p[i] == a || p[i] == b);
+    }
+    function picksOk(p) {
+      return p is list && p.size() == 7
+        && pickIn(p, 0, 0, 1) && pickIn(p, 1, 2, 3) && pickIn(p, 2, 4, 5) && pickIn(p, 3, 6, 7)
+        && pickIn(p, 4, p[0], p[1]) && pickIn(p, 5, p[2], p[3]) && pickIn(p, 6, p[4], p[5]);
+    }
+    function pairKey(a, b) {
+      return a < b ? string(a) + '-' + string(b) : string(b) + '-' + string(a);
+    }
+    // The tally for one match a-b moved by exactly +1 on the winner w.
+    function pairOk(n, o, a, b, w) {
+      let nm = n.get(pairKey(a, b), {});
+      let om = o.get(pairKey(a, b), {});
+      let ws = string(w);
+      let ls = string(w == a ? b : a);
+      return nm.keys().hasOnly([string(a), string(b)])
+        && nm.get(ws, 0) == om.get(ws, 0) + 1
+        && nm.get(ls, 0) == om.get(ls, 0);
+    }
+    function tallyOk(p, n, o) {
+      return pairOk(n, o, 0, 1, p[0]) && pairOk(n, o, 2, 3, p[1])
+        && pairOk(n, o, 4, 5, p[2]) && pairOk(n, o, 6, 7, p[3])
+        && pairOk(n, o, p[0], p[1], p[4]) && pairOk(n, o, p[2], p[3], p[5])
+        && pairOk(n, o, p[4], p[5], p[6])
+        && n.diff(o).affectedKeys().hasOnly(['0-1', '2-3', '4-5', '6-7', pairKey(p[0], p[1]), pairKey(p[2], p[3]), pairKey(p[4], p[5])]);
+    }
+    function champOk(p, n, o) {
+      let c = string(p[6]);
+      return n.diff(o).affectedKeys().hasOnly([c])
+        && n.get(c, 0) == o.get(c, 0) + 1;
+    }
+    // The caller's own picks, as they will stand after this write.
+    function tallyWriteOk(bracketId) {
+      let p = getAfter(/databases/$(database)/documents/bracketPicks/$(request.auth.uid + '_' + bracketId)).data.picks;
+      let old = resource == null ? {} : resource.data;
+      return tallyOk(p, request.resource.data.get('pairs', {}), old.get('pairs', {}))
+        && champOk(p, request.resource.data.get('champ', {}), old.get('champ', {}));
+    }
+
+    match /brackets/{bracketId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    match /bracketPicks/{pickId} {
+      // Keyed on the path, so "have I played this?" works before the record exists.
+      allow get: if isAdmin() || (isAuthenticated() && pickId.matches(request.auth.uid + '_.+'));
+      allow list: if isAdmin();
+      allow create: if isAuthenticated()
+        && pickId == request.auth.uid + '_' + request.resource.data.bracketId
+        && request.resource.data.keys().hasOnly(['bracketId', 'picks', 'createdAt'])
+        && exists(/databases/$(database)/documents/brackets/$(request.resource.data.bracketId))
+        && get(/databases/$(database)/documents/brackets/$(request.resource.data.bracketId)).data.status == 'live'
+        && picksOk(request.resource.data.picks);
+      allow update, delete: if isAdmin();
+    }
+    match /bracketResults/{bracketId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin()
+        || (isAuthenticated()
+            && !exists(/databases/$(database)/documents/bracketPicks/$(request.auth.uid + '_' + bracketId))
+            && existsAfter(/databases/$(database)/documents/bracketPicks/$(request.auth.uid + '_' + bracketId))
+            && request.resource.data.keys().hasOnly(['pairs', 'champ'])
+            && tallyWriteOk(bracketId));
+      allow delete: if isAdmin();
+    }
+    // Ideas for future brackets. No author is stored.
+    match /bracketSuggestions/{id} {
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasOnly(['text', 'lang', 'createdAt'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 1 && request.resource.data.text.size() <= 60
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin();
+    }
+
     // Waitlist for people without an invite. Anyone may add an email address;
     // nobody but an admin (the console / Admin SDK) can read the list.
     match /waitlist/{entryId} {
