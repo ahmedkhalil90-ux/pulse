@@ -92,6 +92,7 @@ function loadQuestionIndex(): Promise<IndexItem[]> {
 }
 import { ModerationQueue } from './components/ModerationQueue';
 import { KnockoutBanner } from './components/Knockout';
+import { InstallPrompt } from './components/InstallPrompt';
 
 // A fixed list, so demographic buckets do not fragment ("UAE" vs "uae" vs
 // "Emirates") and can actually reach the 10-response display threshold.
@@ -428,6 +429,7 @@ function PulseApp() {
             <p className="text-[11px] text-zinc-500">{ENTRY_ANSWERS - entryLeft}/{ENTRY_ANSWERS} · {t("Groups, Games and asking unlock after that.")}</p>
           </div>
         )}
+        {activeTab === 'feed' && user && entryLeft === 0 && <InstallPrompt />}
         {activeTab === 'feed' && <Feed />}
         {activeTab === 'groups' && <GroupsView />}
         {activeTab === 'game' && <GameView />}
