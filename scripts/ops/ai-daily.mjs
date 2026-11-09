@@ -175,7 +175,41 @@ async function markDuplicate(d, originalId) {
   report.moderated.duplicates = (report.moderated.duplicates ?? 0) + 1;
 }
 
+// Live questions members flagged as "already asked": merge into the
+// matching question if it really is the same, keeping the one with more
+// answers. The other is retired (its answers and results are kept), never
+// deleted. Checked again only when it collects new flags.
+async function flaggedDuplicates() {
+  const flagged = (await db.collection('questions').where('flags_duplicate', '>=', 1).limit(100).get()).docs
+    .filter((d) => d.data().status === 'live' && (d.data().flags_duplicate ?? 0) > (d.data().dupCheckedFlags ?? 0));
+  if (!flagged.length) return;
+  const live = (await db.collection('questions').where('status', '==', 'live').select('text', 'options').get()).docs.map((d) => ({ id: d.id, ...d.data() }));
+  const total = async (id) => { const c = (await db.doc(`results/${id}`).get()).data()?.counts ?? {}; return (c['0'] ?? 0) + (c['1'] ?? 0); };
+  let merged = 0, kept = 0;
+  for (const d of flagged) {
+    const q = { id: d.id, ...d.data() };
+    let best = null;
+    for (const e of live) { if (e.id === q.id) continue; const sc = simScore(q, e); if (!best || sc > best.sc) best = { e, sc }; }
+    let same = best && best.sc >= 0.6;
+    if (!same && best && best.sc >= 0.25) {
+      const r = await gemini(`Are these two poll questions effectively the same question (would people answer both the same way)? Wording, order and language may differ.
+A: ${q.text} [${q.options?.join(' / ')}]
+B: ${best.e.text} [${best.e.options?.join(' / ')}]
+Return {"same":true|false}.`);
+      same = r?.same === true;
+    }
+    if (!same) { await d.ref.update({ dupCheckedFlags: q.flags_duplicate ?? 0 }); kept++; continue; }
+    const [ta, tb] = [await total(q.id), await total(best.e.id)];
+    const [keep, drop] = ta >= tb ? [q.id, best.e.id] : [best.e.id, q.id];
+    await db.doc(`questions/${drop}`).update({ status: 'retired', duplicateOf: keep, retiredReason: 'duplicate', moderatedAt: new Date().toISOString(), moderatedBy: 'ai-daily' });
+    if (drop !== q.id) await d.ref.update({ dupCheckedFlags: q.flags_duplicate ?? 0 });
+    merged++;
+  }
+  report.flaggedDuplicates = `${merged} merged, ${kept} not the same`;
+}
+
 async function moderate() {
+  try { await flaggedDuplicates(); } catch (e) { report.errors.push(`flagged duplicates: ${String(e.message).slice(0, 120)}`); }
   const pendingSnap = await db.collection('questions').where('status', '==', 'pending').limit(100).get();
   const pending = { docs: await dedupePending(pendingSnap.docs) };
   for (let i = 0; i < pending.docs.length && timeLeft() > 60000; i += 20) {
@@ -319,7 +353,7 @@ for (const [name, fn] of Object.entries({ moderate, trends, qotd, knockout, dial
 }
 report.when = new Date().toISOString();
 const md = [`### Pulse daily bot, ${report.when.slice(0, 10)}`,
-  `- Moderation: ${report.moderated.approved} approved, ${report.moderated.rejected} rejected, ${report.moderated.duplicates ?? 0} merged as duplicates, ${report.moderated.held} left for you`,
+  `- Moderation: ${report.moderated.approved} approved, ${report.moderated.rejected} rejected, ${report.moderated.duplicates ?? 0} merged as duplicates, ${report.moderated.held} left for you`, `- Flagged as already asked: ${report.flaggedDuplicates ?? 'none'}`,
   `- Trend questions added: ${report.trends}`, `- Question of the day: ${report.qotd ?? 'unchanged'}`, `- Knockout: ${report.knockout ?? 'not run'}`, `- Dialect versions added: ${report.dialects}`,
   `- New questions: ${report.generated} drafted, ${report.pooled} passed review into the pool`,
   `- Model calls: ${Object.entries(report.calls).map(([m, n]) => `${m} ${n}`).join(', ') || 'none'}`,

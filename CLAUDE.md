@@ -142,7 +142,7 @@ Do not introduce new UI libraries or a light theme without asking.
 
 **Safe to proceed on:** dependency updates, test coverage, copy fixes, UI polish, seed content generation, refactors that do not touch the above.
 
-**Testing:** 440 tests, plus the bots (`npm run bots`). `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
+**Testing:** 447 tests, plus the bots (`npm run bots`). `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
 
 - **Rules**  (`tests/rules.test.ts`, cases in `tests/cases/`). Vote integrity, flagging and boosting, the UID-migration takeover fix, answer-record ownership, game reads, group updates, results reads.
 - **Mutation verification** (`tests/mutation.test.ts`). Every deny-case names the mutation that should make it pass. The harness loosens that one guard in an in-memory copy of the rules, loads it into a throwaway emulator project, and asserts the case flips to allowed. `firestore.rules` is only ever read, never written. A mutation target that no longer matches exactly once throws, so a reworded rule breaks loudly instead of silently making a test vacuous.

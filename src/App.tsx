@@ -1415,11 +1415,24 @@ function QuestionCard({
 
   const [showFlagConfirm, setShowFlagConfirm] = useState(false);
 
-  const handleFlag = async (reason: 'unclear' | 'inappropriate') => {
+  const handleFlag = async (reason: 'unclear' | 'inappropriate' | 'duplicate') => {
     if (!user) return;
     if (question.authorUid === user.uid) {
       toast.error(t("You can't flag your own question."));
       setShowFlagConfirm(false);
+      return;
+    }
+    if (reason === 'duplicate') {
+      // Its own counter: it never hides a question; the daily bot checks it
+      // against similar questions and merges it if it really is the same.
+      try {
+        await updateDoc(doc(db, 'questions', question.id), { flags_duplicate: increment(1) });
+        toast.success(t("Thanks. We'll check it against similar questions and merge it if it's the same."));
+        setShowFlagConfirm(false);
+        if (onNext) onNext();
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `questions/${question.id}`);
+      }
       return;
     }
     try {
@@ -1674,6 +1687,13 @@ function QuestionCard({
                 className="w-full px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-sm font-bold hover:bg-white/10 transition-all text-left flex items-center justify-between group"
               >
                 <span>{t("Unclear question")}</span>
+                <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+              <button
+                onClick={() => handleFlag('duplicate')}
+                className="w-full px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-sm font-bold hover:bg-white/10 transition-all text-left flex items-center justify-between group"
+              >
+                <span>{t("Already asked (same question, different words)")}</span>
                 <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
               <button

@@ -384,5 +384,7 @@
  "Add Pulse to your home screen": "أضف Pulse إلى شاشتك الرئيسية",
  "Install": "تثبيت",
  "Tap": "اضغط",
- "then \"Add to Home Screen\".": "ثم \"إضافة إلى الشاشة الرئيسية\"."
+ "then \"Add to Home Screen\".": "ثم \"إضافة إلى الشاشة الرئيسية\".",
+ "Already asked (same question, different words)": "سؤال مكرر (نفس السؤال بصياغة مختلفة)",
+ "Thanks. We'll check it against similar questions and merge it if it's the same.": "شكرًا. سنقارنه بالأسئلة المشابهة وندمجه إذا كان هو نفسه."
 }

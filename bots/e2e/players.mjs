@@ -336,6 +336,21 @@ await step(b, 'knockout: a second member moves the community result', async p =>
   await p.locator('[data-testid="knockout-overlay"] button[aria-label="Close"]').click();
 });
 
+await step(b, 'flag a question as already asked: counted, not hidden', async p => {
+  await nav(p, 'Feed');
+  const text = (await p.locator('h3').first().innerText({ timeout: 10000 })).trim();
+  await p.getByTitle('Flag Question').first().click();
+  await p.getByText('Already asked (same question, different words)').click();
+  await toast(p, 'merge it if it');
+  let q;
+  await env.withSecurityRulesDisabled(async c => {
+    const { getDocs, collection, query, where } = await import('firebase/firestore');
+    q = (await getDocs(query(collection(c.firestore(), 'questions'), where('text', '==', text)))).docs[0]?.data();
+  });
+  if (q?.flags_duplicate !== 1) throw new Error(`flags_duplicate is ${q?.flags_duplicate}`);
+  if (q.status !== 'live' || (q.flags ?? 0) !== 0) throw new Error('an already-asked flag hid the question or counted as a report');
+});
+
 // 3. Groups: alice creates, bob joins with the invite code
 let inviteCode = '';
 await step(a, 'create group', async p => {
