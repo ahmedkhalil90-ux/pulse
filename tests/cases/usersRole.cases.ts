@@ -1,6 +1,7 @@
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import type { RulesTestContext } from '@firebase/rules-unit-testing';
 import type { Case } from '../helpers/env';
+import { INVITE, seedInvite } from '../helpers/fixtures';
 
 /**
  * users/{userId} update -- privilege escalation via `role`.
@@ -81,11 +82,13 @@ export const usersRoleCases: Case[] = [
     name: 'signup can still create its own profile',
     expect: 'allow',
     as: USER,
+    seed: (ctx) => seedInvite(ctx),
     run: (db) =>
       setDoc(doc(db, 'users', USER.uid), {
         username: 'roleuser1',
         isVerified: true,
         credits: 10,
+        invitedWith: INVITE,
       }),
   },
   {
@@ -93,11 +96,13 @@ export const usersRoleCases: Case[] = [
     expect: 'deny',
     killedBy: 'M34',
     as: USER,
+    seed: (ctx) => seedInvite(ctx),
     run: (db) =>
       setDoc(doc(db, 'users', USER.uid), {
         username: 'roleuser1',
         isVerified: true,
         credits: 10,
+        invitedWith: INVITE,
         role: 'admin',
       }),
   },
@@ -106,12 +111,14 @@ export const usersRoleCases: Case[] = [
     expect: 'deny',
     killedBy: 'M34',
     as: USER,
+    seed: (ctx) => seedInvite(ctx),
     // Deleting your own profile is permitted; re-creating it elevated is not.
     run: (db) =>
       setDoc(doc(db, 'users', USER.uid), {
         username: 'roleuser1',
         isVerified: true,
         credits: 10,
+        invitedWith: INVITE,
         role: 'admin',
       }),
   },
@@ -120,11 +127,13 @@ export const usersRoleCases: Case[] = [
     expect: 'deny',
     killedBy: 'M35',
     as: USER,
+    seed: (ctx) => seedInvite(ctx),
     run: (db) =>
       setDoc(doc(db, 'users', 'victim-uid'), {
         username: 'victim',
         isVerified: true,
         credits: 10,
+        invitedWith: INVITE,
       }),
   },
   {

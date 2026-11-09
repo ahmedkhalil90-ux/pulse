@@ -12,6 +12,8 @@ import {
   User, 
   LayoutGrid, 
   CheckCircle2, 
+  Sparkles,
+  Ticket,
   AlertCircle,
   TrendingUp,
   Globe,
@@ -73,6 +75,8 @@ import {
 import { addVoteToResults } from './lib/votes';
 import { orderFeed, categoryInterest } from './lib/feedOrder';
 import { track } from './lib/activity';
+import { ENTRY_ANSWERS, UNLOCK_ANSWERS, memberLabel, inviteUrl } from './lib/member';
+import { useAnswerCount, useMemberProgress, useAuthorMilestones } from './lib/progress';
 import { POST_CATEGORIES, ALL_CATEGORIES, categoriesByCount } from './lib/categories';
 import { findSimilar, type IndexItem } from './lib/similar';
 import { questionUrl, shareText, whatsappUrl, shareLink, pickCard, sharePick } from './lib/share';
@@ -218,7 +222,7 @@ const sharedIdFromPath = () => {
 };
 
 function PulseApp() {
-  const { user, loading, signUp, signIn, signOut, updateProfile, redeemReferral } = useAuth();
+  const { user, loading, signUp, signIn, signOut, updateProfile, redeemReferral, resetPassword } = useAuth();
   const [sharedId, setSharedId] = useState<string | null>(sharedIdFromPath);
   const [sharedPreview, setSharedPreview] = useState<string | null>(null);
 
@@ -255,8 +259,27 @@ function PulseApp() {
   const [activeTab, setActiveTab] = useState<'feed' | 'groups' | 'game' | 'my-questions' | 'profile'>('feed');
   const [showSignup, setShowSignup] = useState(false);
   const [showCreate, setShowCreate] = useState<{ open: boolean, groupId?: string }>({ open: false });
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>(() => (sharedIdFromPath() ? 'signup' : 'signin'));
-  const [username, setUsername] = useState('');
+  const answers = useAnswerCount(user?.uid);
+  useMemberProgress(user, answers, () => setShowCreate({ open: true }));
+  useAuthorMilestones(user?.uid);
+  // New members answer a few questions before the rest of the app opens.
+  const entryLeft = user && answers !== null ? Math.max(0, ENTRY_ANSWERS - answers) : 0;
+  const goTo = (tab: typeof activeTab) => {
+    if (entryLeft > 0 && tab !== 'feed' && tab !== 'profile') {
+      toast(`${t("Answer")} ${entryLeft} ${t("more to unlock this")}`);
+      return;
+    }
+    setActiveTab(tab);
+  };
+  // Invite code from the link (?ref=), or remembered from an earlier visit.
+  const [inviteCode, setInviteCode] = useState<string>(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('ref');
+    if (fromUrl) return fromUrl.toUpperCase();
+    try { return localStorage.getItem(REF_KEY) ?? ''; } catch { return ''; }
+  });
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'reset' | 'waitlist'>(() => (inviteCode ? 'signup' : 'signin'));
+  const [username, setUsername] = useState(''); // email, or a legacy username at sign-in
+  const [waitlisted, setWaitlisted] = useState(false);
   const [password, setPassword] = useState('');
   const [demographics, setDemographics] = useState({ ageRange: '', gender: '', country: '' });
   const [isProcessing, setIsProcessing] = useState(false);
@@ -291,35 +314,67 @@ function PulseApp() {
   }
 
   const handleSignup = async () => {
-    if (!username.trim()) return toast.error(t("Please enter a username"));
+    if (!inviteCode.trim()) { setAuthMode('waitlist'); return; }
+    if (!username.includes('@')) return toast.error(t("Please enter a valid email address."));
     if (password.length < 6) return toast.error(t("Password must be at least 6 characters"));
     if (!demographics.ageRange || !demographics.gender || !demographics.country) {
       return toast.error(t("Please complete your profile details"));
     }
-    
     setIsProcessing(true);
     try {
-      await signUp(username, password, demographics);
+      // Kept until the referral is redeemed after sign-up.
+      try { localStorage.setItem(REF_KEY, inviteCode.trim().toUpperCase()); } catch { /* ignore */ }
+      await signUp(username, password, demographics, inviteCode);
       setShowSignup(false);
       toast.success(t("Welcome to Pulse!"));
     } catch (e: any) {
-      toast.error(e.message || 'Signup failed. Try again.');
+      if (e.code === 'invalid-invite') {
+        try { localStorage.removeItem(REF_KEY); } catch { /* ignore */ }
+        setInviteCode('');
+      }
+      toast.error(e.message || t('Sign-up failed. Try again.'));
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleSignin = async () => {
-    if (!username.trim()) return toast.error(t("Please enter your username"));
+    if (!username.trim()) return toast.error(t("Please enter your email"));
     if (!password) return toast.error(t("Please enter your password"));
-    
     setIsProcessing(true);
     try {
       await signIn(username, password);
       setShowSignup(false);
       toast.success(t("Welcome back!"));
     } catch (e: any) {
-      toast.error(e.message || 'Sign in failed.');
+      toast.error(e.message || t('Sign in failed.'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReset = async () => {
+    setIsProcessing(true);
+    try {
+      await resetPassword(username);
+      toast.success(t("If that email has an account, a reset link is on its way."));
+      setAuthMode('signin');
+    } catch (e: any) {
+      toast.error(e.message || t('Could not send the reset email.'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleWaitlist = async () => {
+    const email = username.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast.error(t("Please enter a valid email address."));
+    setIsProcessing(true);
+    try {
+      await addDoc(collection(db, 'waitlist'), { email, lang, createdAt: serverTimestamp() });
+      setWaitlisted(true);
+    } catch {
+      toast.error(t('Could not join the waitlist. Try again.'));
     } finally {
       setIsProcessing(false);
     }
@@ -363,27 +418,36 @@ function PulseApp() {
 
       {/* Main Content */}
       <main className="pt-20 pb-24 px-4 max-w-md mx-auto">
+        {entryLeft > 0 && activeTab === 'feed' && (
+          <div className="mb-4 rounded-2xl border border-white/10 bg-zinc-900/60 p-4 space-y-2" data-testid="entry-progress">
+            <p className="text-sm font-bold">{t("Welcome to Pulse. Answer")} {ENTRY_ANSWERS} {t("questions to get in.")}</p>
+            <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+              <div className="h-full bg-white transition-all" style={{ width: `${((ENTRY_ANSWERS - entryLeft) / ENTRY_ANSWERS) * 100}%` }} />
+            </div>
+            <p className="text-[11px] text-zinc-500">{ENTRY_ANSWERS - entryLeft}/{ENTRY_ANSWERS} · {t("Groups, Games and asking unlock after that.")}</p>
+          </div>
+        )}
         {activeTab === 'feed' && <Feed />}
         {activeTab === 'groups' && <GroupsView />}
         {activeTab === 'game' && <GameView />}
         {activeTab === 'my-questions' && <MyQuestionsView />}
-        {activeTab === 'profile' && <ProfileView />}
+        {activeTab === 'profile' && <ProfileView answers={answers} />}
       </main>
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-md border-t border-white/5 px-6 py-4 flex items-center justify-between max-w-md mx-auto">
-        <NavButton active={activeTab === 'feed'} onClick={() => setActiveTab('feed')} icon={<Globe />} label={t("Feed")} />
-        <NavButton active={activeTab === 'my-questions'} onClick={() => setActiveTab('my-questions')} icon={<LayoutGrid />} label={t("My Qs")} />
+        <NavButton active={activeTab === 'feed'} onClick={() => goTo('feed')} icon={<Globe />} label={t("Feed")} />
+        <NavButton active={activeTab === 'my-questions'} onClick={() => goTo('my-questions')} icon={<LayoutGrid />} label={t("My Qs")} />
         <div className="relative -top-6">
           <button 
-            onClick={() => setShowCreate({ open: true })}
+            onClick={() => (entryLeft > 0 ? toast(`${t("Answer")} ${entryLeft} ${t("more to unlock this")}`) : setShowCreate({ open: true }))}
             className="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center shadow-2xl shadow-white/20 active:scale-90 transition-transform"
           >
             <Plus className="w-8 h-8" />
           </button>
         </div>
-        <NavButton active={activeTab === 'groups'} onClick={() => setActiveTab('groups')} icon={<Users />} label={t("Groups")} />
-        <NavButton active={activeTab === 'game'} onClick={() => setActiveTab('game')} icon={<Gamepad2 />} label={t("Games")} />
+        <NavButton active={activeTab === 'groups'} onClick={() => goTo('groups')} icon={<Users />} label={t("Groups")} />
+        <NavButton active={activeTab === 'game'} onClick={() => goTo('game')} icon={<Gamepad2 />} label={t("Games")} />
       </nav>
 
       {/* Signup/Signin Modal */}
@@ -398,29 +462,55 @@ function PulseApp() {
             <div className="w-full max-w-sm space-y-8 py-10">
               <div className="space-y-2 text-center">
                 <h2 className="text-4xl font-bold tracking-tighter">
-                  {authMode === 'signin' ? t("Welcome Back") : t("Join Pulse")}
+                  {authMode === 'signin' ? t("Welcome Back") : authMode === 'reset' ? t("Reset password") : authMode === 'waitlist' ? t("Pulse is invite-only") : t("Join Pulse")}
                 </h2>
                 <p className="text-zinc-500">{t("Radical anonymity. Pure honesty.")}</p>
-                {sharedPreview && (
+                {sharedPreview && authMode !== 'waitlist' && (
                   <div className="mt-4 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-left space-y-1" data-testid="shared-teaser">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-300">{t("A friend sent you a question")}</p>
                     <p className="font-bold">{sharedPreview}</p>
                     <p className="text-xs text-zinc-400">{t("Sign up to answer it and see what everyone picked.")}</p>
                   </div>
                 )}
+                {authMode === 'signup' && inviteCode && (
+                  <p className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300" data-testid="invite-chip">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {t("You've been invited by a member")}
+                  </p>
+                )}
                 <LanguageToggle />
               </div>
-              
+
+              {authMode === 'waitlist' ? (
+                waitlisted ? (
+                  <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-6 text-center space-y-2" data-testid="waitlist-done">
+                    <p className="text-2xl">🎟️</p>
+                    <p className="font-bold">{t("You're on the list.")}</p>
+                    <p className="text-sm text-zinc-400">{t("We'll email you when a spot opens. Know someone on Pulse? Their invite link gets you in straight away.")}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-sm text-zinc-400 text-center">{t("You join through a member's invite link. Ask a friend on Pulse for theirs, enter their code, or join the waitlist.")}</p>
+                    <Input value={inviteCode} onChange={(e) => setInviteCode(e.target.value.toUpperCase())} placeholder={t("Invite code")} />
+                    <Button variant="secondary" className="w-full" disabled={!inviteCode.trim()} onClick={() => setAuthMode('signup')}>{t("Use invite code")}</Button>
+                    <div className="h-px bg-zinc-800" />
+                    <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("Your email")} type="email" />
+                    <Button onClick={handleWaitlist} loading={isProcessing} className="w-full h-14 text-lg">{t("Join the waitlist")}</Button>
+                  </div>
+                )
+              ) : (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Username")}</label>
+                  <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{authMode === 'signin' ? t("Email (or username)") : t("Email")}</label>
                   <Input 
                     value={username} 
                     onChange={(e) => setUsername(e.target.value)} 
-                    placeholder={t("Enter your handle...")} 
+                    type={authMode === 'signin' ? 'text' : 'email'}
+                    placeholder={t("you@example.com")} 
                   />
+                  {authMode === 'signup' && <p className="text-[10px] text-zinc-600 ml-1">{t("Only used to sign in and reset your password. Never shown to anyone.")}</p>}
                 </div>
 
+                {authMode !== 'reset' && (
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">{t("Password")}</label>
                   <Input 
@@ -430,6 +520,7 @@ function PulseApp() {
                     placeholder={t("Min 6 characters...")} 
                   />
                 </div>
+                )}
                 
                 {authMode === 'signup' && (
                   <>
@@ -479,18 +570,25 @@ function PulseApp() {
                   </>
                 )}
               </div>
+              )}
 
               <div className="space-y-4">
+                {authMode !== 'waitlist' && (
                 <Button 
-                  onClick={authMode === 'signin' ? handleSignin : handleSignup} 
+                  onClick={authMode === 'signin' ? handleSignin : authMode === 'reset' ? handleReset : handleSignup} 
                   loading={isProcessing} 
                   className="w-full h-14 text-lg"
                 >
-                  {authMode === 'signin' ? t("Sign In") : t("Create Account")}
+                  {authMode === 'signin' ? t("Sign In") : authMode === 'reset' ? t("Send reset link") : t("Create Account")}
                 </Button>
-                
+                )}
+                {authMode === 'signin' && (
+                  <button onClick={() => setAuthMode('reset')} className="w-full text-zinc-500 text-sm hover:text-white transition-colors">
+                    {t("Forgot password?")}
+                  </button>
+                )}
                 <button 
-                  onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+                  onClick={() => setAuthMode(authMode === 'signin' ? (inviteCode ? 'signup' : 'waitlist') : 'signin')}
                   className="w-full text-zinc-500 text-sm hover:text-white transition-colors"
                 >
                   {authMode === 'signin' ? t("Don't have an account? Sign Up") : t("Already have an account? Sign In")}
@@ -526,7 +624,7 @@ function PulseApp() {
 function ShareRow({ question, results, pick }: { question: Question; results: QuestionResult | null; pick: number | null }) {
   const { user } = useAuth();
   const country = user?.demographics?.country;
-  const url = questionUrl(question.id, user?.referralCode);
+  const url = questionUrl(question.id, user?.memberNumber ? user.referralCode : undefined);
   const text = shareText(question, country);
   const share = async () => {
     const r = await shareLink(text, url);
@@ -562,12 +660,18 @@ function ShareRow({ question, results, pick }: { question: Question; results: Qu
 }
 
 /** Daily featured question, picked by the daily bot (ops/questionOfDay). */
-function QuestionOfTheDay({ answeredIds }: { answeredIds: Set<string> }) {
+const QuestionOfTheDay = ({ answeredIds }: { answeredIds: Set<string> }) =>
+  <FeaturedQuestion answeredIds={answeredIds} opsId="questionOfDay" label={t("Question of the day")} />;
+/** Weekly pick from members' own questions (ops/questionOfWeek). The author stays anonymous. */
+const QuestionOfTheWeek = ({ answeredIds }: { answeredIds: Set<string> }) =>
+  <FeaturedQuestion answeredIds={answeredIds} opsId="questionOfWeek" label={t("Question of the week, asked by a member")} tone="violet" />;
+
+function FeaturedQuestion({ answeredIds, opsId, label, tone = 'orange' }: { answeredIds: Set<string>; opsId: string; label: string; tone?: 'orange' | 'violet' }) {
   const { user } = useAuth();
   const [q, setQ] = useState<Question | null>(null);
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    getDoc(doc(db, 'ops', 'questionOfDay'))
+    getDoc(doc(db, 'ops', opsId))
       .then(async (s) => {
         if (!s.exists()) return;
         const qs = await getDoc(doc(db, 'questions', s.data().id));
@@ -579,16 +683,17 @@ function QuestionOfTheDay({ answeredIds }: { answeredIds: Set<string> }) {
   const done = answeredIds.has(q.id);
   return (
     <>
-      <button onClick={() => setOpen(true)} data-testid="qotd"
-        className="w-full text-left rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 flex items-center gap-3 hover:bg-orange-500/15">
-        <Flame className="w-5 h-5 text-orange-400 shrink-0" />
+      <button onClick={() => setOpen(true)} data-testid={opsId === 'questionOfDay' ? 'qotd' : 'qotw'}
+        className={cn('w-full text-left rounded-2xl border px-4 py-3 flex items-center gap-3',
+          tone === 'orange' ? 'border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/15' : 'border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/15')}>
+        {tone === 'orange' ? <Flame className="w-5 h-5 text-orange-400 shrink-0" /> : <Sparkles className="w-5 h-5 text-violet-400 shrink-0" />}
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-orange-300">{t("Question of the day")}</p>
+          <p className={cn('text-[10px] font-bold uppercase tracking-widest', tone === 'orange' ? 'text-orange-300' : 'text-violet-300')}>{label}</p>
           <p className="font-bold truncate">{qText(q, user?.demographics?.country)}</p>
         </div>
-        <span className="ml-auto text-xs text-orange-300 shrink-0">{done ? t("See results") : t("Answer")}</span>
+        <span className={cn('ml-auto text-xs shrink-0', tone === 'orange' ? 'text-orange-300' : 'text-violet-300')}>{done ? t("See results") : t("Answer")}</span>
       </button>
-      {open && <QuestionOverlay id={q.id} label={t("Question of the day")} onClose={() => setOpen(false)} />}
+      {open && <QuestionOverlay id={q.id} label={label} onClose={() => setOpen(false)} />}
     </>
   );
 }
@@ -890,6 +995,7 @@ function Feed() {
   return (
     <div className="space-y-6">
       {!revisitMode && <QuestionOfTheDay answeredIds={answeredIds} />}
+      {!revisitMode && <QuestionOfTheWeek answeredIds={answeredIds} />}
       {revisitMode && (
         <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded-2xl px-4 py-2">
           <div className="flex items-center gap-2">
@@ -1243,6 +1349,7 @@ function QuestionCard({
 
         toast.success(t("Vote recorded anonymously! +1 Credit"));
         track(user.uid, 'answers');
+        window.dispatchEvent(new Event('pulse:answered'));
       } else {
         toast.success(t("Answer updated!"));
       }
@@ -2667,8 +2774,23 @@ function MyQuestionsView() {
   );
 }
 
-function ProfileView() {
-  const { user, updateProfile, signOut, redeemReferral } = useAuth();
+function ProfileView({ answers }: { answers: number | null }) {
+  const { user, updateProfile, signOut, redeemReferral, addRecoveryEmail } = useAuth();
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
+  const legacyLogin = !!auth.currentUser?.email?.endsWith('@pulse.app');
+  const saveRecoveryEmail = async () => {
+    setSavingEmail(true);
+    try {
+      await addRecoveryEmail(recoveryEmail);
+      toast.success(t("Check your inbox and confirm. After that, sign in with this email."));
+      setRecoveryEmail('');
+    } catch (e: any) {
+      toast.error(e.message || t('Could not add the email.'));
+    } finally {
+      setSavingEmail(false);
+    }
+  };
   const [verifying, setVerifying] = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [referralCode, setReferralCode] = useState('');
@@ -2735,8 +2857,13 @@ function ProfileView() {
           <User className="w-12 h-12 text-zinc-600" />
         </div>
         <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tighter">@{user.username}</h2>
-          <p className="text-zinc-500 text-sm">{t("Member since")} {new Date(user.lastLogin).toLocaleDateString()}</p>
+          <h2 className="text-3xl font-bold tracking-tighter" data-testid="member-label">{memberLabel(user)}</h2>
+          {user.memberNumber && user.username && <p className="text-zinc-600 text-xs">@{user.username}</p>}
+          {user.asker && (
+            <p className="mt-2 inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-violet-300">
+              <Sparkles className="w-3 h-3" /> {t("Asker")}
+            </p>
+          )}
         </div>
       </div>
 
@@ -2826,18 +2953,43 @@ function ProfileView() {
       )}
 
       <div className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 ml-1">{t("Referral Program")}</h3>
-        <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">{t("Your Referral Code")}</span>
-              <p className="font-mono font-bold text-lg tracking-wider">{user.referralCode}</p>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 ml-1">{t("Your invite link")}</h3>
+        <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 space-y-4" data-testid="invite-section">
+          {user.memberNumber && user.referralCode ? (
+            <>
+              <p className="text-sm text-zinc-400">{t("Pulse is invite-only. Share your link anywhere: everyone who joins with it gets in, and you both get +15 credits.")}</p>
+              <p className="font-mono text-xs break-all bg-black/40 border border-white/5 rounded-xl p-3" data-testid="invite-link">{inviteUrl(user.referralCode)}</p>
+              <div className="flex gap-2">
+                <Button className="flex-1 h-11 text-sm" onClick={async () => {
+                  const r = await shareLink(t("Join me on Pulse: anonymous questions, honest answers."), inviteUrl(user.referralCode!));
+                  if (r === 'copied') toast.success(t("Invite link copied!"));
+                  if (r !== 'cancelled') track(user.uid, 'shares');
+                }}>
+                  <Share2 className="w-4 h-4" /> {t("Share")}
+                </Button>
+                <a href={whatsappUrl(t("Join me on Pulse: anonymous questions, honest answers."), inviteUrl(user.referralCode))} target="_blank" rel="noreferrer"
+                  onClick={() => track(user.uid, 'shares')}
+                  className="flex-1 h-11 text-sm rounded-xl border border-green-500/30 text-green-400 flex items-center justify-center gap-2 hover:bg-green-500/10">
+                  <MessageCircle className="w-4 h-4" /> WhatsApp
+                </a>
+                <button onClick={() => { navigator.clipboard?.writeText(inviteUrl(user.referralCode!)); toast.success(t("Invite link copied!")); }}
+                  className="p-3 hover:bg-white/5 rounded-xl border border-white/5 text-zinc-400" aria-label={t("Copy")}>
+                  <Copy className="w-4 h-4" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-start gap-3" data-testid="invite-locked">
+              <Lock className="w-5 h-5 text-zinc-500 shrink-0 mt-0.5" />
+              <div className="space-y-2 flex-1">
+                <p className="text-sm font-bold">{t("Answer")} {Math.max(0, UNLOCK_ANSWERS - (answers ?? 0))} {t("more questions to get your member number and invite link.")}</p>
+                <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                  <div className="h-full bg-white" style={{ width: `${Math.min(100, ((answers ?? 0) / UNLOCK_ANSWERS) * 100)}%` }} />
+                </div>
+              </div>
             </div>
-            <button onClick={copyMyCode} className="p-2 hover:bg-white/5 rounded-lg transition-colors text-zinc-400">
-              <Copy className="w-4 h-4" />
-            </button>
-          </div>
-          
+          )}
+
           {!user.referredBy ? (
             <div className="space-y-3 pt-2">
               <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">{t("Have a code? Redeem for +15 credits")}</p>
@@ -2875,6 +3027,17 @@ function ProfileView() {
           <ProfileStat label={t("Country")} value={user.demographics.country || t("Not set")} />
         </div>
       </div>
+
+      {legacyLogin && (
+        <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 space-y-3" data-testid="recovery-email">
+          <h3 className="font-bold">{t("Add a recovery email")}</h3>
+          <p className="text-sm text-zinc-500">{t("You sign in with a username, so a forgotten password can't be reset. Add your email to fix that. It is never shown to anyone.")}</p>
+          <div className="flex gap-2">
+            <Input value={recoveryEmail} onChange={(e) => setRecoveryEmail(e.target.value)} placeholder={t("you@example.com")} type="email" />
+            <Button onClick={saveRecoveryEmail} loading={savingEmail} disabled={!recoveryEmail.includes('@')}>{t("Save")}</Button>
+          </div>
+        </div>
+      )}
 
       <LanguageToggle />
 

@@ -1,3 +1,4 @@
+import { memberLabel } from '../../lib/member';
 import { t } from '../../lib/i18n';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -128,7 +129,7 @@ export function QuestionSubmission({ game }: { game: Game }) {
         batch.set(doc(db, 'game_question_authors', qRef.id), {
           gameId: game.id,
           authorUid: user.uid,
-          authorUsername: user.username
+          authorUsername: memberLabel(user)
         });
       }
 

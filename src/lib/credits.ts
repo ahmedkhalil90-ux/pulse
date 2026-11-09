@@ -152,7 +152,10 @@ export async function awardReferral(
   const batch = writeBatch(db);
   batch.update(doc(db, 'users', newUserUid), {
     credits: increment(CREDIT_VALUES.REFERRAL),
-    referredBy: referrerUid,
+    // A flag, not the referrer's uid: profiles are readable by any member,
+    // and the uid would expose who invited whom. The private referrals record
+    // below is where the referrer is kept.
+    referredBy: true,
   });
   batch.set(doc(db, 'referrals', newUserUid), {
     code: code.toUpperCase(),

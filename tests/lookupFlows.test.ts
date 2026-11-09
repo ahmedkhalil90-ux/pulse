@@ -6,6 +6,7 @@ import {
 import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { makeEnv } from './helpers/env';
+import { INVITE, seedInvite } from './helpers/fixtures';
 
 /**
  * End-to-end lookup flows against the real ruleset, walking the same sequence
@@ -28,6 +29,8 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   await env.clearFirestore();
+  // Sign-up is invite-only: every client-created profile below names this code.
+  await env.withSecurityRulesDisabled((ctx) => seedInvite(ctx));
 });
 
 const dbFor = (a: { uid: string; email: string }) =>
@@ -43,6 +46,7 @@ describe('signup claims its lookups', () => {
         isVerified: true,
         credits: 13,
         referralCode: 'ALICE1',
+        invitedWith: INVITE,
       }),
     );
     await assertSucceeds(setDoc(doc(db, 'usernames', 'alice'), { uid: ALICE.uid }));
@@ -59,6 +63,7 @@ describe('signup claims its lookups', () => {
         isVerified: true,
         credits: 13,
         referralCode: 'ALICE1',
+        invitedWith: INVITE,
       }),
     );
     await assertFails(setDoc(doc(db, 'referralCodes', 'STOLEN'), { uid: ALICE.uid }));
@@ -72,6 +77,7 @@ describe('signup claims its lookups', () => {
         isVerified: true,
         credits: 0,
         referralCode: 'BOBBY1',
+        invitedWith: INVITE,
       }),
     );
     await assertFails(setDoc(doc(db, 'usernames', 'alice'), { uid: BOB.uid }));

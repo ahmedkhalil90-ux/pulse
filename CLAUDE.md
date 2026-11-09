@@ -140,9 +140,9 @@ Do not introduce new UI libraries or a light theme without asking.
 
 **Safe to proceed on:** dependency updates, test coverage, copy fixes, UI polish, seed content generation, refactors that do not touch the above.
 
-**Testing:** 106 tests. `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
+**Testing:** 381 tests, plus the bots (`npm run bots`). `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
 
-- **Rules — 39 tests** (`tests/rules.test.ts`, cases in `tests/cases/`). Vote integrity, flagging and boosting, the UID-migration takeover fix, answer-record ownership, game reads, group updates, results reads.
+- **Rules**  (`tests/rules.test.ts`, cases in `tests/cases/`). Vote integrity, flagging and boosting, the UID-migration takeover fix, answer-record ownership, game reads, group updates, results reads.
 - **Mutation verification** (`tests/mutation.test.ts`). Every deny-case names the mutation that should make it pass. The harness loosens that one guard in an in-memory copy of the rules, loads it into a throwaway emulator project, and asserts the case flips to allowed. `firestore.rules` is only ever read, never written. A mutation target that no longer matches exactly once throws, so a reworded rule breaks loudly instead of silently making a test vacuous.
 - **Credit economy** (`tests/credits.test.ts`) and **game mode** (`tests/game.test.ts`).
 
@@ -172,24 +172,29 @@ Do not re-report these, and do not "fix" them again.
 - Feed shuffle works — the seeder writes `random`.
 - Six credit bugs: boost overdraft, unlock overdraft, non-atomic boost, unlock double-charge, unlock race, daily bonus double-award.
 - Game scoring double-count — advancing is idempotent per question.
+- Who-invited-whom leak: profiles no longer carry `referredBy` as a uid or the invite code; the private `referrals` record holds it.
+
+## Invite-only membership
+
+- Sign-up needs a member's invite code (`?ref=`), enforced in rules on profile create. No code: waitlist (email only, admin-readable).
+- Real email + password sign-in with password reset. Legacy `username@pulse.app` accounts still sign in and can add a recovery email.
+- 5 answers to get past the entry gate (client-side); 10 answers to claim a member number (`#0042`, the public identity) and unlock the personal invite link, which is unlimited.
+- Member numbers are claimed in one transaction (counter +1, `memberNumbers/{n}`, profile), cross-checked in rules.
+- Nightly `scripts/ops/members.mjs`: backfills numbers (founder #1), +5 credits and the Asker badge at 100 answers on a member's question, Question of the Week from member questions (author never shown), pauses an invite link with more than 100 sign-ups in 24h.
 
 ## Open issues — in priority order
 
-1. **`game_questions` exposes `authorUsername` to every player from write time.** Contradicts the rule that the question author is revealed only on the final results screen. Leakage among players, not to outsiders.
-2. **`users` is listable by any authenticated user**, leaking every username with demographics and credit balance. Correct fix is a `usernames/{lowercased}` → `{uid}` mapping so lookups are `get` by document ID and `list` can be dropped. Note that uniqueness is enforced by Firebase Auth via the synthetic `username@pulse.app` address, not by this query — the query is an orphan-profile lookup and runs after sign-in, so tightening it does not break signup.
-3. **`groups` read exposes the full member UID list.** The members tab is meant to show a count only. Needs a denormalised `memberCount` plus membership in a subcollection; the array cannot be hidden while `array-contains` queries and join-by-code depend on it.
+(Fixed and live: the game author leak, listable `users`, group member UIDs, the Gemini key in the bundle (moderation runs in the daily bot), password recovery (email accounts), and the admin review queue.)
+
 4. **Results min-10 threshold and the 3-credit unlock are unenforceable in rules.** *(Blaze)* Rules are all-or-nothing on a document — they cannot withhold `demographics` or count a bucket before releasing it. Needs a callable Cloud Function.
-5. **Gemini key still reaches the client bundle.** *(Blaze)* Needs moderation in a Cloud Function. **Must be resolved before public launch.**
 6. **Vote replay.** *(Blaze)* A user who genuinely answered can repeat the `results` +1 indefinitely. Rules cannot detect a replay; needs a server-side transaction.
-7. **No password recovery.** *(Blaze)* Synthetic `username@pulse.app` addresses cannot receive reset mail, so resetting one needs the Admin SDK. A user who forgets their password loses their account, credits, and history permanently.
-8. **No admin moderation queue.** Questions correctly fail closed to `pending`, but nothing reviews them, so held questions sit indefinitely.
 
-**Items 4–7 are blocked on the Blaze plan and should ship together** — they are all the same piece of work, a Cloud Functions codebase, and doing them one at a time pays the setup cost four times.
+**Items 4 and 6 need server-side code (Blaze, or a free Cloudflare Worker) and should ship together** — they are all the same piece of work, a Cloud Functions codebase, and doing them one at a time pays the setup cost four times.
 
-Also outstanding, unchanged: no IAP integration, referral system not built, Capacitor conversion not started.
+Also outstanding: no IAP integration, Capacitor conversion not started.
 
 ## Current phase
 
 Pre-beta. Priorities in order: (1) anonymity enforcement is airtight, (2) test coverage on the three engines, (3) shareable beta link for friends, (4) real-device testing, (5) Capacitor and Play Store.
 
-Branch `security/collection-reads` is **unmerged, unpushed, and undeployed**, awaiting smoke-testing of join-by-code for both games and groups. Those two flows read a document before the caller is a member, so they are the paths most likely to have been tightened too far.
+Branch `feat/invite-launch` holds the invite-only release; its rules need Ahmed's approval to deploy.

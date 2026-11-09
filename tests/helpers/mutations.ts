@@ -388,8 +388,8 @@ export const MUTATIONS: Mutation[] = [
       {
         find:
           "                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])\n" +
-          '                        || isAdmin());',
-        replace: '                    && true;',
+          '                        || isAdmin())\n',
+        replace: '                    && true\n',
       },
     ],
   },
@@ -522,8 +522,8 @@ export const MUTATIONS: Mutation[] = [
     label: 'users: profile creation may carry a role field',
     edits: [
       {
-        find: "                    && (!request.resource.data.keys().hasAny(['role']) || isAdmin());",
-        replace: '                    && true;',
+        find: "                    && (!request.resource.data.keys().hasAny(['role']) || isAdmin())\n",
+        replace: '                    && true\n',
       },
     ],
   },
@@ -971,7 +971,7 @@ export const MUTATIONS: Mutation[] = [
     label: 'ops: every operational document becomes readable',
     edits: [
       {
-        find: "      allow get: if isAuthenticated() && docId in ['questionIndex', 'questionOfDay'];",
+        find: "      allow get: if isAuthenticated() && docId in ['questionIndex', 'questionOfDay', 'questionOfWeek'];",
         replace: '      allow get: if isAuthenticated();',
       },
     ],
@@ -1020,6 +1020,61 @@ export const MUTATIONS: Mutation[] = [
     id: 'M88',
     label: 'activity: extra fields (e.g. a question id) may be stored',
     edits: [{ find: "        && request.resource.data.keys().hasOnly(['uid', 'day', 'sessions', 'answers', 'skips', 'shares'])\n", replace: '' }],
+  },
+  {
+    id: 'M89',
+    label: 'users: a profile may be created without a valid invite',
+    edits: [{ find: "                    && (isAdmin() || inviteOk(request.resource.data.get('invitedWith', '')));", replace: ';' }],
+  },
+  {
+    id: 'M90',
+    label: 'users: a paused invite link still lets people in',
+    edits: [{ find: "      return codeDoc.get('paused', false) != true\n        && ", replace: '      return ' }],
+  },
+  {
+    id: 'M91',
+    label: 'users: an invite from a member who has not unlocked inviting is accepted',
+    edits: [{ find: "      return codeDoc.get('paused', false) != true\n        && get(/databases/$(database)/documents/users/$(codeDoc.uid)).data.get('memberNumber', 0) > 0;", replace: "      return codeDoc.get('paused', false) != true;" }],
+  },
+  {
+    id: 'M92',
+    label: 'users: a profile may be created already holding a member number',
+    edits: [{ find: "                    && (!request.resource.data.keys().hasAny(['memberNumber']) || isAdmin())\n", replace: '' }],
+  },
+  {
+    id: 'M93',
+    label: 'users: a member number may be set without claiming it',
+    edits: [{ find: "        && request.resource.data.memberNumber is int\n        && getAfter(/databases/$(database)/documents/memberNumbers/$(string(request.resource.data.memberNumber))).data.uid == request.auth.uid;", replace: ';' }],
+  },
+  {
+    id: 'M94',
+    label: 'users: a member number, once set, may be changed',
+    edits: [{ find: "        && resource.data.get('memberNumber', 0) == 0\n        && request.resource.data.memberNumber is int", replace: "        && request.resource.data.memberNumber is int" }],
+  },
+  {
+    id: 'M95',
+    label: 'counters: the member counter may jump by more than one',
+    edits: [{ find: '            && request.resource.data.last == resource.data.last + 1\n', replace: '' }],
+  },
+  {
+    id: 'M96',
+    label: 'counters: the member counter may advance without a claimed number',
+    edits: [{ find: "            && request.resource.data.last == resource.data.last + 1\n            && getAfter(/databases/$(database)/documents/memberNumbers/$(string(request.resource.data.last))).data.uid == request.auth.uid);", replace: '            && request.resource.data.last == resource.data.last + 1);' }],
+  },
+  {
+    id: 'M97',
+    label: 'memberNumbers: any number may be claimed, not just the next one',
+    edits: [{ find: '            && n == string(getAfter(/databases/$(database)/documents/counters/members).data.last)\n', replace: '' }],
+  },
+  {
+    id: 'M98',
+    label: 'waitlist: extra fields (e.g. a phone number or uid) may be stored',
+    edits: [{ find: "      allow create: if request.resource.data.keys().hasOnly(['email', 'lang', 'createdAt'])\n        && ", replace: '      allow create: if ' }],
+  },
+  {
+    id: 'M99',
+    label: 'waitlist: anything may be stored as the email',
+    edits: [{ find: "        && request.resource.data.email.matches('^[^@\\\\s]+@[^@\\\\s]+\\\\.[^@\\\\s]+$')\n", replace: '' }],
   },
 ];
 

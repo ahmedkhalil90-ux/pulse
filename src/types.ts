@@ -6,13 +6,20 @@ export type UserDemographics = {
 
 export type UserProfile = {
   uid: string;
-  username: string;
+  /** Legacy accounts only; new members are known by their member number. */
+  username?: string;
   isVerified: boolean;
   credits: number;
   demographics: UserDemographics;
   lastLogin: string;
   referralCode?: string;
-  referredBy?: string;
+  referredBy?: boolean | string;
+  /** Invite code used at sign-up (checked by the rules). */
+  invitedWith?: string;
+  /** Join-order number, claimed at UNLOCK_ANSWERS; the public identity. */
+  memberNumber?: number;
+  /** Set by the nightly job once one of their questions reaches 100 answers. */
+  asker?: boolean;
 };
 
 export type QuestionStatus = 'pending' | 'live' | 'rejected' | 'duplicate' | 'retired' | 'pool';

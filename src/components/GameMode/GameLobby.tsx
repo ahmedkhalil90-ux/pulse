@@ -1,3 +1,4 @@
+import { memberLabel } from '../../lib/member';
 import { t } from '../../lib/i18n';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -76,7 +77,7 @@ export function GameLobby({ game }: { game: Game }) {
         );
         const playerData = playerDocs
           .filter(d => d.exists())
-          .map(d => ({ uid: d.id, username: (d.data() as UserProfile).username }));
+          .map(d => ({ uid: d.id, username: memberLabel(d.data() as UserProfile) }));
         setPlayers(playerData);
         setLoading(false);
       } catch (error) {

@@ -280,6 +280,29 @@ service cloud.firestore {
     // rules of the path they read -- so denying everything here costs nothing
     // and means no client can grant itself admin, discover who is an admin, or
     // remove one. Writes are console or Admin SDK only.
+    // Invite-only sign-up. A profile can only be created with the invite code
+    // of an existing member who has unlocked inviting (holds a member
+    // number), and whose link has not been paused for abuse. Only the code
+    // holder's uid is read, never anything about the new user.
+    function inviteOk(code) {
+      return code is string && code.size() > 0
+        && exists(/databases/$(database)/documents/referralCodes/$(code))
+        && inviterOk(get(/databases/$(database)/documents/referralCodes/$(code)).data);
+    }
+    function inviterOk(codeDoc) {
+      return codeDoc.get('paused', false) != true
+        && get(/databases/$(database)/documents/users/$(codeDoc.uid)).data.get('memberNumber', 0) > 0;
+    }
+    // A member number is set once, and only to the number the caller has just
+    // claimed in memberNumbers/{n} in the same write. Numbers are unique
+    // because claiming one advances counters/members by exactly one.
+    function memberNumberClaimOk(userId) {
+      return isOwner(userId)
+        && resource.data.get('memberNumber', 0) == 0
+        && request.resource.data.memberNumber is int
+        && getAfter(/databases/$(database)/documents/memberNumbers/$(string(request.resource.data.memberNumber))).data.uid == request.auth.uid;
+    }
+
     match /admins/{adminUid} {
       // A user may check only their OWN entry, so the app can show the review
       // queue to admins. It reveals nothing about who else is an admin.
@@ -307,11 +330,48 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Member numbers, handed out in join order. counters/members holds the
+    // last number issued. Claiming one is a single transaction: advance the
+    // counter by one, record memberNumbers/{n} -> uid, and set the profile's
+    // memberNumber. Each part checks the others with getAfter, so no number
+    // can be skipped, reused, chosen, or claimed twice by one member.
+    match /counters/{counterId} {
+      allow get: if isAuthenticated() && counterId == 'members';
+      allow list, create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isAuthenticated() && counterId == 'members'
+            && request.resource.data.keys().hasOnly(['last'])
+            && request.resource.data.last == resource.data.last + 1
+            && getAfter(/databases/$(database)/documents/memberNumbers/$(string(request.resource.data.last))).data.uid == request.auth.uid);
+    }
+    match /memberNumbers/{n} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin()
+        || (isAuthenticated()
+            && request.resource.data.keys().hasOnly(['uid'])
+            && request.resource.data.uid == request.auth.uid
+            && n == string(getAfter(/databases/$(database)/documents/counters/members).data.last)
+            && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.memberNumber == int(n));
+      allow update, delete: if isAdmin();
+    }
+
+    // Waitlist for people without an invite. Anyone may add an email address;
+    // nobody but an admin (the console / Admin SDK) can read the list.
+    match /waitlist/{entryId} {
+      allow create: if request.resource.data.keys().hasOnly(['email', 'lang', 'createdAt'])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 200
+        && request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+        && request.resource.data.createdAt == request.time
+        && (!request.resource.data.keys().hasAny(['lang']) || request.resource.data.lang in ['en', 'ar']);
+      allow read, update, delete: if isAdmin();
+    }
+
     // Operational documents written by the scheduled jobs (Admin SDK).
     // Only the question index is readable: the app checks new submissions
     // against it for duplicates. It holds live public question text only.
     match /ops/{docId} {
-      allow get: if isAuthenticated() && docId in ['questionIndex', 'questionOfDay'];
+      allow get: if isAuthenticated() && docId in ['questionIndex', 'questionOfDay', 'questionOfWeek'];
       allow list, write: if false;
     }
 
@@ -338,12 +398,17 @@ service cloud.firestore {
       // be created holding role:'admin', or an owner could delete their own
       // document and re-create it that way.
       allow create: if isOwner(userId)
-                    && (!request.resource.data.keys().hasAny(['role']) || isAdmin());
+                    && (!request.resource.data.keys().hasAny(['role']) || isAdmin())
+                    && (!request.resource.data.keys().hasAny(['memberNumber']) || isAdmin())
+                    && (isAdmin() || inviteOk(request.resource.data.get('invitedWith', '')));
       allow update: if (isOwner(userId) || isAdmin() || isMigrating(userId))
                     // Cheap test first: isAdmin() costs an exists() plus a
                     // get() on every user write, including every credit change.
                     && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])
-                        || isAdmin());
+                        || isAdmin())
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberNumber'])
+                        || isAdmin()
+                        || memberNumberClaimOk(userId));
       allow delete: if isOwner(userId) || isAdmin() || isMigrating(userId);
 
       // Unlocked demographics subcollection

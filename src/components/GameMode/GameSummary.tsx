@@ -1,3 +1,4 @@
+import { memberLabel } from '../../lib/member';
 import { t } from '../../lib/i18n';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -79,7 +80,7 @@ export function GameSummary({ game }: { game: Game }) {
         );
         const playerMap: Record<string, string> = {};
         playerDocs.forEach(d => {
-          if (d.exists()) playerMap[d.id] = (d.data() as UserProfile).username;
+          if (d.exists()) playerMap[d.id] = memberLabel(d.data() as UserProfile);
         });
         setPlayers(playerMap);
 
