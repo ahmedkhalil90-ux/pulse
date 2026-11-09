@@ -72,7 +72,7 @@ import {
   boostQuestion,
   unlockDemographics,
 } from './lib/credits';
-import { addVoteToResults } from './lib/votes';
+import { castVote } from './lib/votes';
 import { orderFeed, categoryInterest } from './lib/feedOrder';
 import { track } from './lib/activity';
 import { ENTRY_ANSWERS, UNLOCK_ANSWERS, memberLabel, inviteUrl } from './lib/member';
@@ -1339,16 +1339,16 @@ function QuestionCard({
         answerData.isRevisit = true;
       }
 
-      await setDoc(answerRef, answerData);
+      if (isRevisit) {
+        await setDoc(answerRef, answerData);
+      } else {
+        // Answer record, vote and +1 credit in one write: the rules refuse a
+        // vote or credit that is not created together with the answer record,
+        // so neither can be replayed. See src/lib/votes.ts.
+        await castVote(db, user.uid, question.id, optionIndex as 0 | 1, user.demographics, answerData);
+      }
 
       if (!isRevisit) {
-        // Transactional: concurrent first votes used to overwrite each other
-        // and lose every vote but one. See src/lib/votes.ts.
-        await addVoteToResults(db, question.id, optionIndex as 0 | 1, user.demographics);
-
-        // 3. Award credit
-        await awardAnswerCredit(db, user.uid);
-
         toast.success(t("Vote recorded anonymously! +1 Credit"));
         track(user.uid, 'answers');
         window.dispatchEvent(new Event('pulse:answered'));
@@ -2874,12 +2874,8 @@ function ProfileView({ answers }: { answers: number | null }) {
         <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">{t("Credits")}</span>
         <div className="flex items-center justify-between">
           <p className="text-3xl font-bold">{user.credits}</p>
-          <button 
-            onClick={() => setShowStore(true)}
-            className="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl text-xs font-bold transition-all"
-          >
-            {t("Get More")}
-          </button>
+          {/* The simulated store is gone: credits can only be earned in the app
+              until real in-app purchases exist (the rules refuse anything else). */}
         </div>
       </div>
 

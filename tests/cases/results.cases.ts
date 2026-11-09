@@ -1,4 +1,4 @@
-import { doc, increment, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, increment, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import type { Case } from '../helpers/env';
 import {
   DEMOS,
@@ -12,6 +12,21 @@ import {
 } from '../helpers/fixtures';
 
 const resultsRef = (db: any) => doc(db, 'results', QID);
+
+/**
+ * A vote as the app sends it: the answer record is created in the same write.
+ * A vote on its own, or one from a member whose answer record already exists,
+ * is a replay and is refused.
+ */
+function voted(db: any, uid: string, answerIndex: number, write: (b: ReturnType<typeof writeBatch>, r: any) => void) {
+  const b = writeBatch(db);
+  b.set(doc(db, 'user_answers', `${uid}_${QID}`), {
+    userId: uid, questionId: QID, answerIndex,
+    answeredAt: '2026-08-19T00:00:00.000Z', option0PercentAtTime: 50, option1PercentAtTime: 50,
+  });
+  write(b, resultsRef(db));
+  return b.commit();
+}
 
 /** A results doc mid-life: 10 votes, all from '25-34' / Male / UAE voters. */
 const TEN_VOTES = {
@@ -33,17 +48,16 @@ export const resultsCases: Case[] = [
     as: VOTER,
     seed: async (ctx) => {
       await seedUser(ctx, VOTER.uid, { demographics: DEMOS });
-      await seedAnswer(ctx, VOTER.uid, QID, 0);
     },
     run: (db) =>
-      setDoc(resultsRef(db), {
+      voted(db, VOTER.uid, 0, (b, r) => b.set(r, {
         counts: { '0': 1, '1': 0 },
         demographics: {
           ageRange: { '25-34': { '0': 1, '1': 0 } },
           gender: { Male: { '0': 1, '1': 0 } },
           country: { UAE: { '0': 1, '1': 0 } },
         },
-      }),
+      })),
   },
   {
     name: 'vote with no matching user_answers record is rejected',
@@ -74,10 +88,10 @@ export const resultsCases: Case[] = [
       // untouched map and the caller-index equality is the only thing left
       // standing between this write and the results doc.
       await seedUser(ctx, PLAIN.uid);
-      await seedAnswer(ctx, PLAIN.uid, QID, 0);
       await seedResults(ctx, QID, TEN_VOTES_PLAIN);
     },
-    run: (db) => updateDoc(resultsRef(db), { 'counts.1': increment(1) }),
+    run: (db) =>
+      voted(db, PLAIN.uid, 0, (b, r) => b.update(r, { 'counts.1': increment(1) })),
   },
   {
     name: 'decrementing a count is rejected',
@@ -89,11 +103,10 @@ export const resultsCases: Case[] = [
     as: PLAIN,
     seed: async (ctx) => {
       await seedUser(ctx, PLAIN.uid);
-      await seedAnswer(ctx, PLAIN.uid, QID, 0);
       await seedResults(ctx, QID, TEN_VOTES_PLAIN);
     },
     run: (db) =>
-      updateDoc(resultsRef(db), { 'counts.0': increment(1), 'counts.1': increment(-1) }),
+      voted(db, PLAIN.uid, 0, (b, r) => b.update(r, { 'counts.0': increment(1), 'counts.1': increment(-1) })),
   },
   {
     name: "incrementing another user's demographic bucket is rejected",
@@ -102,7 +115,6 @@ export const resultsCases: Case[] = [
     as: VOTER,
     seed: async (ctx) => {
       await seedUser(ctx, VOTER.uid, { demographics: DEMOS });
-      await seedAnswer(ctx, VOTER.uid, QID, 0);
       await seedResults(ctx, QID, {
         counts: { '0': 5, '1': 5 },
         demographics: {
@@ -115,12 +127,12 @@ export const resultsCases: Case[] = [
     // Counts and the caller's own gender/country buckets move correctly; only
     // the age bucket is wrong -- it credits the 35-44 group the caller is not in.
     run: (db) =>
-      updateDoc(resultsRef(db), {
+      voted(db, VOTER.uid, 0, (b, r) => b.update(r, {
         'counts.0': increment(1),
         'demographics.ageRange.35-44.0': increment(1),
         'demographics.gender.Male.0': increment(1),
         'demographics.country.UAE.0': increment(1),
-      }),
+      })),
   },
   {
     name: 'adding a field beyond counts and demographics is rejected',
@@ -129,10 +141,9 @@ export const resultsCases: Case[] = [
     as: VOTER,
     seed: async (ctx) => {
       await seedUser(ctx, VOTER.uid, { demographics: DEMOS });
-      await seedAnswer(ctx, VOTER.uid, QID, 0);
     },
     run: (db) =>
-      setDoc(resultsRef(db), {
+      voted(db, VOTER.uid, 0, (b, r) => b.set(r, {
         counts: { '0': 1, '1': 0 },
         demographics: {
           ageRange: { '25-34': { '0': 1, '1': 0 } },
@@ -141,7 +152,7 @@ export const resultsCases: Case[] = [
         },
         // The whole point of the allowlist: no per-voter trail may ride along.
         lastVoterUid: VOTER.uid,
-      }),
+      })),
   },
   {
     name: 'a second voter incrementing by exactly one is allowed',
@@ -151,16 +162,27 @@ export const resultsCases: Case[] = [
       await seedUser(ctx, VOTER2.uid, {
         demographics: { ageRange: '25-34', gender: 'Female', country: 'UAE' },
       });
-      await seedAnswer(ctx, VOTER2.uid, QID, 1);
       await seedResults(ctx, QID, TEN_VOTES);
     },
     run: (db) =>
-      updateDoc(resultsRef(db), {
+      voted(db, VOTER2.uid, 1, (b, r) => b.update(r, {
         'counts.1': increment(1),
         'demographics.ageRange.25-34.1': increment(1),
         // New bucket: the client creates only the incremented key.
         'demographics.gender.Female.1': increment(1),
         'demographics.country.UAE.1': increment(1),
-      }),
+      })),
+  },
+  {
+    name: 'a member who already answered cannot send the vote again (replay)',
+    expect: 'deny',
+    killedBy: 'M113',
+    as: PLAIN,
+    seed: async (ctx) => {
+      await seedUser(ctx, PLAIN.uid);
+      await seedAnswer(ctx, PLAIN.uid, QID, 0);
+      await seedResults(ctx, QID, TEN_VOTES_PLAIN);
+    },
+    run: (db) => updateDoc(resultsRef(db), { 'counts.0': increment(1) }),
   },
 ];

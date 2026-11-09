@@ -204,12 +204,15 @@ service cloud.firestore {
     function answerPath(questionId) {
       return /databases/$(database)/documents/user_answers/$(request.auth.uid + '_' + questionId);
     }
+    // A vote counts only in the same write that creates the caller's answer
+    // record, so a member who has answered cannot send the +1 again.
     function hasAnswered(questionId) {
-      return exists(answerPath(questionId));
+      return existsAfter(answerPath(questionId))
+        && !exists(answerPath(questionId));
     }
     // Returns '0' or '1' — the option the caller actually chose.
     function callerAnswerIndex(questionId) {
-      return string(get(answerPath(questionId)).data.answerIndex);
+      return string(getAfter(answerPath(questionId)).data.answerIndex);
     }
     function callerDemographics() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('demographics', {});
@@ -301,6 +304,38 @@ service cloud.firestore {
         && resource.data.get('memberNumber', 0) == 0
         && request.resource.data.memberNumber is int
         && getAfter(/databases/$(database)/documents/memberNumbers/$(string(request.resource.data.memberNumber))).data.uid == request.auth.uid;
+    }
+
+    // Credits move only together with the action that earns or spends them.
+    // The client records the reason in users/{uid}/private/credit in the same
+    // write; each reason allows one exact amount and needs its proof created
+    // in that write too, so nothing can be claimed twice or made up.
+    function firstWrite(path) {
+      return !exists(path) && existsAfter(path);
+    }
+    function creditOk(userId) {
+      let r = getAfter(/databases/$(database)/documents/users/$(userId)/private/credit).data;
+      let d = request.resource.data.credits - resource.data.get('credits', 0);
+      return request.resource.data.credits is int
+        && request.resource.data.credits >= 0
+        && r.at == request.time
+        && ((r.reason == 'answer' && d == 1 && firstWrite(/databases/$(database)/documents/user_answers/$(userId + '_' + r.ref)))
+          || (r.reason == 'bracket' && d == 1 && firstWrite(/databases/$(database)/documents/bracketPicks/$(userId + '_' + r.ref)))
+          || (r.reason == 'unlock' && d == -3 && firstWrite(/databases/$(database)/documents/users/$(userId)/unlockedDemographics/$(r.ref)))
+          || (r.reason == 'referral' && d == 15 && firstWrite(/databases/$(database)/documents/referrals/$(userId)))
+          || (r.reason == 'boost' && d == -10 && boostOk(r.ref))
+          || (r.reason == 'daily' && d == 3 && dailyOk()));
+    }
+    function boostOk(questionId) {
+      return getAfter(/databases/$(database)/documents/questions/$(questionId)).data.get('boostCount', 0)
+        == get(/databases/$(database)/documents/questions/$(questionId)).data.get('boostCount', 0) + 100;
+    }
+    // The daily bonus: lastLogin moves to today (UTC, as the app writes it).
+    function dailyOk() {
+      let day = request.resource.data.get('lastLogin', '');
+      return day is string && day.size() == 10
+        && day != resource.data.get('lastLogin', '')
+        && timestamp.date(int(day[0:4]), int(day[5:7]), int(day[8:10])) == request.time.date();
     }
 
     match /admins/{adminUid} {
@@ -485,6 +520,9 @@ service cloud.firestore {
       // be created holding role:'admin', or an owner could delete their own
       // document and re-create it that way.
       allow create: if isOwner(userId)
+                    && (isAdmin() || (request.resource.data.get('credits', 0) is int
+                                      && request.resource.data.get('credits', 0) >= 0
+                                      && request.resource.data.get('credits', 0) <= 13))
                     && (!request.resource.data.keys().hasAny(['role']) || isAdmin())
                     && (!request.resource.data.keys().hasAny(['memberNumber']) || isAdmin())
                     && (isAdmin() || inviteOk(request.resource.data.get('invitedWith', '')));
@@ -495,7 +533,13 @@ service cloud.firestore {
                         || isAdmin())
                     && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberNumber'])
                         || isAdmin()
-                        || memberNumberClaimOk(userId));
+                        || memberNumberClaimOk(userId))
+                    // A migrating caller is retiring this old profile (it is
+                    // deleted in the same sweep), so its balance is moot.
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['credits'])
+                        || isAdmin()
+                        || isMigrating(userId)
+                        || creditOk(userId));
       allow delete: if isOwner(userId) || isAdmin() || isMigrating(userId);
 
       // Unlocked demographics subcollection
@@ -506,6 +550,15 @@ service cloud.firestore {
       // An unlock is permanent. CLAUDE.md: once unlocked for a question, never
       // charge again -- which only holds if the record cannot be removed, since
       // deleting it is exactly how a user would be charged a second time.
+      // Why the balance just moved, written in the same write as the change.
+      // Private to the member; it names one question or bracket at most.
+      match /private/{docId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isOwner(userId) && docId == 'credit'
+          && request.resource.data.keys().hasOnly(['reason', 'ref', 'at'])
+          && request.resource.data.at == request.time;
+      }
+
       match /unlockedDemographics/{questionId} {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isAdmin()

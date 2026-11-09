@@ -71,9 +71,10 @@ describe('swarm: credit races', () => {
     const [bot] = botsFor(env, 1, 'daily');
     await seedUsers(env, [bot], 0);
     await env.withSecurityRulesDisabled(async ctx => {
-      await updateDoc(doc(ctx.firestore() as never, 'users', bot.uid), { lastLogin: '2026-10-26T08:00:00.000Z' });
+      await updateDoc(doc(ctx.firestore() as never, 'users', bot.uid), { lastLogin: '2026-01-01T08:00:00.000Z' });
     });
-    await Promise.allSettled(Array.from({ length: 5 }, () => awardDailyBonus(bot.db, bot.uid, '2026-10-27')));
+    // Today: the rules only pay the bonus for the real current day.
+    await Promise.allSettled(Array.from({ length: 5 }, () => awardDailyBonus(bot.db, bot.uid)));
     const user = await readAsAdmin<{ credits: number }>(env, `users/${bot.uid}`);
     expect(user?.credits).toBe(3);
   });
