@@ -26,7 +26,7 @@ const UNLOCK_ANSWERS = 10;
 const REWARD_AT = 100;
 const REWARD = 5;
 const ABUSE_LIMIT = 100;
-const FOUNDER = '7zNbw98m9jZYy8uTan7dqwolBud2';
+const FOUNDER = 'WBoCq4ap0RUVfinJ2BeQvaFqUzj2'; // AK, member #1
 const SYSTEM = new Set(['pulse_originals_system']);
 
 const app = initializeApp({ credential: cert(JSON.parse(readFileSync(process.env.PULSE_SA_KEY, 'utf8'))) });

@@ -31,7 +31,7 @@ fs.writeFileSync(keyFile, JSON.stringify({
 const app = initializeApp({ credential: cert(keyFile), projectId });
 const db = getFirestore(app);
 const auth = getAuth(app);
-const FOUNDER = '7zNbw98m9jZYy8uTan7dqwolBud2';
+const FOUNDER = 'WBoCq4ap0RUVfinJ2BeQvaFqUzj2'; // AK, member #1
 
 const fails = [];
 const check = (ok, msg) => { if (!ok) fails.push(msg); };
