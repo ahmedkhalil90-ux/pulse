@@ -662,6 +662,14 @@ service cloud.firestore {
                         && resource.data.authorUid != request.auth.uid
                         && isFlagWrite())
 
+                    // "Already asked": +1 on its own counter, nothing else. It
+                    // does not count toward auto-hiding (a duplicate is not
+                    // harmful); the daily bot checks it and merges if it is.
+                    || (isAuthenticated()
+                        && request.auth.uid != resource.data.authorUid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['flags_duplicate'])
+                        && request.resource.data.flags_duplicate == resource.data.get('flags_duplicate', 0) + 1)
+
                     // Boost: the author only, exactly +100 impressions.
                     || (isAuthenticated()
                         && resource.data.authorUid == request.auth.uid

@@ -7,6 +7,26 @@ const qRef = (db: any) => doc(db, 'questions', QN);
 
 export const questionsCases: Case[] = [
   {
+    name: 'a non-author can flag a question as already asked',
+    expect: 'allow', as: FLAGGER, seed: (ctx) => seedQuestion(ctx, QN),
+    run: (db) => updateDoc(qRef(db), { flags_duplicate: increment(1) }),
+  },
+  {
+    name: 'an already-asked flag adds exactly one',
+    expect: 'deny', killedBy: 'M123', as: FLAGGER, seed: (ctx) => seedQuestion(ctx, QN),
+    run: (db) => updateDoc(qRef(db), { flags_duplicate: increment(5) }),
+  },
+  {
+    name: 'an already-asked flag cannot hide the question',
+    expect: 'deny', killedBy: 'M124', as: FLAGGER, seed: (ctx) => seedQuestion(ctx, QN),
+    run: (db) => updateDoc(qRef(db), { flags_duplicate: increment(1), status: 'flagged' }),
+  },
+  {
+    name: 'the author cannot flag their own question as already asked',
+    expect: 'deny', killedBy: 'M125', as: AUTHOR, seed: (ctx) => seedQuestion(ctx, QN),
+    run: (db) => updateDoc(qRef(db), { flags_duplicate: increment(1) }),
+  },
+  {
     name: 'flag by a non-author, +1 with one reason counter, is allowed',
     expect: 'allow',
     as: FLAGGER,

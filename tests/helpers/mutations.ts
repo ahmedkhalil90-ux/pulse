@@ -1191,6 +1191,21 @@ export const MUTATIONS: Mutation[] = [
     label: 'credits: the private reason record may carry other fields',
     edits: [{ find: "          && request.resource.data.keys().hasOnly(['reason', 'ref', 'at'])\n", replace: '' }],
   },
+  {
+    id: 'M123',
+    label: 'questions: a duplicate flag may add more than one',
+    edits: [{ find: "                        && request.resource.data.flags_duplicate == resource.data.get('flags_duplicate', 0) + 1)", replace: '                        )' }],
+  },
+  {
+    id: 'M125',
+    label: 'questions: authors may flag their own question as a duplicate',
+    edits: [{ find: '                        && request.auth.uid != resource.data.authorUid\n', replace: '' }],
+  },
+  {
+    id: 'M124',
+    label: 'questions: a duplicate flag may change other fields (e.g. hide the question)',
+    edits: [{ find: "                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['flags_duplicate'])\n", replace: '' }],
+  },
 ];
 
 /**
