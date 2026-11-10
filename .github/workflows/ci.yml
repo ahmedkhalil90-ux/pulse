@@ -85,7 +85,9 @@ jobs:
     needs: verify
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    concurrency: { group: deploy-hosting, cancel-in-progress: true }
+    # Queue, never cancel: two quick merges once ran out of order and the newer
+    # deploy was the one cancelled, leaving the site on the older build.
+    concurrency: { group: deploy-hosting, cancel-in-progress: false }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

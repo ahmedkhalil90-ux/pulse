@@ -207,4 +207,4 @@ Also outstanding: no IAP integration, Capacitor conversion not started.
 
 Pre-beta. Priorities in order: (1) anonymity enforcement is airtight, (2) test coverage on the three engines, (3) shareable beta link for friends, (4) real-device testing, (5) Capacitor and Play Store.
 
-Branch `feat/invite-launch` holds the invite-only release; its rules need Ahmed's approval to deploy.
+Invite-only membership, Knockout, locked credits and votes, installable app and the duplicate flag are live.

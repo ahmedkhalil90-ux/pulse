@@ -59,7 +59,11 @@ async function gemini(prompt, { search = false } = {}) {
       if (!r.ok) { if (r.status === 404 || r.status === 400) dead.add(search ? `${m}+search` : m); continue; }
       const d = await r.json();
       return json(d.candidates[0].content.parts.map((p) => p.text || '').join(''));
-    } catch (e) { report.errors.push(`${m}: ${String(e.message).slice(0, 80)}`); }
+    } catch (e) {
+      report.errors.push(`${m}: ${String(e.message).slice(0, 80)}`);
+      // A timeout costs 90 seconds of the run; one is enough to move on.
+      if (/timeout|aborted/i.test(String(e.message))) dead.add(search ? `${m}+search` : m);
+    }
   }
   return null;
 }
@@ -272,7 +276,9 @@ async function knockout() {
   const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
   for (const b of live) if ((b.data().createdAt ?? '') < weekAgo) await b.ref.update({ status: 'closed', closedAt: new Date().toISOString() });
   const newest = live.map((b) => b.data().createdAt ?? '').sort().pop() ?? '';
-  if (newest > new Date(Date.now() - 20 * 36e5).toISOString()) { report.knockout = 'already made one today'; return; }
+  // 10h, not 20: a bracket made by hand in the evening must not block the
+  // nightly one, while a rerun the same night still makes no second bracket.
+  if (newest > new Date(Date.now() - 10 * 36e5).toISOString()) { report.knockout = 'already made one in the last 10 hours'; return; }
 
   const past = (await db.collection('brackets').select('title').get()).docs.map((d) => d.data().title).slice(-60);
   const ideaDocs = (await db.collection('bracketSuggestions').limit(200).get()).docs.filter((d) => !d.data().processed).slice(0, 60);
