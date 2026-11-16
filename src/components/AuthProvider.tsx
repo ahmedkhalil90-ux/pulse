@@ -276,6 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       credits: 13, // 10 to start + today's daily bonus
       demographics,
       lastLogin: new Date().toISOString().split('T')[0],
+      streak: 1,
       referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
       invitedWith: inviteCode.trim().toUpperCase(),
       createdAt: serverTimestamp(),

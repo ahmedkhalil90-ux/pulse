@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { Swords, Trophy, Share2, X, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../lib/firebase';
@@ -116,8 +116,36 @@ function KnockoutPlay({ bracket, onClose }: { bracket: Bracket; onClose: () => v
         ) : (
           <Match bracket={bracket} picks={picks} onPick={choose} saving={saving} />
         )}
+        {!checking && <ReportBracket bracketId={bracket.id} />}
       </div>
     </motion.div>
+  );
+}
+
+/** Tell us a bracket is wrong (made-up or mismatched contenders), offensive or dull. */
+function ReportBracket({ bracketId }: { bracketId: string }) {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [sent, setSent] = useState(false);
+  if (!user || sent) return sent ? <p className="text-center text-xs text-zinc-500">{t("Thanks. We'll review this bracket.")}</p> : null;
+  const send = async (reason: 'wrong' | 'offensive' | 'boring') => {
+    try {
+      await setDoc(doc(db, 'bracketReports', `${user.uid}_${bracketId}`), { bracketId, reason, createdAt: new Date().toISOString() });
+    } catch { /* already reported, or offline: nothing more to do */ }
+    setSent(true);
+  };
+  return (
+    <div className="text-center space-y-2" data-testid="report-bracket">
+      {!open ? (
+        <button onClick={() => setOpen(true)} className="text-xs text-zinc-600 hover:text-zinc-300 underline underline-offset-4">{t("Something wrong with this bracket?")}</button>
+      ) : (
+        <div className="flex flex-wrap justify-center gap-2">
+          {([['wrong', t("Wrong or made-up contenders")], ['offensive', t("Offensive")], ['boring', t("Not interesting")]] as const).map(([r, label]) => (
+            <button key={r} onClick={() => send(r)} className="rounded-full border border-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:border-white/30">{label}</button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

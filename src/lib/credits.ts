@@ -28,6 +28,8 @@ export const CREDIT_VALUES = {
   REFERRAL: 15,
   BOOST: -10,
   UNLOCK_DEMOGRAPHICS: -3,
+  /** One streak freeze: keeps a streak alive across one missed day. */
+  STREAK_FREEZE: -5,
 } as const;
 
 /** Impressions granted by one boost. */
@@ -51,7 +53,7 @@ export function dayKey(when: Date | string = new Date()): string {
  * same transaction or batch as this record and the action it names (see
  * creditOk in firestore.rules), so every credit write below sets it.
  */
-export type CreditReason = 'answer' | 'bracket' | 'unlock' | 'referral' | 'boost' | 'daily';
+export type CreditReason = 'answer' | 'bracket' | 'unlock' | 'referral' | 'boost' | 'daily' | 'freeze';
 export const reasonRef = (db: Firestore, uid: string) => doc(db, 'users', uid, 'private', 'credit');
 export const reasonData = (reason: CreditReason, ref = '') => ({ reason, ref, at: serverTimestamp() });
 
@@ -64,6 +66,32 @@ export async function awardAnswerCredit(db: Firestore, uid: string): Promise<voi
   await updateDoc(doc(db, 'users', uid), { credits: increment(CREDIT_VALUES.ANSWER) });
 }
 
+
+export const MAX_FREEZES = 2;
+const dayNumber = (d: string) => Math.round(Date.parse(`${dayKey(d)}T00:00:00Z`) / 864e5);
+
+/** What the streak becomes when a member checks in on `today`. */
+export function nextStreak(lastLogin: string | undefined, today: string, streak = 0, freezes = 0): { streak: number; usedFreeze: boolean } {
+  if (!lastLogin) return { streak: 1, usedFreeze: false };
+  const gap = dayNumber(today) - dayNumber(lastLogin);
+  if (gap === 1) return { streak: streak + 1, usedFreeze: false };
+  if (gap === 2 && freezes > 0) return { streak: streak + 1, usedFreeze: true };
+  return { streak: 1, usedFreeze: false };
+}
+
+/** Buy one streak freeze for 5 credits (two at most). */
+export async function buyStreakFreeze(db: Firestore, uid: string): Promise<void> {
+  const cost = -CREDIT_VALUES.STREAK_FREEZE;
+  await runTransaction(db, async (tx) => {
+    const ref = doc(db, 'users', uid);
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error(`No such user: ${uid}`);
+    if (((snap.data().freezes as number) ?? 0) >= MAX_FREEZES) throw new Error('MAX_FREEZES');
+    if (((snap.data().credits as number) ?? 0) < cost) throw new InsufficientCreditsError(cost);
+    tx.update(ref, { credits: increment(CREDIT_VALUES.STREAK_FREEZE), freezes: increment(1) });
+    tx.set(reasonRef(db, uid), reasonData('freeze'));
+  });
+}
 
 /**
  * +3 on the first app open of a calendar day.
@@ -87,9 +115,15 @@ export async function awardDailyBonus(
     const lastLogin = snap.data().lastLogin as string | undefined;
     if (lastLogin && dayKey(lastLogin) === today) return false;
 
+    // The streak moves with the daily check-in (the rules check the same
+    // arithmetic): +1 the day after, +1 across one missed day by spending a
+    // freeze, otherwise back to 1.
+    const next = nextStreak(lastLogin, today, snap.data().streak as number | undefined, snap.data().freezes as number | undefined);
     tx.update(ref, {
       credits: increment(CREDIT_VALUES.DAILY_BONUS),
       lastLogin: today,
+      streak: next.streak,
+      ...(next.usedFreeze ? { freezes: increment(-1) } : {}),
     });
     tx.set(reasonRef(db, uid), reasonData('daily'));
     return true;
