@@ -1149,7 +1149,7 @@ export const MUTATIONS: Mutation[] = [
   {
     id: 'M114',
     label: 'credits: the balance may change with no reason',
-    edits: [{ find: "                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['credits'])\n                        || isAdmin()\n                        || isMigrating(userId)\n                        || creditOk(userId));", replace: ';' }],
+    edits: [{ find: "                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['credits'])\n                        || isAdmin()\n                        || isMigrating(userId)\n                        || creditOk(userId))\n", replace: '\n' }],
   },
   {
     id: 'M115',
@@ -1205,6 +1205,61 @@ export const MUTATIONS: Mutation[] = [
     id: 'M124',
     label: 'questions: a duplicate flag may change other fields (e.g. hide the question)',
     edits: [{ find: "                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['flags_duplicate'])\n", replace: '' }],
+  },
+  {
+    id: 'M126',
+    label: 'streak: may be typed in freely',
+    edits: [{ find: "                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['streak'])\n                        || isAdmin()\n                        || streakOk())\n", replace: '' }],
+  },
+  {
+    id: 'M127',
+    label: 'streak: may move without today\'s check-in',
+    edits: [{ find: '      return now is int\n        && dailyOk()\n        && (now == 1', replace: '      return now is int\n        && (now == 1' }],
+  },
+  {
+    id: 'M128',
+    label: 'streak: +1 allowed whenever the last check-in was',
+    edits: [{ find: "                && (dayOf(old) + duration.value(1, 'd') == request.time.date()\n                    || ", replace: '                && (true\n                    || ' }],
+  },
+  {
+    id: 'M129',
+    label: 'streak: a missed day is bridged without spending a freeze',
+    edits: [{ find: "\n                        && request.resource.data.get('freezes', 0) == resource.data.get('freezes', 0) - 1))));", replace: '))));' }],
+  },
+  {
+    id: 'M130',
+    label: 'freezes: may be added without paying',
+    edits: [{ find: "                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['freezes'])\n                        || isAdmin()\n                        || freezesOk());", replace: ';' }],
+  },
+  {
+    id: 'M131',
+    label: 'freezes: more than two may be held',
+    edits: [{ find: '             && now <= 2\n', replace: '' }],
+  },
+  {
+    id: 'M132',
+    label: 'users: a new profile may start with a streak or freezes',
+    edits: [{ find: "                    && (isAdmin() || (request.resource.data.get('streak', 1) == 1\n                                      && !request.resource.data.keys().hasAny(['freezes'])))\n", replace: '' }],
+  },
+  {
+    id: 'M133',
+    label: 'mind reader: the weekly total may jump',
+    edits: [{ find: '        && request.resource.data.total == wasTotal + 1\n', replace: '' }],
+  },
+  {
+    id: 'M134',
+    label: 'mind reader: correct predictions may jump',
+    edits: [{ find: '\n        && request.resource.data.right <= wasRight + 1;', replace: ';' }],
+  },
+  {
+    id: 'M135',
+    label: 'bracket reports: may be filed in another member\'s name',
+    edits: [{ find: "        && id == request.auth.uid + '_' + request.resource.data.bracketId\n        && request.resource.data.keys().hasOnly(['bracketId', 'reason', 'createdAt'])", replace: "        && request.resource.data.keys().hasOnly(['bracketId', 'reason', 'createdAt'])" }],
+  },
+  {
+    id: 'M136',
+    label: 'bracket reports: any text may be stored as the reason',
+    edits: [{ find: "        && request.resource.data.reason in ['wrong', 'offensive', 'boring']\n", replace: '' }],
   },
 ];
 
