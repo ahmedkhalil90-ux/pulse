@@ -142,7 +142,7 @@ export function GameHome({ onSelectGame }: { onSelectGame: (game: Game) => void 
 
       const docRef = await addDoc(collection(db, 'games'), gameData);
       onSelectGame({ id: docRef.id, ...gameData } as Game);
-      toast.success(`${type === 'live' ? 'Live' : 'Async'} game created!`);
+      toast.success(type === 'live' ? t("Live game created!") : t("Async game created!"));
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'games');
     } finally {

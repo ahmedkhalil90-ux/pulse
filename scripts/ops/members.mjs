@@ -132,6 +132,14 @@ for (const [code, n] of Object.entries(byCode)) {
 const top = Object.values(byCode).sort((a, b) => b - a).slice(0, 3).map((n) => `${n}`).join(', ');
 report.push(`**Invites:** ${recent.length} sign-ups in the last 24h${top ? ` (busiest links brought ${top})` : ''}.${paused.length ? ` ⚠️ Paused for review: ${paused.join(', ')}. Find it in Firestore under referralCodes (paused: true) and set paused to false to restore it.` : ''}`);
 
+// --- 4b. how many members each member has brought in (count only) ---------
+const brought = {};
+for (const r of (await db.collection('referrals').get()).docs) { const u = r.data().referrerUid; if (u) brought[u] = (brought[u] ?? 0) + 1; }
+for (const u of users.docs) {
+  const n = brought[u.id] ?? 0;
+  if ((u.data().invitedCount ?? 0) !== n) await u.ref.update({ invitedCount: n });
+}
+
 // --- 5. waitlist ------------------------------------------------------------
 const waiting = (await db.collection('waitlist').count().get()).data().count;
 report.push(`**Waitlist:** ${waiting} people waiting (addresses are in Firestore, collection \`waitlist\`).`);

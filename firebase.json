@@ -57,7 +57,17 @@
             "value": "no-cache"
           }
         ]
+      },
+      {
+        "source": "/q/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       }
-    ]
+    ],
+    "cleanUrls": true
   }
 }

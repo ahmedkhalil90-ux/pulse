@@ -62,6 +62,10 @@ export const engagementCases: Case[] = [
     name: 'a new profile cannot start with a streak or freezes', expect: 'deny', killedBy: 'M132', as: OTHER, seed: (ctx) => seedInvite(ctx),
     run: (db) => setDoc(doc(db, 'users', OTHER.uid), { credits: 13, isVerified: false, invitedWith: INVITE, streak: 365, freezes: 2 }),
   },
+  {
+    name: 'badges and invite counts are set by the nightly job, not the member', expect: 'deny', killedBy: 'M137', as: M, seed: seed(),
+    run: (db) => updateDoc(doc(db, 'users', M.uid), { asker: true, invitedCount: 500 }),
+  },
   // --- mind reader ------------------------------------------------------------
   { name: 'a prediction adds one to this week\'s score', expect: 'allow', as: M, seed: seedMind, run: (db) => setDoc(mind(db), { week: '2026-11-16', right: 4, total: 6 }) },
   { name: 'a new week starts the score again', expect: 'allow', as: M, seed: seedMind, run: (db) => setDoc(mind(db), { week: '2026-11-23', right: 1, total: 1 }) },

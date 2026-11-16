@@ -1239,7 +1239,7 @@ export const MUTATIONS: Mutation[] = [
   {
     id: 'M132',
     label: 'users: a new profile may start with a streak or freezes',
-    edits: [{ find: "                    && (isAdmin() || (request.resource.data.get('streak', 1) == 1\n                                      && !request.resource.data.keys().hasAny(['freezes'])))\n", replace: '' }],
+    edits: [{ find: "                    && (isAdmin() || (request.resource.data.get('streak', 1) == 1\n                                      && !request.resource.data.keys().hasAny(['freezes', 'asker', 'invitedCount'])))\n", replace: '' }],
   },
   {
     id: 'M133',
@@ -1260,6 +1260,11 @@ export const MUTATIONS: Mutation[] = [
     id: 'M136',
     label: 'bracket reports: any text may be stored as the reason',
     edits: [{ find: "        && request.resource.data.reason in ['wrong', 'offensive', 'boring']\n", replace: '' }],
+  },
+  {
+    id: 'M137',
+    label: 'users: members may award themselves the Asker badge or an invite count',
+    edits: [{ find: "                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['asker', 'invitedCount'])\n                        || isAdmin())\n", replace: '' }],
   },
 ];
 

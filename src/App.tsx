@@ -1302,6 +1302,8 @@ function QuestionCard({
     const votesBefore = results ? (results.counts['0'] || 0) + (results.counts['1'] || 0) : 0;
     if (!isRevisit && question.isPublic && votesBefore >= 10 && mindMode.get()) setPredicting(true);
 
+    try { navigator.vibrate?.(12); } catch { /* not supported */ }
+
     // Optimistic Update
     setAnswered(true);
     setVoting(true);
@@ -1473,7 +1475,7 @@ function QuestionCard({
       }
 
       await updateDoc(questionRef, updateData);
-      toast.success(`Question flagged as ${reason}. Our moderators will review it.`);
+      toast.success(t("Thanks for the report. We'll review this question."));
       setShowFlagConfirm(false);
       if (onNext) onNext();
     } catch (error) {
@@ -2557,7 +2559,7 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
         memberCount: increment(1)
       });
 
-      toast.success(`Joined ${groupData.name}`);
+      toast.success(`${t("Joined")} ${groupData.name}`);
       onJoined({ id: groupDoc.id, ...groupData, memberCount: groupData.memberCount + 1 });
       onClose();
     } catch (error) {
@@ -2859,7 +2861,6 @@ function ProfileView({ answers }: { answers: number | null }) {
       setSavingEmail(false);
     }
   };
-  const [showStore, setShowStore] = useState(false);
   const [referralCode, setReferralCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
 
@@ -2880,18 +2881,6 @@ function ProfileView({ answers }: { answers: number | null }) {
     if (user?.referralCode) {
       navigator.clipboard.writeText(user.referralCode);
       toast.success(t("Your referral code copied!"));
-    }
-  };
-
-  const handleBuyCredits = async (amount: number) => {
-    if (!user) return;
-    try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        credits: increment(amount)
-      });
-      toast.success(`Purchased ${amount} credits!`);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     }
   };
 
@@ -2934,47 +2923,6 @@ function ProfileView({ answers }: { answers: number | null }) {
         </div>
       </div>
 
-      {showStore && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-zinc-900/50 border border-indigo-500/20 rounded-3xl p-6 space-y-6"
-        >
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold">{t("Pulse Store")}</h3>
-            <button onClick={() => setShowStore(false)} className="text-zinc-500 hover:text-white">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-start gap-3">
-            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">{t("Development Mode")}</p>
-              <p className="text-[10px] text-amber-500/60 leading-relaxed">
-                {t("Payments are simulated. No real money will be charged during this preview.")}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-3">
-            <StoreItem 
-              credits={100} 
-              price="$0.99" 
-              onBuy={() => handleBuyCredits(100)} 
-            />
-            <StoreItem 
-              credits={500} 
-              price="$3.99" 
-              onBuy={() => handleBuyCredits(500)} 
-              popular 
-            />
-            <StoreItem 
-              credits={1500} 
-              price="$9.99" 
-              onBuy={() => handleBuyCredits(1500)} 
-            />
-          </div>
-        </motion.div>
-      )}
         <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 space-y-1">
           <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">{t("Member")}</span>
           <p className="text-3xl font-bold" data-testid="member-tile">{memberLabel(user)}</p>
@@ -2991,6 +2939,11 @@ function ProfileView({ answers }: { answers: number | null }) {
           {user.memberNumber && user.referralCode ? (
             <>
               <p className="text-sm text-zinc-400">{t("Pulse is invite-only. Share your link anywhere: everyone who joins with it gets in, and you both get +15 credits.")}</p>
+              {(user.invitedCount ?? 0) > 0 && (
+                <p className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300" data-testid="invited-count">
+                  <Users className="w-3.5 h-3.5" /> {t("You've brought in")} {user.invitedCount} {t("members")}
+                </p>
+              )}
               <p className="font-mono text-xs break-all bg-black/40 border border-white/5 rounded-xl p-3" data-testid="invite-link">{inviteUrl(user.referralCode)}</p>
               <div className="flex gap-2">
                 <Button className="flex-1 h-11 text-sm" onClick={async () => {
@@ -3102,33 +3055,6 @@ function ProfileStat({ label, value }: { label: string, value: string }) {
   );
 }
 
-function StoreItem({ credits, price, onBuy, popular }: { credits: number, price: string, onBuy: () => void, popular?: boolean }) {
-  return (
-    <button 
-      onClick={onBuy}
-      className={cn(
-        "flex items-center justify-between p-4 rounded-2xl border transition-all active:scale-[0.98]",
-        popular ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-black/40 border-white/5 hover:border-white/10'
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <div className={cn(
-          "w-10 h-10 rounded-xl flex items-center justify-center",
-          popular ? 'bg-indigo-500 text-white' : 'bg-zinc-800 text-zinc-400'
-        )}>
-          <Coins className="w-5 h-5" />
-        </div>
-        <div className="text-left">
-          <p className="font-bold">{credits} {t("Credits")}</p>
-          {popular && <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">{t("Most Popular")}</span>}
-        </div>
-      </div>
-      <div className="text-right">
-        <p className="font-bold text-lg">{price}</p>
-      </div>
-    </button>
-  );
-}
 
 export default function App() {
   return (

@@ -22,6 +22,8 @@ export type UserProfile = {
   asker?: boolean;
   /** Consecutive days checked in (UTC days), and freezes held (max 2). */
   streak?: number;
+  /** Members this member has brought in (set nightly). */
+  invitedCount?: number;
   freezes?: number;
 };
 

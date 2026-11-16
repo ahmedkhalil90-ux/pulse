@@ -78,6 +78,7 @@ runJob(); // a rerun must change nothing
 // --- check ----------------------------------------------------------------
 const num = async (uid) => (await db.doc(`users/${uid}`).get()).data().memberNumber;
 check(await num(FOUNDER) === 1, 'founder is not #1');
+check((await db.doc('users/early').get()).data().invitedCount === 101, 'invite count not written for the inviter');
 check(await num('early') === 2, 'early member is not #2');
 check(await num('late') === 3, 'late member is not #3');
 check(!(await num('lurker')), 'a member with 3 answers got a number');

@@ -66,6 +66,14 @@ jobs:
         env: { PULSE_SA_KEY: '${{ runner.temp }}/sa.json' }
         run: npx tsx scripts/ops/rank.ts
 
+      # New questions went live tonight: rebuild their share-preview pages.
+      - name: Refresh share previews (redeploy the web app)
+        if: github.event.schedule != '40 6,14 * * *'
+        run: |
+          npm run build
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" node scripts/og-pages.mjs
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" node scripts/deploy-api.mjs hosting
+
       - name: Post report to the "Pulse daily bot" issue
         if: always() && github.event.schedule != '40 6,14 * * *'
         env: { GH_TOKEN: '${{ github.token }}' }

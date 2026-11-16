@@ -53,6 +53,7 @@ async function hosting() {
   const H = 'https://firebasehosting.googleapis.com/v1beta1';
   const v = await api('POST', `${H}/sites/${site}/versions`, { config: {
     rewrites: hcfg.rewrites.map(r => ({ glob: r.source, path: r.destination })),
+    ...(hcfg.cleanUrls ? { cleanUrls: true } : {}),
     headers: (hcfg.headers ?? []).map(h => ({ glob: h.source, headers: Object.fromEntries(h.headers.map(x => [x.key, x.value])) })),
   } });
   const files = {}; const blobs = {};
