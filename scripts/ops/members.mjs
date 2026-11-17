@@ -140,6 +140,52 @@ for (const u of users.docs) {
   if ((u.data().invitedCount ?? 0) !== n) await u.ref.update({ invitedCount: n });
 }
 
+// --- 4c. account deletion requests ---------------------------------------
+// Erases everything tied to the member. Aggregate totals stay (they hold no
+// one's identity). Questions they wrote stay but lose their author.
+async function eraseMember(uid) {
+  const byField = async (col, field) => {
+    const snap = await db.collection(col).where(field, '==', uid).get();
+    for (const d of snap.docs) await d.ref.delete();
+    return snap.size;
+  };
+  const byPrefix = async (col) => {
+    const snap = await db.collection(col).orderBy('__name__').startAt(`${uid}_`).endAt(`${uid}_\uf8ff`).get();
+    for (const d of snap.docs) await d.ref.delete();
+  };
+  await byField('user_answers', 'userId');
+  await byField('skipped_questions', 'userId');
+  await byField('activity', 'uid');
+  await byField('feedback', 'uid');
+  await byField('referralCodes', 'uid');
+  await byField('usernames', 'uid');
+  await byField('memberNumbers', 'uid'); // the number itself is never reissued
+  await byPrefix('bracketPicks');
+  await byPrefix('bracketReports');
+  await db.doc(`referrals/${uid}`).delete();
+  for (const m of (await db.collectionGroup('members').where('uid', '==', uid).get()).docs) {
+    await m.ref.delete();
+    await m.ref.parent.parent.update({ memberCount: FieldValue.increment(-1) }).catch(() => {});
+  }
+  for (const q of (await db.collection('questions').where('authorUid', '==', uid).get()).docs) await q.ref.update({ authorUid: 'deleted_member' });
+  await db.recursiveDelete(db.doc(`users/${uid}`));
+  await getAuth(app).deleteUser(uid).catch((e) => { if (e.code !== 'auth/user-not-found') throw e; });
+  await db.doc(`deletionRequests/${uid}`).delete();
+}
+const deletions = (await db.collection('deletionRequests').get()).docs;
+let erased = 0;
+for (const d of deletions) {
+  try { await eraseMember(d.id); erased++; } catch (e) { report.push(`⚠️ Could not finish deleting one account: ${String(e.message).slice(0, 100)}`); }
+}
+if (deletions.length) report.push(`**Account deletions:** ${erased} of ${deletions.length} completed.`);
+
+// --- 4d. contact form (counts only; read the messages in Firestore) -------
+const fb = (await db.collection('feedback').where('createdAt', '>=', new Date(Date.now() - 864e5)).get()).docs;
+if (fb.length) {
+  const kinds = {}; for (const f of fb) kinds[f.data().kind] = (kinds[f.data().kind] ?? 0) + 1;
+  report.push(`**Messages from members (24h):** ${fb.length} (${Object.entries(kinds).map(([k, n]) => `${n} ${k}`).join(', ')}). Read them in Firestore, collection \`feedback\`.`);
+}
+
 // --- 5. waitlist ------------------------------------------------------------
 const waiting = (await db.collection('waitlist').count().get()).data().count;
 report.push(`**Waitlist:** ${waiting} people waiting (addresses are in Firestore, collection \`waitlist\`).`);

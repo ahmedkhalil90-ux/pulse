@@ -46,7 +46,7 @@ describe('signup claims its lookups', () => {
         isVerified: true,
         credits: 13,
         referralCode: 'ALICE1',
-        invitedWith: INVITE,
+        invitedWith: INVITE, consentVersion: '2026-11-17',
       }),
     );
     await assertSucceeds(setDoc(doc(db, 'usernames', 'alice'), { uid: ALICE.uid }));
@@ -63,7 +63,7 @@ describe('signup claims its lookups', () => {
         isVerified: true,
         credits: 13,
         referralCode: 'ALICE1',
-        invitedWith: INVITE,
+        invitedWith: INVITE, consentVersion: '2026-11-17',
       }),
     );
     await assertFails(setDoc(doc(db, 'referralCodes', 'STOLEN'), { uid: ALICE.uid }));
@@ -77,7 +77,7 @@ describe('signup claims its lookups', () => {
         isVerified: true,
         credits: 0,
         referralCode: 'BOBBY1',
-        invitedWith: INVITE,
+        invitedWith: INVITE, consentVersion: '2026-11-17',
       }),
     );
     await assertFails(setDoc(doc(db, 'usernames', 'alice'), { uid: BOB.uid }));

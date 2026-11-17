@@ -95,6 +95,7 @@ import { KnockoutBanner } from './components/Knockout';
 import { InstallPrompt } from './components/InstallPrompt';
 import { StreakChip, StreakCard, FeedExtras, PredictOverlay, RegionSplitCard, RecapButton, QUESTION_STARTERS, useMindScore } from './components/Engagement';
 import { mindMode, majorityOf, recordPrediction } from './lib/mind';
+import { POLICY_URL } from './lib/privacy';
 
 // A fixed list, so demographic buckets do not fragment ("UAE" vs "uae" vs
 // "Emirates") and can actually reach the 10-response display threshold.
@@ -250,6 +251,14 @@ function PulseApp() {
     redeemReferral(ref).catch(() => {});
   }, [user?.uid]);
 
+  // An account with a pending deletion request stays signed out.
+  useEffect(() => {
+    if (!user) return;
+    getDoc(doc(db, 'deletionRequests', user.uid)).then((s) => {
+      if (s.exists()) { toast(t("This account is being deleted.")); signOut(); }
+    }).catch(() => {});
+  }, [user?.uid]);
+
   // One session per app open, counted once the user is known.
   const sessionCounted = useRef(false);
   useEffect(() => {
@@ -284,6 +293,7 @@ function PulseApp() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'reset' | 'waitlist'>(() => (inviteCode ? 'signup' : 'signin'));
   const [username, setUsername] = useState(''); // email, or a legacy username at sign-in
   const [waitlisted, setWaitlisted] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [password, setPassword] = useState('');
   const [demographics, setDemographics] = useState({ ageRange: '', gender: '', country: '' });
   const [isProcessing, setIsProcessing] = useState(false);
@@ -324,6 +334,7 @@ function PulseApp() {
     if (!demographics.ageRange || !demographics.gender || !demographics.country) {
       return toast.error(t("Please complete your profile details"));
     }
+    if (!consent) return toast.error(t("Please accept the privacy policy to join."));
     setIsProcessing(true);
     try {
       // Kept until the referral is redeemed after sign-up.
@@ -573,6 +584,14 @@ function PulseApp() {
                         {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
+
+                    <label className="flex items-start gap-3 text-xs text-zinc-400 cursor-pointer" data-testid="consent">
+                      <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 accent-white shrink-0" />
+                      <span>
+                        {t("I'm 13 or older (under 18 with my parent's or guardian's permission) and I agree to the")}{' '}
+                        <a href={POLICY_URL} target="_blank" rel="noreferrer" className="text-white underline underline-offset-2">{t("privacy policy")}</a>.
+                      </span>
+                    </label>
                   </>
                 )}
               </div>
@@ -602,7 +621,9 @@ function PulseApp() {
               </div>
               
               <p className="text-[10px] text-center text-zinc-600 px-8">
-                {t("Your data is encrypted and never shared. Pulse is built on trust and anonymity.")}
+                <a href={POLICY_URL} target="_blank" rel="noreferrer" className="underline underline-offset-2">{t("Privacy")}</a>
+                {' · '}
+                {t("Nobody ever sees how you answered. Pulse is built on trust and anonymity.")}
               </p>
             </div>
           </motion.div>
@@ -2048,12 +2069,13 @@ function GroupsView() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(
-      collection(db, 'groups'),
-      where('members', 'array-contains', user.uid)
-    );
-    return onSnapshot(q, (s) => {
-      setGroups(s.docs.map(d => ({ id: d.id, ...d.data() } as Group)));
+    // Membership lives in groups/{id}/members/{uid} (the group document no
+    // longer lists its members), so "my groups" is a collection-group query
+    // on my own membership documents, then their parent groups.
+    const q = query(collectionGroup(db, 'members'), where('uid', '==', user.uid));
+    return onSnapshot(q, async (s) => {
+      const parents = await Promise.all(s.docs.map((m) => getDoc(m.ref.parent.parent!).catch(() => null)));
+      setGroups(parents.filter((g): g is NonNullable<typeof g> => !!g && g.exists()).map((g) => ({ id: g.id, ...g.data() } as Group)));
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'groups');
@@ -2884,8 +2906,8 @@ function ProfileView({ answers }: { answers: number | null }) {
     }
   };
 
-  if (!user) return null;
-
+  // Hooks first: signing out sets user to null while this screen is open,
+  // and an early return above a hook crashed the app ("fewer hooks").
   const [isAdminUser, setIsAdminUser] = useState(false);
   useEffect(() => {
     if (!user) return;
@@ -2894,6 +2916,8 @@ function ProfileView({ answers }: { answers: number | null }) {
       .then((snap) => setIsAdminUser(snap.exists() || user.uid === HARDCODED_ADMIN_UID))
       .catch(() => setIsAdminUser(user.uid === HARDCODED_ADMIN_UID));
   }, [user?.uid]);
+
+  if (!user) return null;
 
   return (
     <div className="space-y-8">
@@ -3025,11 +3049,91 @@ function ProfileView({ answers }: { answers: number | null }) {
         </div>
       )}
 
+      <ContactUs />
+
       <LanguageToggle />
+
+      <a href={POLICY_URL} target="_blank" rel="noreferrer" className="block text-center text-xs text-zinc-500 underline underline-offset-4" data-testid="privacy-link">{t("Privacy policy")}</a>
+
+      <DeleteAccount />
 
       <Button variant="ghost" className="w-full text-red-500 hover:text-red-400 hover:bg-red-500/10" onClick={signOut}>
         {t("Sign Out")}
       </Button>
+    </div>
+  );
+}
+
+function ContactUs() {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState<'idea' | 'problem' | 'privacy' | 'other'>('idea');
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  if (!user) return null;
+  const send = async () => {
+    setBusy(true);
+    try {
+      await addDoc(collection(db, 'feedback'), { uid: user.uid, text: text.trim().slice(0, 1000), kind, createdAt: serverTimestamp() });
+      toast.success(t("Thanks! We read every message."));
+      setText(''); setOpen(false);
+    } catch { toast.error(t("Couldn't send that. Try again.")); } finally { setBusy(false); }
+  };
+  return (
+    <div className="bg-zinc-900/50 border border-white/5 rounded-3xl p-6 space-y-3" data-testid="contact-us">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between font-bold">
+        <span className="flex items-center gap-2"><MessageSquare className="w-4 h-4" /> {t("Contact us")}</span>
+        <ChevronRight className={cn('w-4 h-4 transition-transform', open && 'rotate-90')} />
+      </button>
+      {open && (
+        <div className="space-y-3">
+          <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}
+            className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+            <option value="idea">{t("An idea")}</option>
+            <option value="problem">{t("Something isn't working")}</option>
+            <option value="privacy">{t("Privacy or my data")}</option>
+            <option value="other">{t("Something else")}</option>
+          </select>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder={t("Write your message...")}
+            className="w-full h-24 resize-none bg-black border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-white/20" />
+          <Button onClick={send} loading={busy} disabled={!text.trim()} className="w-full h-11 text-sm">{t("Send")}</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Files a deletion request; the nightly job erases the account and its data. */
+function DeleteAccount() {
+  const { user, signOut } = useAuth();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (!user) return null;
+  const confirm = async () => {
+    setBusy(true);
+    try {
+      await setDoc(doc(db, 'deletionRequests', user.uid), { requestedAt: serverTimestamp() });
+      toast.success(t("Your account will be deleted within 7 days. You've been signed out."), { duration: 8000 });
+      await signOut();
+    } catch {
+      toast.error(t("Couldn't request deletion. Try again, or use Contact us."));
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="text-center space-y-2" data-testid="delete-account">
+      {!confirming ? (
+        <button onClick={() => setConfirming(true)} className="text-xs text-zinc-600 hover:text-red-400 underline underline-offset-4">{t("Delete my account")}</button>
+      ) : (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4 space-y-3 text-left">
+          <p className="text-sm font-bold text-red-300">{t("Delete your account?")}</p>
+          <p className="text-xs text-zinc-400">{t("Your login, profile, member number, credits and answer records are erased within 7 days. This can't be undone. Totals you already added to stay, since they can't be traced to you.")}</p>
+          <div className="flex gap-2">
+            <Button variant="ghost" className="flex-1 h-10 text-sm" onClick={() => setConfirming(false)}>{t("Cancel")}</Button>
+            <Button onClick={confirm} loading={busy} className="flex-1 h-10 text-sm bg-red-500 text-white hover:bg-red-400">{t("Delete")}</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

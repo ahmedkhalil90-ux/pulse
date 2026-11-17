@@ -129,6 +129,10 @@ async function signup(bot, email, age, gender, country) {
     await selects.nth(0).selectOption(age);
     await selects.nth(1).selectOption(gender);
     await selects.nth(2).selectOption(country);
+    // Without accepting the privacy policy, sign-up is refused.
+    await p.getByRole('button', { name: 'Create Account' }).click();
+    await toast(p, 'accept the privacy policy');
+    await p.locator('[data-testid="consent"] input').check();
     await p.getByRole('button', { name: 'Create Account' }).click();
     await toast(p, 'Welcome to Pulse');
   });
@@ -410,6 +414,12 @@ await step(b, 'join group by code', async p => {
   await p.getByRole('button', { name: /Join/ }).last().click();
   await p.getByText(`Bots ${run}`).first().waitFor({ timeout: 10000 });
 });
+await step(b, 'my groups list survives a reload', async p => {
+  await p.reload({ waitUntil: 'domcontentloaded' });
+  await p.locator('[data-testid="streak-chip"]').waitFor({ timeout: 15000 });
+  await nav(p, 'Groups');
+  await p.getByText(`Bots ${run}`).first().waitFor({ timeout: 10000 });
+});
 await step(b, 'members tab shows count only, no usernames', async p => {
   await p.getByText(`Bots ${run}`).first().click();
   const body = await p.locator('body').innerText();
@@ -567,6 +577,7 @@ await step(a, 'final leaderboard shown, no individual answers', async p => {
     await p.getByPlaceholder('Min 6 characters...').fill(PASS);
     const sel = p.locator('select');
     await sel.nth(0).selectOption('25-34'); await sel.nth(1).selectOption('Female'); await sel.nth(2).selectOption('Egypt');
+    await p.locator('[data-testid="consent"] input').check();
     await p.getByRole('button', { name: 'Create Account' }).click();
     await p.locator('[data-testid="question-overlay"]').waitFor({ timeout: 15000 });
     await p.getByText('Referral code redeemed', { exact: false }).first().waitFor({ timeout: 15000 });
@@ -582,6 +593,28 @@ await step(a, 'final leaderboard shown, no individual answers', async p => {
       prof = (await getDoc(doc(c.firestore(), 'users', await uidOf(CAROL)))).data();
     });
     if (prof.invitedWith || typeof prof.referredBy === 'string') throw new Error('ANONYMITY: the profile shows who invited this member');
+    if (prof.consentVersion !== '2026-11-17') throw new Error(`consent not recorded: ${prof.consentVersion}`);
+  });
+  await step(carol, 'privacy policy, contact form, delete my account', async p => {
+    await p.getByRole('button', { name: 'Close' }).click().catch(() => {});
+    await p.locator('header button').last().click();
+    const href = await p.locator('[data-testid="privacy-link"]').getAttribute('href');
+    const r = await p.request.get(new URL(href, APP).toString());
+    if (!r.ok() || !(await r.text()).includes('Delete your account')) throw new Error('privacy policy page missing');
+    await p.locator('[data-testid="contact-us"] button').first().click();
+    await p.locator('[data-testid="contact-us"] textarea').fill('Love it');
+    await p.locator('[data-testid="contact-us"]').getByRole('button', { name: 'Send' }).click();
+    await toast(p, 'We read every message');
+    await p.getByText('Delete my account').click();
+    await p.locator('[data-testid="delete-account"]').getByRole('button', { name: 'Delete', exact: true }).click();
+    await toast(p, 'will be deleted within 7 days');
+    await p.getByRole('button', { name: 'Sign In' }).first().waitFor({ timeout: 10000 });
+    let req;
+    await env.withSecurityRulesDisabled(async c => {
+      const { getDoc } = await import('firebase/firestore');
+      req = (await getDoc(doc(c.firestore(), 'deletionRequests', await uidOf(CAROL)))).exists();
+    });
+    if (!req) throw new Error('deletion request not filed');
   });
 }
 
@@ -615,6 +648,7 @@ await step(a, 'final leaderboard shown, no individual answers', async p => {
     await p.getByPlaceholder('Min 6 characters...').fill(PASS);
     const sel = p.locator('select');
     await sel.nth(0).selectOption('25-34'); await sel.nth(1).selectOption('Male'); await sel.nth(2).selectOption('UAE');
+    await p.locator('[data-testid="consent"] input').check();
     await p.getByRole('button', { name: 'Create Account' }).click();
     await toast(p, "isn't valid any more");
     const left = await uidOf(`eve${run}@example.com`).then(() => true).catch(() => false);

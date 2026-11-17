@@ -523,6 +523,39 @@ service cloud.firestore {
       allow list, update, delete: if isAdmin();
     }
 
+    // "Delete my account": the member files the request; the nightly job
+    // (Admin SDK) erases their data and login. Once filed it cannot be changed
+    // or withdrawn by the client, so a half-deleted account is never left.
+    match /deletionRequests/{uid} {
+      allow get: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['requestedAt'])
+        && request.resource.data.requestedAt == request.time;
+      allow list, update, delete: if isAdmin();
+    }
+
+    // Contact form. Only admins read it. The sender is kept so we can reply
+    // inside the app later; nothing about answers is ever attached.
+    match /feedback/{id} {
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasOnly(['uid', 'text', 'kind', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
+        && request.resource.data.kind in ['idea', 'problem', 'privacy', 'other']
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // "My groups": a collection-group query over every group's members
+    // subcollection, filtered to the caller's own membership documents.
+    // Collection-group queries are only checked against a recursive match like
+    // this one; the nested rule under /groups does not apply to them.
+    match /{path=**}/members/{memberUid} {
+      allow list: if isAuthenticated()
+        && resource.data.uid == request.auth.uid;
+    }
+
     // Ideas for future brackets. No author is stored.
     match /bracketSuggestions/{id} {
       allow create: if isAuthenticated()
@@ -583,6 +616,9 @@ service cloud.firestore {
                     && (!request.resource.data.keys().hasAny(['memberNumber']) || isAdmin())
                     && (isAdmin() || (request.resource.data.get('streak', 1) == 1
                                       && !request.resource.data.keys().hasAny(['freezes', 'asker', 'invitedCount'])))
+                    // Sign-up records which privacy policy the member accepted.
+                    && (isAdmin() || (request.resource.data.get('consentVersion', '') is string
+                                      && request.resource.data.get('consentVersion', '').size() == 10))
                     && (isAdmin() || inviteOk(request.resource.data.get('invitedWith', '')));
       allow update: if (isOwner(userId) || isAdmin() || isMigrating(userId))
                     // Cheap test first: isAdmin() costs an exists() plus a

@@ -1266,6 +1266,36 @@ export const MUTATIONS: Mutation[] = [
     label: 'users: members may award themselves the Asker badge or an invite count',
     edits: [{ find: "                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['asker', 'invitedCount'])\n                        || isAdmin())\n", replace: '' }],
   },
+  {
+    id: 'M138',
+    label: 'users: a profile may be created without accepting the privacy policy',
+    edits: [{ find: "                    && (isAdmin() || (request.resource.data.get('consentVersion', '') is string\n                                      && request.resource.data.get('consentVersion', '').size() == 10))\n", replace: '' }],
+  },
+  {
+    id: 'M139',
+    label: "deletion: a request may be filed for someone else's account",
+    edits: [{ find: "    match /deletionRequests/{uid} {\n      allow get: if isOwner(uid) || isAdmin();\n      allow create: if isOwner(uid)\n        && ", replace: "    match /deletionRequests/{uid} {\n      allow get: if isOwner(uid) || isAdmin();\n      allow create: if isAuthenticated()\n        && " }],
+  },
+  {
+    id: 'M140',
+    label: 'deletion: a request may carry other fields',
+    edits: [{ find: "        && request.resource.data.keys().hasOnly(['requestedAt'])\n", replace: '' }],
+  },
+  {
+    id: 'M141',
+    label: 'feedback: may be sent in another member\'s name',
+    edits: [{ find: "        && request.resource.data.uid == request.auth.uid\n        && request.resource.data.text is string", replace: '        && request.resource.data.text is string' }],
+  },
+  {
+    id: 'M142',
+    label: 'feedback: any length',
+    edits: [{ find: ' && request.resource.data.text.size() <= 1000', replace: '' }],
+  },
+  {
+    id: 'M143',
+    label: "groups: anyone may list every group's members (collection group)",
+    edits: [{ find: "      allow list: if isAuthenticated()\n        && resource.data.uid == request.auth.uid;\n    }\n\n    // Ideas for future brackets.", replace: "      allow list: if isAuthenticated();\n    }\n\n    // Ideas for future brackets." }],
+  },
 ];
 
 /**
