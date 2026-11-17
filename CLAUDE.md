@@ -143,7 +143,7 @@ Do not introduce new UI libraries or a light theme without asking.
 
 **Safe to proceed on:** dependency updates, test coverage, copy fixes, UI polish, seed content generation, refactors that do not touch the above.
 
-**Testing:** 494 tests, plus the bots (`npm run bots`). `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
+**Testing:** 511 tests, plus the bots (`npm run bots`). `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
 
 - **Rules**  (`tests/rules.test.ts`, cases in `tests/cases/`). Vote integrity, flagging and boosting, the UID-migration takeover fix, answer-record ownership, game reads, group updates, results reads.
 - **Mutation verification** (`tests/mutation.test.ts`). Every deny-case names the mutation that should make it pass. The harness loosens that one guard in an in-memory copy of the rules, loads it into a throwaway emulator project, and asserts the case flips to allowed. `firestore.rules` is only ever read, never written. A mutation target that no longer matches exactly once throws, so a reworded rule breaks loudly instead of silently making a test vacuous.
@@ -202,6 +202,13 @@ Do not re-report these, and do not "fix" them again.
 - Share previews: `scripts/og-pages.mjs` writes `dist/q/<id>.html` per live public question at deploy (and nightly), so shared links show the question in chat apps. `index.html` must keep the `og:start`/`og:end` markers.
 - Bracket reports: `bracketReports/{uid}_{bracketId}`; 3 reports or one admin report closes a bracket at the next bot run.
 - Phone verification was simulated and is removed; `isVerified` is unused.
+
+## Privacy
+
+- Policy at `public/privacy.html` (English + Arabic), version in `src/lib/privacy.ts`; sign-up must record `consentVersion` (rules).
+- "Delete my account" files `deletionRequests/{uid}`; the nightly members job erases the member's data and login, keeps aggregate totals, and re-attributes their questions to `deleted_member`. Pending accounts are signed out on open.
+- Contact form writes `feedback` (admin-read); the nightly report counts new messages.
+- "My groups" is a collection-group query; it needs the recursive `/{path=**}/members/{memberUid}` rule.
 
 ## Open issues — in priority order
 

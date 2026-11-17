@@ -60,7 +60,7 @@ export const engagementCases: Case[] = [
   },
   {
     name: 'a new profile cannot start with a streak or freezes', expect: 'deny', killedBy: 'M132', as: OTHER, seed: (ctx) => seedInvite(ctx),
-    run: (db) => setDoc(doc(db, 'users', OTHER.uid), { credits: 13, isVerified: false, invitedWith: INVITE, streak: 365, freezes: 2 }),
+    run: (db) => setDoc(doc(db, 'users', OTHER.uid), { credits: 13, isVerified: false, invitedWith: INVITE, consentVersion: '2026-11-17', streak: 365, freezes: 2 }),
   },
   {
     name: 'badges and invite counts are set by the nightly job, not the member', expect: 'deny', killedBy: 'M137', as: M, seed: seed(),

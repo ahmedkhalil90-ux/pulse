@@ -37,7 +37,7 @@ const fails = [];
 const check = (ok, msg) => { if (!ok) fails.push(msg); };
 
 // --- seed -----------------------------------------------------------------
-for (const c of ['users', 'user_answers', 'questions', 'results', 'counters', 'memberNumbers', 'referralCodes', 'referrals', 'waitlist', 'ops']) {
+for (const c of ['users', 'user_answers', 'questions', 'results', 'counters', 'memberNumbers', 'referralCodes', 'referrals', 'waitlist', 'ops', 'deletionRequests', 'bracketPicks', 'groups', 'feedback', 'activity']) {
   const s = await db.collection(c).get();
   await Promise.all(s.docs.map((d) => d.ref.delete()));
 }
@@ -68,6 +68,17 @@ await q('member100', 'late', 55, 50);       // reaches 100: reward + candidate
 await q('member40', 'early', 20, 20);       // candidate, no reward
 await q('system500', 'pulse_originals_system', 250, 250); // never question of the week
 
+// 'lurker' asks to delete their account: data in several places.
+await db.doc('deletionRequests/lurker').set({ requestedAt: new Date() });
+await db.doc('bracketPicks/lurker_b1').set({ bracketId: 'b1', picks: [0, 2, 4, 6, 0, 4, 0] });
+await db.doc('groups/g1').set({ name: 'G', memberCount: 2, adminUid: 'early' });
+await db.doc('groups/g1/members/lurker').set({ uid: 'lurker', joinedAt: 'x' });
+await db.doc('groups/g1/members/early').set({ uid: 'early', joinedAt: 'x' });
+await db.doc('users/lurker/private/mind').set({ week: '2026-11-16', right: 1, total: 2 });
+await db.doc('activity/lurker_2026-11-16').set({ uid: 'lurker', day: '2026-11-16', answers: 3 });
+await db.doc('feedback/f1').set({ uid: 'lurker', text: 'bye', kind: 'other', createdAt: new Date() });
+await q('lurkerQ', 'lurker', 3, 3);
+
 // --- run twice ------------------------------------------------------------
 const env = { ...process.env, PULSE_SA_KEY: keyFile, GCLOUD_PROJECT: projectId };
 const runJob = () => execFileSync('node', [path.join(ROOT, 'scripts/ops/members.mjs')], { cwd: os.tmpdir(), env, stdio: 'pipe' });
@@ -76,7 +87,7 @@ const firstReport = fs.readFileSync(path.join(os.tmpdir(), 'members-report.md'),
 runJob(); // a rerun must change nothing
 
 // --- check ----------------------------------------------------------------
-const num = async (uid) => (await db.doc(`users/${uid}`).get()).data().memberNumber;
+const num = async (uid) => (await db.doc(`users/${uid}`).get()).data()?.memberNumber;
 check(await num(FOUNDER) === 1, 'founder is not #1');
 check((await db.doc('users/early').get()).data().invitedCount === 101, 'invite count not written for the inviter');
 check(await num('early') === 2, 'early member is not #2');
@@ -95,6 +106,21 @@ const qow = (await db.doc('ops/questionOfWeek').get()).data();
 check(qow?.id === 'member100', `question of the week is ${qow?.id}, expected member100`);
 check((await db.doc('referralCodes/SPAMMY').get()).data().paused === true, 'abused invite link not paused');
 check(firstReport.includes('Paused for review'), 'report does not flag the paused link');
+
+// Deletion: everything tied to 'lurker' is gone, other members untouched.
+check(!(await db.doc('users/lurker').get()).exists, 'deleted profile still exists');
+check(!(await db.doc('users/lurker/private/mind').get()).exists, 'deleted member\'s private data still exists');
+check((await db.collection('user_answers').where('userId', '==', 'lurker').get()).empty, 'deleted member\'s answer records still exist');
+check(!(await db.doc('bracketPicks/lurker_b1').get()).exists, 'deleted member\'s bracket picks still exist');
+check(!(await db.doc('groups/g1/members/lurker').get()).exists, 'deleted member still in a group');
+check((await db.doc('groups/g1').get()).data().memberCount === 1, 'group member count not reduced exactly once');
+check(!(await db.doc('activity/lurker_2026-11-16').get()).exists, 'deleted member\'s activity still exists');
+check((await db.collection('feedback').where('uid', '==', 'lurker').get()).empty, 'deleted member\'s messages still exist');
+check((await db.doc('questions/lurkerQ').get()).data().authorUid === 'deleted_member', 'question still names the deleted author');
+check(!(await db.doc('deletionRequests/lurker').get()).exists, 'deletion request not cleared');
+check(await auth.getUser('lurker').then(() => false).catch(() => true), 'deleted member can still sign in');
+check((await db.collection('user_answers').where('userId', '==', 'early').get()).size === 12, 'another member lost answers');
+check(firstReport.includes('Account deletions:** 1 of 1'), 'report does not show the deletion');
 
 fs.rmSync(keyFile, { force: true });
 console.log(`members job: ${fails.length ? fails.length + ' failed' : 'all checks passed'}`);

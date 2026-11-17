@@ -5,13 +5,13 @@ import { INVITE, INVITER_UID, seedInvite } from '../helpers/fixtures';
 
 const NEWBIE = { uid: 'inv-newbie', email: 'newbie@example.com' };
 const MEMBER = { uid: 'inv-member', email: 'member@example.com' };
-const profile = (extra: Record<string, unknown> = {}) => ({ isVerified: false, credits: 13, invitedWith: INVITE, ...extra });
+const profile = (extra: Record<string, unknown> = {}) => ({ isVerified: false, credits: 13, invitedWith: INVITE, consentVersion: '2026-11-17', ...extra });
 
 /** counters/members at `last`, and MEMBER's profile without a number. */
 async function seedCounter(ctx: RulesTestContext, last = 41, memberExtra: Record<string, unknown> = {}) {
   const db = ctx.firestore();
   await setDoc(doc(db, 'counters', 'members'), { last });
-  await setDoc(doc(db, 'users', MEMBER.uid), { credits: 5, invitedWith: INVITE, ...memberExtra });
+  await setDoc(doc(db, 'users', MEMBER.uid), { credits: 5, invitedWith: INVITE, consentVersion: '2026-11-17', ...memberExtra });
 }
 /** The client's claim: counter +1, memberNumbers/{n}, profile. */
 const claim = (db: any, n: number, opts: { counter?: number; forUid?: string; profileNumber?: number } = {}) =>

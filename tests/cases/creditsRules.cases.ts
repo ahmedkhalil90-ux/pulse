@@ -112,7 +112,7 @@ export const creditsRulesCases: Case[] = [
   {
     name: 'a new profile cannot start with a big balance',
     expect: 'deny', killedBy: 'M121', as: M, seed: (c) => seedInvite(c),
-    run: (db) => setDoc(doc(db, 'users', M.uid), { credits: 1000, isVerified: false, invitedWith: INVITE }),
+    run: (db) => setDoc(doc(db, 'users', M.uid), { credits: 1000, isVerified: false, invitedWith: INVITE, consentVersion: '2026-11-17' }),
   },
   {
     name: 'the private reason record holds nothing else',

@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import { UserProfile } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firebase';
 import { awardDailyBonus, awardReferral } from '../lib/credits';
+import { POLICY_VERSION } from '../lib/privacy';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -279,6 +280,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       streak: 1,
       referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
       invitedWith: inviteCode.trim().toUpperCase(),
+      consentVersion: POLICY_VERSION,
       createdAt: serverTimestamp(),
     };
     try {
