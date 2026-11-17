@@ -45,7 +45,8 @@ await env.withSecurityRulesDisabled(async ctx => {
       demographics: {
         ageRange: { '25-34': { '0': 6, '1': 5 }, '18-24': { '0': 1, '1': 0 } },
         gender: { Female: { '0': 7, '1': 5 } },
-        country: { UAE: { '0': 7, '1': 5 } },
+        // Gulf leans option A, Egypt option B, 12 answers each: the regional card shows a split.
+        country: { UAE: { '0': 7, '1': 5 }, Egypt: { '0': 3, '1': 9 } },
       },
     });
   }
@@ -191,6 +192,10 @@ await step(a, 'vote in feed', async p => {
   await toast(p, 'Vote recorded anonymously');
 });
 await step(a, 'anonymity confirmation shown', p => toast(p, 'Your answer is anonymous'));
+await step(a, 'Gulf vs Egypt card appears when both sides have 10+ answers', async p => {
+  const txt = await p.locator('[data-testid="region-split"]').first().innerText({ timeout: 8000 });
+  if (!/disagree/i.test(txt)) throw new Error(`regional card does not show the split: ${txt}`);
+});
 await step(a, 'credit balance increased', async p => {
   await p.waitForTimeout(1500);
   let after = await credits(p);
@@ -320,6 +325,15 @@ await step(a, 'knockout: reopening shows results, no second run', async p => {
   await p.locator('[data-testid="knockout-suggest"] input').fill('Best Amr Diab song');
   await p.locator('[data-testid="knockout-suggest"] button').click();
   await toast(p, 'best ideas become future brackets');
+  await p.getByText('Something wrong with this bracket?').click();
+  await p.getByRole('button', { name: 'Not interesting' }).click();
+  await p.getByText("We'll review this bracket").waitFor({ timeout: 5000 });
+  let rep;
+  await env.withSecurityRulesDisabled(async c => {
+    const { getDoc } = await import('firebase/firestore');
+    rep = (await getDoc(doc(c.firestore(), 'bracketReports', `${await uidOf(ALICE)}_ko_bots`))).data();
+  });
+  if (rep?.reason !== 'boring') throw new Error('bracket report not stored');
   await p.locator('[data-testid="knockout-overlay"] button[aria-label="Close"]').click();
 });
 await step(b, 'knockout: a second member moves the community result', async p => {
@@ -334,6 +348,27 @@ await step(b, 'knockout: a second member moves the community result', async p =>
   if (!['Messi', 'Benzema'].includes(pulse)) throw new Error(`Pulse champion shown as "${pulse}"`);
   if (!(await p.getByText('2 brackets').count())) throw new Error('community total does not show 2 brackets');
   await p.locator('[data-testid="knockout-overlay"] button[aria-label="Close"]').click();
+});
+
+await step(a, 'Mind Reader: guess the majority before the result, score kept privately', async p => {
+  await nav(p, 'Feed');
+  if (!/[1-9]\d*\/10/.test(await p.locator('[data-testid="daily-goal"]').innerText())) throw new Error('daily goal shows no progress');
+  await p.locator('[data-testid="mind-toggle"]').click();
+  await p.locator('h3 + div button').first().click();
+  await p.locator('[data-testid="predict-overlay"]').waitFor({ timeout: 8000 });
+  await p.locator('[data-testid="predict-option"]').first().click();
+  await p.locator('[data-testid="predict-overlay"]').waitFor({ state: 'detached', timeout: 5000 });
+  let m;
+  for (let i = 0; i < 10 && !m; i++) {
+    await p.waitForTimeout(500);
+    await env.withSecurityRulesDisabled(async c => {
+      const { getDoc } = await import('firebase/firestore');
+      m = (await getDoc(doc(c.firestore(), 'users', await uidOf(ALICE), 'private', 'mind'))).data();
+    });
+  }
+  if (m?.total !== 1 || Object.keys(m).sort().join() !== 'right,total,week') throw new Error(`mind score wrong: ${JSON.stringify(m)}`);
+  await p.locator('[data-testid="mind-toggle"]').click(); // off again for the steps that follow
+  await p.getByRole('button', { name: /Next/ }).first().click().catch(() => {});
 });
 
 await step(b, 'flag a question as already asked: counted, not hidden', async p => {
@@ -382,10 +417,26 @@ await step(b, 'members tab shows count only, no usernames', async p => {
 });
 
 // 4. Posting: verify phone, post, question held for moderation (no Gemini key in test)
-await step(a, 'verify phone', async p => {
+await step(a, 'no fake phone verification; streak shown; a freeze costs 5 credits', async p => {
   await p.locator('button:has(svg.lucide-user)').first().click();
-  await p.getByRole('button', { name: 'Verify Phone Number' }).click();
-  await toast(p, 'Phone verified');
+  if (await p.getByRole('button', { name: 'Verify Phone Number' }).count()) throw new Error('the simulated phone verification is back');
+  if ((await p.locator('[data-testid="streak-chip"]').innerText()).trim() !== '1') throw new Error('streak chip does not show day 1');
+  const before = await credits(p);
+  await p.locator('[data-testid="buy-freeze"]').click();
+  await toast(p, 'Streak freeze added');
+  await p.waitForTimeout(1200);
+  if ((await p.locator('[data-testid="freeze-count"]').innerText()).trim() !== '1/2') throw new Error('freeze not counted');
+  const after = await credits(p);
+  if (after !== before - 5) throw new Error(`credits ${before} -> ${after}, expected -5`);
+});
+await step(a, 'question ideas fill the form', async p => {
+  await nav(p, 'Feed');
+  await p.locator('nav button').nth(2).click();
+  await p.locator('[data-testid="starters"] button').first().click();
+  const v = await p.getByPlaceholder("What's on your mind?").inputValue();
+  if (v.length < 10) throw new Error('starter did not fill the question');
+  if (!(await p.getByPlaceholder('First choice...').inputValue())) throw new Error('starter did not fill the options');
+  await p.getByRole('button', { name: 'Cancel', exact: true }).click();
 });
 await step(a, 'duplicate question: shown the existing one and can answer it', async p => {
   await nav(p, 'Feed');

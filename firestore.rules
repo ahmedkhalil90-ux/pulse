@@ -324,6 +324,8 @@ service cloud.firestore {
           || (r.reason == 'unlock' && d == -3 && firstWrite(/databases/$(database)/documents/users/$(userId)/unlockedDemographics/$(r.ref)))
           || (r.reason == 'referral' && d == 15 && firstWrite(/databases/$(database)/documents/referrals/$(userId)))
           || (r.reason == 'boost' && d == -10 && boostOk(r.ref))
+          || (r.reason == 'freeze' && d == -5
+              && request.resource.data.get('freezes', 0) == resource.data.get('freezes', 0) + 1)
           || (r.reason == 'daily' && d == 3 && dailyOk()));
     }
     function boostOk(questionId) {
@@ -336,6 +338,47 @@ service cloud.firestore {
       return day is string && day.size() == 10
         && day != resource.data.get('lastLogin', '')
         && timestamp.date(int(day[0:4]), int(day[5:7]), int(day[8:10])) == request.time.date();
+    }
+
+    // Daily streak. It moves only with today's check-in (lastLogin -> today):
+    // back to 1, or +1 when the last check-in was yesterday, or +1 across one
+    // missed day by spending a streak freeze.
+    function dayOf(s) {
+      return timestamp.date(int(s[0:4]), int(s[5:7]), int(s[8:10]));
+    }
+    function streakOk() {
+      let old = resource.data.get('lastLogin', '');
+      let was = resource.data.get('streak', 0);
+      let now = request.resource.data.streak;
+      return now is int
+        && dailyOk()
+        && (now == 1
+            || (now == was + 1 && old is string && old.size() >= 10
+                && (dayOf(old) + duration.value(1, 'd') == request.time.date()
+                    || (dayOf(old) + duration.value(2, 'd') == request.time.date()
+                        && request.resource.data.get('freezes', 0) == resource.data.get('freezes', 0) - 1))));
+    }
+    // Streak freezes: bought one at a time for 5 credits (2 at most), or spent
+    // one at a time together with a streak change.
+    function freezesOk() {
+      let was = resource.data.get('freezes', 0);
+      let now = request.resource.data.freezes;
+      return now is int
+        && ((now == was + 1
+             && now <= 2
+             && request.resource.data.credits == resource.data.get('credits', 0) - 5)
+            || (now == was - 1 && now >= 0
+                && request.resource.data.diff(resource.data).affectedKeys().hasAny(['streak'])));
+    }
+    function mindOk() {
+      let same = resource != null && resource.data.week == request.resource.data.week;
+      let wasTotal = same ? resource.data.total : 0;
+      let wasRight = same ? resource.data.right : 0;
+      return request.resource.data.keys().hasOnly(['week', 'right', 'total'])
+        && request.resource.data.week is string && request.resource.data.week.size() == 10
+        && request.resource.data.total == wasTotal + 1
+        && request.resource.data.right >= wasRight
+        && request.resource.data.right <= wasRight + 1;
     }
 
     match /admins/{adminUid} {
@@ -467,6 +510,19 @@ service cloud.firestore {
             && tallyWriteOk(bracketId));
       allow delete: if isAdmin();
     }
+    // A member's report of a bad bracket (wrong or made-up contenders,
+    // offensive, boring). One per member per bracket; only admins and the
+    // nightly job read them. Three reports, or one from an admin, close it.
+    match /bracketReports/{id} {
+      allow get: if isAdmin() || (isAuthenticated() && id.matches(request.auth.uid + '_.+'));
+      allow create: if isAuthenticated()
+        && id == request.auth.uid + '_' + request.resource.data.bracketId
+        && request.resource.data.keys().hasOnly(['bracketId', 'reason', 'createdAt'])
+        && request.resource.data.reason in ['wrong', 'offensive', 'boring']
+        && exists(/databases/$(database)/documents/brackets/$(request.resource.data.bracketId));
+      allow list, update, delete: if isAdmin();
+    }
+
     // Ideas for future brackets. No author is stored.
     match /bracketSuggestions/{id} {
       allow create: if isAuthenticated()
@@ -525,6 +581,8 @@ service cloud.firestore {
                                       && request.resource.data.get('credits', 0) <= 13))
                     && (!request.resource.data.keys().hasAny(['role']) || isAdmin())
                     && (!request.resource.data.keys().hasAny(['memberNumber']) || isAdmin())
+                    && (isAdmin() || (request.resource.data.get('streak', 1) == 1
+                                      && !request.resource.data.keys().hasAny(['freezes', 'asker', 'invitedCount'])))
                     && (isAdmin() || inviteOk(request.resource.data.get('invitedWith', '')));
       allow update: if (isOwner(userId) || isAdmin() || isMigrating(userId))
                     // Cheap test first: isAdmin() costs an exists() plus a
@@ -539,7 +597,18 @@ service cloud.firestore {
                     && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['credits'])
                         || isAdmin()
                         || isMigrating(userId)
-                        || creditOk(userId));
+                        || creditOk(userId))
+                    // Set by the nightly job only: the Asker badge and the count
+                    // of members this member has brought in.
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['asker', 'invitedCount'])
+                        || isAdmin())
+                    // Daily streak and streak freezes: earned, never typed in.
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['streak'])
+                        || isAdmin()
+                        || streakOk())
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['freezes'])
+                        || isAdmin()
+                        || freezesOk());
       allow delete: if isOwner(userId) || isAdmin() || isMigrating(userId);
 
       // Unlocked demographics subcollection
@@ -557,6 +626,9 @@ service cloud.firestore {
         allow write: if isOwner(userId) && docId == 'credit'
           && request.resource.data.keys().hasOnly(['reason', 'ref', 'at'])
           && request.resource.data.at == request.time;
+        // Mind Reader: this week's count of majority predictions, private to
+        // the member. One prediction at a time; it holds no question or answer.
+        allow create, update: if isOwner(userId) && docId == 'mind' && mindOk();
       }
 
       match /unlockedDemographics/{questionId} {

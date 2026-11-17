@@ -98,5 +98,7 @@ jobs:
         env: { KEY: '${{ secrets.FIREBASE_SA_KEY }}' }
         run: |
           printf '%s' "$KEY" > "$RUNNER_TEMP/sa.json"
+          # Static preview page per live question, so shared links show the question in WhatsApp.
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" node scripts/og-pages.mjs
           GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" node scripts/deploy-api.mjs hosting
           rm -f "$RUNNER_TEMP/sa.json"

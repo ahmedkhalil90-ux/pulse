@@ -20,6 +20,11 @@ export type UserProfile = {
   memberNumber?: number;
   /** Set by the nightly job once one of their questions reaches 100 answers. */
   asker?: boolean;
+  /** Consecutive days checked in (UTC days), and freezes held (max 2). */
+  streak?: number;
+  /** Members this member has brought in (set nightly). */
+  invitedCount?: number;
+  freezes?: number;
 };
 
 export type QuestionStatus = 'pending' | 'live' | 'rejected' | 'duplicate' | 'retired' | 'pool';

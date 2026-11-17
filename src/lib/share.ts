@@ -65,3 +65,31 @@ export async function sharePick(blob: Blob, text: string, url: string): Promise<
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'pulse-pick.png'; a.click();
   return 'downloaded';
 }
+
+export type WeekStats = { answers: number; agreePct: number | null; streak: number; mind: { right: number; total: number } | null; member: string };
+/** "My week on Pulse": a 1080x1920 story image of the member's own week. Counts only. */
+export async function recapCard(s: WeekStats, url: string): Promise<Blob> {
+  const W = 1080, H = 1920;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d')!;
+  const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#000'); g.addColorStop(1, '#3b0764');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.direction = lang === 'ar' ? 'rtl' : 'ltr'; x.textAlign = 'center';
+  const font = (px: number, weight = 700) => `${weight} ${px}px system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif`;
+  x.fillStyle = '#fff'; x.font = font(56, 800); x.fillText('PULSE', W / 2, 200);
+  x.fillStyle = '#d8b4fe'; x.font = font(52, 600); x.fillText(t('My week on Pulse'), W / 2, 330);
+  x.fillStyle = '#a1a1aa'; x.font = font(40, 500); x.fillText(s.member, W / 2, 400);
+  const rows: Array<[string, string]> = [[String(s.answers), t('questions answered')]];
+  if (s.agreePct !== null) rows.push([`${s.agreePct}%`, t('with the majority')]);
+  rows.push([`🔥 ${s.streak}`, t('day streak')]);
+  if (s.mind && s.mind.total > 0) rows.push([`${s.mind.right}/${s.mind.total}`, t('minds read')]);
+  rows.forEach(([big, small], i) => {
+    const y = 640 + i * 280;
+    x.fillStyle = '#fff'; x.font = font(150, 800); x.fillText(big, W / 2, y);
+    x.fillStyle = '#d8b4fe'; x.font = font(46, 600); x.fillText(small, W / 2, y + 76);
+  });
+  x.fillStyle = '#71717a'; x.font = font(40, 500);
+  x.fillText(t('Answer anonymously on Pulse'), W / 2, H - 200);
+  x.fillText(new URL(url).host, W / 2, H - 130);
+  return new Promise((res) => c.toBlob((b) => res(b!), 'image/png'));
+}

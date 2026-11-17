@@ -99,6 +99,7 @@ Full field-level schema lives in the Pulse Product Document. Key constraints:
 | Referral (signup + first answer) | +15 |
 | Boost a question (100 impressions) | −10 |
 | Unlock demographic breakdown (one question) | −3 |
+| Streak freeze (max 2 held) | −5 |
 | Game power-up | −5 to −10 |
 
 ## Game mode scoring
@@ -142,7 +143,7 @@ Do not introduce new UI libraries or a light theme without asking.
 
 **Safe to proceed on:** dependency updates, test coverage, copy fixes, UI polish, seed content generation, refactors that do not touch the above.
 
-**Testing:** 447 tests, plus the bots (`npm run bots`). `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
+**Testing:** 494 tests, plus the bots (`npm run bots`). `npm test` runs all of them against the Firestore emulator via `firebase emulators:exec`. Java is required.
 
 - **Rules**  (`tests/rules.test.ts`, cases in `tests/cases/`). Vote integrity, flagging and boosting, the UID-migration takeover fix, answer-record ownership, game reads, group updates, results reads.
 - **Mutation verification** (`tests/mutation.test.ts`). Every deny-case names the mutation that should make it pass. The harness loosens that one guard in an in-memory copy of the rules, loads it into a throwaway emulator project, and asserts the case flips to allowed. `firestore.rules` is only ever read, never written. A mutation target that no longer matches exactly once throws, so a reworded rule breaks loudly instead of silently making a test vacuous.
@@ -192,6 +193,15 @@ Do not re-report these, and do not "fix" them again.
 - picks = 7 winners `[qf0..qf3, sf0, sf1, final]`; round 1 pairs fixed 0v1, 2v3, 4v5, 6v7. `bracketPicks/{uid}_{bracketId}` is private and written once.
 - `bracketResults/{bracketId}` holds only `pairs` (per-match counts) and `champ` (champion counts); rules allow +1 on exactly the caller's own 7 matches, only in the same write that creates their picks, so no replay.
 - Suggestions (`bracketSuggestions`) store no author; the bot reads them as ideas for the next bracket.
+
+## Engagement features
+
+- Daily streak moves with the daily check-in (`nextStreak` in `src/lib/credits.ts`, mirrored by `streakOk` in the rules); freezes cost 5 credits, max 2, used automatically across one missed day. UTC days.
+- Mind Reader mode (off by default, toggle in the Feed): guess the majority before the reveal; weekly score in `users/{uid}/private/mind`, counts only.
+- Gulf vs Egypt card needs 10+ answers on each side; Rare take badge at 25% or less.
+- Share previews: `scripts/og-pages.mjs` writes `dist/q/<id>.html` per live public question at deploy (and nightly), so shared links show the question in chat apps. `index.html` must keep the `og:start`/`og:end` markers.
+- Bracket reports: `bracketReports/{uid}_{bracketId}`; 3 reports or one admin report closes a bracket at the next bot run.
+- Phone verification was simulated and is removed; `isVerified` is unused.
 
 ## Open issues — in priority order
 

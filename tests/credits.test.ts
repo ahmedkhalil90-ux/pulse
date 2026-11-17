@@ -223,3 +223,14 @@ describe('boost', () => {
     expect(await credits()).toBe(20);
   });
 });
+
+import { nextStreak } from '../src/lib/credits';
+describe('daily streak arithmetic', () => {
+  it('first check-in ever starts at 1', () => expect(nextStreak(undefined, '2026-11-16')).toEqual({ streak: 1, usedFreeze: false }));
+  it('the day after adds one', () => expect(nextStreak('2026-11-15', '2026-11-16', 4, 0)).toEqual({ streak: 5, usedFreeze: false }));
+  it('a full timestamp from older accounts counts as its day', () => expect(nextStreak('2026-11-15T22:10:00.000Z', '2026-11-16', 4)).toEqual({ streak: 5, usedFreeze: false }));
+  it('one missed day spends a freeze and keeps the streak', () => expect(nextStreak('2026-11-14', '2026-11-16', 4, 1)).toEqual({ streak: 5, usedFreeze: true }));
+  it('one missed day without a freeze restarts', () => expect(nextStreak('2026-11-14', '2026-11-16', 4, 0)).toEqual({ streak: 1, usedFreeze: false }));
+  it('two missed days restart even with a freeze', () => expect(nextStreak('2026-11-13', '2026-11-16', 4, 2)).toEqual({ streak: 1, usedFreeze: false }));
+  it('month boundaries count as consecutive days', () => expect(nextStreak('2026-10-31', '2026-11-01', 9)).toEqual({ streak: 10, usedFreeze: false }));
+});

@@ -272,7 +272,25 @@ async function qotd() {
 // read as ideas (merged, joke entries dropped by the reviewer), never copied in
 // unchecked. A second model must agree it is safe and well-formed.
 async function knockout() {
-  const live = (await db.collection('brackets').where('status', '==', 'live').get()).docs;
+  // Member reports: three members, or one admin, close a bracket.
+  const reports = (await db.collection('bracketReports').get()).docs.map((d) => ({ uid: d.id.split('_')[0], ...d.data() }));
+  if (reports.length) {
+    const adminIds = new Set(['7zNbw98m9jZYy8uTan7dqwolBud2', ...(await db.collection('admins').get()).docs.map((d) => d.id)]);
+    const by = {};
+    for (const r of reports) (by[r.bracketId] ??= []).push(r);
+    const notes = [];
+    for (const [id, rs] of Object.entries(by)) {
+      const b = await db.doc(`brackets/${id}`).get();
+      if (!b.exists || b.data().status !== 'live') continue;
+      const why = [...new Set(rs.map((r) => r.reason))].join('/');
+      if (rs.length >= 3 || rs.some((r) => adminIds.has(r.uid))) {
+        await b.ref.update({ status: 'closed', closedAt: new Date().toISOString(), closedReason: `reported: ${why}` });
+        notes.push(`closed "${b.data().title}" (${rs.length} report(s): ${why})`);
+      } else notes.push(`"${b.data().title}" has ${rs.length} report(s): ${why}`);
+    }
+    if (notes.length) report.knockoutReports = notes.join('; ');
+  }
+  const live = (await db.collection('brackets').where('status', '==', 'live').get()).docs.filter((d) => d.exists);
   const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
   for (const b of live) if ((b.data().createdAt ?? '') < weekAgo) await b.ref.update({ status: 'closed', closedAt: new Date().toISOString() });
   const newest = live.map((b) => b.data().createdAt ?? '').sort().pop() ?? '';
@@ -294,9 +312,19 @@ Write in English and natural Arabic. Return {"title_en","title_ar","category","c
     if (!draft?.title_en || !Array.isArray(c) || c.length !== 8) continue;
     const names = c.map((x) => String(x.en ?? '').trim());
     if (names.some((n) => !n || n.length > 40) || new Set(names.map((n) => n.toLowerCase())).size !== 8) continue;
-    const review = await groq(`Review this bracket for an anonymous polling app in the UAE and Egypt. "safe": false if the topic or any contender touches ${RED_LINES}, or a living politician or religious figure, or could offend. "distinct": false if two contenders are the same thing. Bracket: ${JSON.stringify({ title: draft.title_en, contenders: names })}
-Return {"safe":true|false,"distinct":true|false,"reason":"<short>"}.`) ?? await gemini(`Review this bracket. "safe": false if it touches ${RED_LINES} or a living politician or religious figure. "distinct": false if two contenders are the same. ${JSON.stringify({ title: draft.title_en, contenders: names })} Return {"safe":true|false,"distinct":true|false}.`);
-    if (!review?.safe || !review?.distinct) { report.errors.push(`knockout draft rejected: ${review?.reason ?? 'no review'}`); continue; }
+    // Two independent reviewers (when both are reachable) must each agree the
+    // bracket is safe, has no duplicates, and that EVERY contender is real and
+    // widely known: an early bracket carried names a model had made up.
+    const REVIEW = `Review this "best of" bracket for an anonymous polling app in the UAE and Egypt.
+"safe": false if the topic or any contender touches ${RED_LINES}, or a living politician or religious figure, or could offend.
+"distinct": false if two contenders are the same thing.
+"unknown": list every contender that you cannot confirm is a real, widely known example of the topic (a real series, player, brand, dish, song...). If you are not sure it exists, list it. Misspelt or invented names go here.
+"fits": false if any contender does not belong to the topic (e.g. a Turkish series in a list of Egyptian Ramadan series).
+Bracket: ${JSON.stringify({ title: draft.title_en, contenders: names })}
+Return {"safe":true|false,"distinct":true|false,"fits":true|false,"unknown":["<name>"],"reason":"<short>"}.`;
+    const reviews = (await Promise.all([groq(REVIEW), gemini(REVIEW)])).filter(Boolean);
+    const bad = reviews.find((r) => !r.safe || !r.distinct || r.fits === false || (Array.isArray(r.unknown) && r.unknown.length > 0));
+    if (!reviews.length || bad) { report.errors.push(`knockout draft "${draft.title_en}" rejected: ${bad ? (bad.unknown?.length ? `unconfirmed: ${bad.unknown.join(', ')}` : bad.reason ?? 'failed review') : 'no reviewer available'}`.slice(0, 200)); continue; }
     const order = c.map((x, i) => ({ x, r: Math.random(), i })).sort((a, b) => a.r - b.r).map((o) => o.x);
     const id = 'ko_' + crypto.createHash('sha1').update(draft.title_en + Date.now()).digest('hex').slice(0, 12);
     await db.doc(`brackets/${id}`).set({
@@ -360,7 +388,7 @@ for (const [name, fn] of Object.entries({ moderate, trends, qotd, knockout, dial
 report.when = new Date().toISOString();
 const md = [`### Pulse daily bot, ${report.when.slice(0, 10)}`,
   `- Moderation: ${report.moderated.approved} approved, ${report.moderated.rejected} rejected, ${report.moderated.duplicates ?? 0} merged as duplicates, ${report.moderated.held} left for you`, `- Flagged as already asked: ${report.flaggedDuplicates ?? 'none'}`,
-  `- Trend questions added: ${report.trends}`, `- Question of the day: ${report.qotd ?? 'unchanged'}`, `- Knockout: ${report.knockout ?? 'not run'}`, `- Dialect versions added: ${report.dialects}`,
+  `- Trend questions added: ${report.trends}`, `- Question of the day: ${report.qotd ?? 'unchanged'}`, `- Knockout: ${report.knockout ?? 'not run'}`, ...(report.knockoutReports ? [`- Bracket reports: ${report.knockoutReports}`] : []), `- Dialect versions added: ${report.dialects}`,
   `- New questions: ${report.generated} drafted, ${report.pooled} passed review into the pool`,
   `- Model calls: ${Object.entries(report.calls).map(([m, n]) => `${m} ${n}`).join(', ') || 'none'}`,
   `- Quotas used up: ${report.exhausted.join(', ') || 'none'}`, ...(report.errors.length ? [`- Errors: ${report.errors.slice(0, 5).join('; ')}`] : [])].join('\n');
