@@ -125,6 +125,20 @@ check(await auth.getUser('lurker').then(() => false).catch(() => true), 'deleted
 check((await db.collection('user_answers').where('userId', '==', 'early').get()).size === 12, 'another member lost answers');
 check(firstReport.includes('Account deletions:** 1 of 1'), 'report does not show the deletion');
 
+// --- nightly metrics on the same data ------------------------------------
+execFileSync('node', [path.join(ROOT, 'scripts/ops/metrics.mjs')], { cwd: os.tmpdir(), env, stdio: 'pipe' });
+const metrics = (await db.doc('ops/metrics').get()).data();
+const metricsMd = fs.readFileSync(path.join(os.tmpdir(), 'metrics-report.md'), 'utf8');
+const metricAccounts = (await db.collection('users').get()).docs;
+const answersOf = async (uid) => (await db.collection('user_answers').where('userId', '==', uid).get()).size;
+const counts = await Promise.all(metricAccounts.map((u) => answersOf(u.id)));
+check(metrics.funnel.steps.signedUp.n === metricAccounts.length, 'funnel: sign-ups do not match accounts');
+check(metrics.funnel.steps.opened.n === counts.filter((c) => c >= 5).length, 'funnel: 5-answer count wrong');
+check(metrics.funnel.steps.unlocked.n === counts.filter((c) => c >= 10).length, 'funnel: 10-answer count wrong');
+check(metrics.funnel.steps.member.n === metricAccounts.filter((u) => u.data().memberNumber).length, 'funnel: member count wrong');
+check(metricsMd.includes('Entry funnel'), 'metrics report has no funnel');
+check(!metricAccounts.some((u) => metricsMd.includes(u.id) || JSON.stringify(metrics).includes(u.id)), 'metrics leaked an account id');
+
 fs.rmSync(keyFile, { force: true });
 console.log(`members job: ${fails.length ? fails.length + ' failed' : 'all checks passed'}`);
 for (const f of fails) console.log(`  FAIL ${f}`);
