@@ -190,6 +190,20 @@ if (fb.length) {
 const waiting = (await db.collection('waitlist').count().get()).data().count;
 report.push(`**Waitlist:** ${waiting} people waiting (addresses are in Firestore, collection \`waitlist\`).`);
 
+// Groups made before 2026-11-24 never listed their creator as a member, so the
+// group vanished from the creator's "My groups". memberCount already counted
+// them, so only the membership record is added.
+let repaired = 0;
+for (const g of (await db.collection('groups').get()).docs) {
+  const admin = g.data().adminUid;
+  if (!admin || !(await db.doc(`users/${admin}`).get()).exists) continue; // erased creator: nothing to restore
+  const ref = g.ref.collection('members').doc(admin);
+  if ((await ref.get()).exists) continue;
+  await ref.set({ uid: admin, joinedAt: g.data().createdAt ?? new Date().toISOString() });
+  repaired++;
+}
+if (repaired) report.push(`**Groups:** restored ${repaired} creator membership${repaired === 1 ? '' : 's'}.`);
+
 const md = `\n### Members\n\n${report.join('\n\n')}\n`;
 writeFileSync('members-report.md', md);
 console.log(md);

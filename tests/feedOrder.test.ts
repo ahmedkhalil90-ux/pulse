@@ -68,7 +68,13 @@ describe('personal feed order', () => {
 
   it('Egyptian trend questions go to Egyptian users first', () => {
     const mixed = [...pool, q('eg1', 'exploring', 0.5, { source: 'trend-egypt' }), q('ae1', 'exploring', 0.5, { source: 'trend-uae' })];
-    const eg = orderFeed(mixed, 100, { uid: 'u1', country: 'Egypt' }).map((x) => x.id);
-    expect(eg.indexOf('eg1')).toBeLessThan(eg.indexOf('ae1'));
+    // The personal shuffle changes daily, so check many days, not just today.
+    for (let d = 1; d <= 60; d++) {
+      const day = `2026-${String(Math.ceil(d / 28)).padStart(2, '0')}-${String(((d - 1) % 28) + 1).padStart(2, '0')}`;
+      const eg = orderFeed(mixed, 100, { uid: 'u1', country: 'Egypt', day }).map((x) => x.id);
+      expect(eg.indexOf('eg1'), day).toBeLessThan(eg.indexOf('ae1'));
+      const ae = orderFeed(mixed, 100, { uid: 'u1', country: 'UAE', day }).map((x) => x.id);
+      expect(ae.indexOf('ae1'), day).toBeLessThan(ae.indexOf('eg1'));
+    }
   });
 });

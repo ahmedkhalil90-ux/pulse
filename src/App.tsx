@@ -96,6 +96,7 @@ import { InstallPrompt } from './components/InstallPrompt';
 import { StreakChip, StreakCard, FeedExtras, PredictOverlay, RegionSplitCard, RecapButton, QUESTION_STARTERS, useMindScore } from './components/Engagement';
 import { mindMode, majorityOf, recordPrediction } from './lib/mind';
 import { POLICY_URL } from './lib/privacy';
+import { createGroup, joinGroupByCode, GroupJoinError } from './lib/groups';
 
 // A fixed list, so demographic buckets do not fragment ("UAE" vs "uae" vs
 // "Emirates") and can actually reach the 10-response display threshold.
@@ -2050,14 +2051,6 @@ function CreateQuestionModal({ onClose, groupId }: { onClose: () => void, groupI
 
 // --- Placeholder Views ---
 
-const generateInviteCode = () => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-};
 
 function GroupsView() {
   const { user } = useAuth();
@@ -2465,19 +2458,9 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void, onCreat
 
     setLoading(true);
     try {
-      const inviteCode = generateInviteCode();
-      const groupData = {
-        name: name.trim(),
-        description: description.trim(),
-        inviteCode,
-        adminUid: user.uid,
-        memberCount: 1,
-        createdAt: new Date().toISOString()
-      };
-
-      const docRef = await addDoc(collection(db, 'groups'), groupData);
+      const group = await createGroup(db, user.uid, name, description);
       toast.success(t("Group created!"));
-      onCreated({ id: docRef.id, ...groupData } as Group);
+      onCreated(group);
       onClose();
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'groups');
@@ -2541,48 +2524,17 @@ function JoinGroupModal({ onClose, onJoined }: { onClose: () => void, onJoined: 
 
     setLoading(true);
     try {
-      const q = query(collection(db, 'groups'), where('inviteCode', '==', code.toUpperCase()));
-      const snapshot = await getDocs(q);
-
-      if (snapshot.empty) {
-        toast.error(t("Invalid invite code"));
-        setLoading(false);
-        return;
+      let joined: Group;
+      try {
+        joined = await joinGroupByCode(db, user.uid, code);
+      } catch (e) {
+        if (e instanceof GroupJoinError && e.reason === 'invalid-code') { toast.error(t("Invalid invite code")); setLoading(false); return; }
+        if (e instanceof GroupJoinError && e.reason === 'already-member') { toast.error(t("You are already a member")); onJoined(e.group!); onClose(); return; }
+        throw e;
       }
 
-      const groupDoc = snapshot.docs[0];
-      const groupData = groupDoc.data() as Group;
-
-      const alreadyMember = await getDoc(
-        doc(db, 'groups', groupDoc.id, 'members', user.uid)
-      );
-      if (alreadyMember.exists()) {
-        toast.error(t("You are already a member"));
-        onJoined({ id: groupDoc.id, ...groupData });
-        onClose();
-        return;
-      }
-
-      // Stage proof that we knew the invite code. The rule on this
-      // subcollection compares it against the group document server-side; the
-      // members write below is refused unless this landed first.
-      await setDoc(doc(db, 'groups', groupDoc.id, 'joinRequests', user.uid), {
-        code: code.toUpperCase()
-      });
-
-      // Membership is its own document. The invite-code proof is enforced on
-      // its create; the count update below only has to confirm it exists.
-      await setDoc(doc(db, 'groups', groupDoc.id, 'members', user.uid), {
-        uid: user.uid,
-        joinedAt: new Date().toISOString()
-      });
-
-      await updateDoc(groupDoc.ref, {
-        memberCount: increment(1)
-      });
-
-      toast.success(`${t("Joined")} ${groupData.name}`);
-      onJoined({ id: groupDoc.id, ...groupData, memberCount: groupData.memberCount + 1 });
+      toast.success(`${t("Joined")} ${joined.name}`);
+      onJoined(joined);
       onClose();
     } catch (error) {
       // The join is several writes now, so a failure partway must say

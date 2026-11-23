@@ -74,6 +74,7 @@ await db.doc('bracketPicks/lurker_b1').set({ bracketId: 'b1', picks: [0, 2, 4, 6
 await db.doc('groups/g1').set({ name: 'G', memberCount: 2, adminUid: 'early' });
 await db.doc('groups/g1/members/lurker').set({ uid: 'lurker', joinedAt: 'x' });
 await db.doc('groups/g1/members/early').set({ uid: 'early', joinedAt: 'x' });
+await db.doc('groups/g2').set({ name: 'Old', memberCount: 1, adminUid: 'early', createdAt: '2026-10-01T00:00:00.000Z' });
 await db.doc('users/lurker/private/mind').set({ week: '2026-11-16', right: 1, total: 2 });
 await db.doc('activity/lurker_2026-11-16').set({ uid: 'lurker', day: '2026-11-16', answers: 3 });
 await db.doc('feedback/f1').set({ uid: 'lurker', text: 'bye', kind: 'other', createdAt: new Date() });
@@ -114,6 +115,8 @@ check((await db.collection('user_answers').where('userId', '==', 'lurker').get()
 check(!(await db.doc('bracketPicks/lurker_b1').get()).exists, 'deleted member\'s bracket picks still exist');
 check(!(await db.doc('groups/g1/members/lurker').get()).exists, 'deleted member still in a group');
 check((await db.doc('groups/g1').get()).data().memberCount === 1, 'group member count not reduced exactly once');
+check((await db.doc('groups/g2/members/early').get()).exists, 'old group creator membership not restored');
+check((await db.doc('groups/g2').get()).data().memberCount === 1, 'restoring a creator changed the member count');
 check(!(await db.doc('activity/lurker_2026-11-16').get()).exists, 'deleted member\'s activity still exists');
 check((await db.collection('feedback').where('uid', '==', 'lurker').get()).empty, 'deleted member\'s messages still exist');
 check((await db.doc('questions/lurkerQ').get()).data().authorUid === 'deleted_member', 'question still names the deleted author');
