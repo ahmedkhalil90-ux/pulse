@@ -97,7 +97,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Daily Bonus Logic. The lastLogin check runs inside the
             // transaction rather than against this snapshot, so two tabs
             // opening at once cannot both see a stale value and both award it.
-            try {
+            // A profile still being written (sign-up in progress) already
+            // records today's check-in, and the server has not seen it yet:
+            // checking now only collides with that write.
+            if (!userDoc.metadata.hasPendingWrites) try {
               const awarded = await awardDailyBonus(db, firebaseUser.uid);
               if (awarded) {
                 setTimeout(() => {
