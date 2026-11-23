@@ -31,6 +31,21 @@ export const inviteUrl = (code: string) => {
  * (the nightly job assigns it then).
  */
 export async function claimMemberNumber(db: Firestore, uid: string): Promise<number | null> {
+  // Numbers are handed out one at a time from a single counter, so members
+  // claiming at the same moment collide. A refused claim wrote nothing and a
+  // retry re-reads the counter, so retrying with a short random wait is safe.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await claimOnce(db, uid);
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (!['aborted', 'permission-denied', 'failed-precondition'].includes(code ?? '') || attempt >= 7) throw e;
+      await new Promise((r) => setTimeout(r, 150 + Math.random() * 400 * (attempt + 1)));
+    }
+  }
+}
+
+function claimOnce(db: Firestore, uid: string): Promise<number | null> {
   return runTransaction(db, async (tx) => {
     const counterRef = doc(db, 'counters', 'members');
     const userRef = doc(db, 'users', uid);
