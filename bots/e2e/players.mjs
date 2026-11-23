@@ -91,18 +91,20 @@ async function makeAdmin(email) {
 }
 
 const steps = [];
+let currentStep = '';
 const consoleErrors = [];
 const browser = await chromium.launch();
 
 async function newBot(name) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } }); // phone-sized
   const page = await ctx.newPage();
-  page.on('console', m => { if (m.type() === 'error') consoleErrors.push({ bot: name, text: m.text().slice(0, 300) }); });
+  page.on('console', m => { if (m.type() === 'error') consoleErrors.push({ bot: name, step: currentStep, text: `${m.text().slice(0, 200)} ${m.location()?.url ?? ''}`.trim() }); });
   page.on('pageerror', e => consoleErrors.push({ bot: name, text: `CRASH: ${String(e.message).slice(0, 300)}` }));
   return { name, page };
 }
 
 async function step(bot, name, fn) {
+  currentStep = name;
   const t0 = Date.now();
   try {
     await fn(bot.page);
@@ -415,6 +417,12 @@ await step(b, 'join group by code', async p => {
   await p.getByText(`Bots ${run}`).first().waitFor({ timeout: 10000 });
 });
 await step(b, 'my groups list survives a reload', async p => {
+  await p.reload({ waitUntil: 'domcontentloaded' });
+  await p.locator('[data-testid="streak-chip"]').waitFor({ timeout: 15000 });
+  await nav(p, 'Groups');
+  await p.getByText(`Bots ${run}`).first().waitFor({ timeout: 10000 });
+});
+await step(a, 'creator still sees their group after a reload', async p => {
   await p.reload({ waitUntil: 'domcontentloaded' });
   await p.locator('[data-testid="streak-chip"]').waitFor({ timeout: 15000 });
   await nav(p, 'Groups');
