@@ -75,8 +75,10 @@ export function orderFeed(questions: Ranked[], answeredCount: number, viewer?: V
   const proven = rest.filter((q) => tierOf(q) === 'top' || tierOf(q) === 'normal').sort(byScore);
   // Exploring questions have no reliable rank yet: interest, local fit and the
   // personal shuffle decide, so different users test different new questions.
-  const exploring = rest.filter((q) => tierOf(q) === 'exploring')
-    .sort((a, b) => (score(b) - (b.rank ?? 0.5) + 0.25 * jitter(b)) - (score(a) - (a.rank ?? 0.5) + 0.25 * jitter(a)));
+  // Local fit carries extra weight here so it always beats the shuffle (at most
+  // 0.31 apart): a trend from the viewer's own country comes before another's.
+  const exploreScore = (q: Ranked) => score(q) - (q.rank ?? 0.5) + 0.25 * jitter(q) + 0.25 * localFit(q, viewer?.country);
+  const exploring = rest.filter((q) => tierOf(q) === 'exploring').sort((a, b) => exploreScore(b) - exploreScore(a));
   const wild = rest.filter((q) => tierOf(q) === 'low').sort((a, b) => jitter(a) - jitter(b));
 
   if (answeredCount < NEW_USER_ANSWERS) {
