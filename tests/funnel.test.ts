@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ENTRY_ANSWERS, UNLOCK_ANSWERS } from '../src/lib/member';
-// @ts-expect-error plain .mjs script module
 import { answersPerVisit, funnel } from '../scripts/lib/funnel.mjs';
 
 const gates = { entry: 5, unlock: 10 };
