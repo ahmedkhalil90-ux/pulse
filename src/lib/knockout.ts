@@ -1,4 +1,4 @@
-import { doc, increment, runTransaction, type Firestore } from 'firebase/firestore';
+import { doc, getDoc, increment, runTransaction, writeBatch, type Firestore } from 'firebase/firestore';
 import { CREDIT_VALUES, reasonData, reasonRef } from './credits';
 
 /**
@@ -52,16 +52,54 @@ export function communityChampion(t: Tally | null): { idx: number; pct: number; 
   return { idx: Number(idx), pct: Math.round((n / total) * 100), total };
 }
 
-/** Save a finished bracket: private picks, the community tally and the +1 credit, in one write. */
+/**
+ * Save a finished bracket: private picks, the community tally and the +1
+ * credit, in one write.
+ *
+ * Once the tally exists, it moves by atomic increments in a batch. A
+ * read-then-write transaction lost about four brackets in ten when a crowd
+ * finished at once: the losers' writes were checked against a tally that had
+ * already moved and refused (not retried). Only the very first bracket needs a
+ * transaction, to create the tally. Retries are safe: a refused write wrote
+ * nothing, and a bracket already saved is never sent again.
+ */
 export async function submitBracket(db: Firestore, uid: string, bracketId: string, picks: number[]): Promise<Tally> {
   const resultsRef = doc(db, 'bracketResults', bracketId);
-  return runTransaction(db, async (tx) => {
-    const cur = await tx.get(resultsRef);
-    const next = addPicks(picks, cur.exists() ? (cur.data() as Tally) : undefined);
-    tx.set(doc(db, 'bracketPicks', `${uid}_${bracketId}`), { bracketId, picks, createdAt: new Date().toISOString() });
-    tx.set(resultsRef, next);
-    tx.update(doc(db, 'users', uid), { credits: increment(CREDIT_VALUES.BRACKET) });
-    tx.set(reasonRef(db, uid), reasonData('bracket', bracketId));
-    return next;
-  });
+  const picksRef = doc(db, 'bracketPicks', `${uid}_${bracketId}`);
+  const userRef = doc(db, 'users', uid);
+  const inc: Record<string, unknown> = {};
+  for (let i = 0; i < MATCHES; i++) {
+    const [a, b] = matchOf(i, picks);
+    inc[`pairs.${pairKey(a, b)}.${picks[i]}`] = increment(1);
+  }
+  inc[`champ.${picks[6]}`] = increment(1);
+  const picksDoc = { bracketId, picks, createdAt: new Date().toISOString() };
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      if ((await getDoc(resultsRef)).exists()) {
+        const b = writeBatch(db);
+        b.set(picksRef, picksDoc);
+        b.update(resultsRef, inc);
+        b.update(userRef, { credits: increment(CREDIT_VALUES.BRACKET) });
+        b.set(reasonRef(db, uid), reasonData('bracket', bracketId));
+        await b.commit();
+      } else {
+        await runTransaction(db, async (tx) => {
+          const cur = await tx.get(resultsRef);
+          tx.set(picksRef, picksDoc);
+          if (cur.exists()) tx.update(resultsRef, inc);
+          else tx.set(resultsRef, addPicks(picks));
+          tx.update(userRef, { credits: increment(CREDIT_VALUES.BRACKET) });
+          tx.set(reasonRef(db, uid), reasonData('bracket', bracketId));
+        });
+      }
+      return (await getDoc(resultsRef)).data() as Tally;
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (!['aborted', 'permission-denied', 'failed-precondition'].includes(code ?? '') || attempt >= 5) throw e;
+      if ((await getDoc(picksRef).catch(() => null))?.exists()) return (await getDoc(resultsRef)).data() as Tally;
+      await new Promise((r) => setTimeout(r, 100 + Math.random() * 300 * (attempt + 1)));
+    }
+  }
 }
